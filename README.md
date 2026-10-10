@@ -84,7 +84,7 @@ npm run typecheck   # 类型检查（vue-tsc）
 ```bash
 cd server
 npm install
-cp .env.example .env      # 填入 LLM_API_KEY（DashScope qwen-plus / qwen-vl-plus）
+cp .env.example .env      # 填入 LLM_API_KEY（DashScope qwen-plus / qwen-vl-ocr）
 npm start                 # 默认 http://localhost:3000
 ```
 
@@ -134,7 +134,7 @@ cp .env.example .env      # 然后填入真实值
 | `LLM_API_KEY` | 文本大模型（多轮追问 / 小结 / 话术） | 降级为本地关键词匹配 |
 | `LLM_VL_API_KEY` | 视觉识别（货架 CV） | 降级为通用陈列规则 |
 | `LLM_BASE_URL` / `LLM_MODEL` | 文本模型地址与型号 | 通义千问 qwen-plus |
-| `LLM_VL_BASE_URL` / `LLM_VL_MODEL` | 视觉模型地址与型号 | 通义千问 qwen-vl-plus |
+| `LLM_VL_BASE_URL` / `LLM_VL_MODEL` | 视觉模型地址与型号 | 通义千问 qwen-vl-ocr（VL-Plus 未开通则降级） |
 
 生成 `AUTH_SECRET`：
 
@@ -162,7 +162,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 - 前端：Vue 3 (`<script setup>`) + TypeScript + Vite 5 + Pinia 2 + vue-router 4（hash 模式）
 - 图表：ECharts 5（看板环形图 / 折线）
 - 地图：Leaflet 4 + 高德瓦片（免 key 直连，P2 支持全屏与缩放）
-- 后端：Node + Express + SQLite + DashScope 千问（qwen-plus 文本 / qwen-vl-plus 视觉）
+- 后端：Node + Express + SQLite + DashScope 千问（qwen-plus 文本 / qwen-vl-ocr 视觉（VL-Plus 未开通时自动降级））
 - **AI 流式**：SSE（`/api/v1/ai/chat/stream`、`/api/v1/ai/generate/stream`），逐 token 出字
 - **MCP 进销存**：`server/mcp/inventory-server.mjs`（零依赖 stdio JSON-RPC），暴露 `get_batch_expiry` / `get_price_book` / `get_store_inventory` 三个工具 —— **效期与价签数据来自进销存，不靠看图猜**
 - **补货算法**：`server/src/forecast.js`，Holt 指数平滑 → 单列日均 → 动态安全库存 `z·σ·√L`（90% 服务水平）→ 目标库存 → 建议补货量，逐步可溯源；`GET /api/v1/forecast/:diagnosisId` 可查看完整算式

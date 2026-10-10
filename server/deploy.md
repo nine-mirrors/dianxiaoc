@@ -103,7 +103,7 @@ VITE_API_BASE=            # 同域反代后留空即可
 | `LLM_API_KEY` | OpenAI 兼容大模型 key（DeepSeek/通义/月之暗面） | 多轮追问降级为关键词匹配 |
 | `LLM_BASE_URL` | 默认 `https://api.deepseek.com` | — |
 | `LLM_MODEL` | 默认 `deepseek-chat` | — |
-| `LLM_VL_MODEL` | 视觉模型（qwen-vl-plus / gpt-4o） | 上传照片识别降级为 mock |
+| `LLM_VL_MODEL` | 视觉模型（qwen-vl-ocr；开通 VL-Plus 后可改回） | 计数超合理区间时回退门店基线 |
 | `PORT` | 默认 3000 | — |
 
 **降级保证**：任何 LLM 缺 key / 超时 / 报错，都静默降级到关键词匹配 + mock 识别，**演示永不中断**。
