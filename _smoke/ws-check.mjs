@@ -29,7 +29,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 async function checkRealtimePush() {
   const result = { ok: false, connected: false, events: [], hello: null, pushed: null, reason: '' }
 
-  const ws = new WebSocket(`${WS_URL}?role=rep&name=${encodeURIComponent('李强')}`)
+  // ⚠ A1 安全整改后 /ws 握手要验签 token，query 里的 role/name 已被后端忽略。
+  //   这里必须带真实 token，否则服务端以 1008「未授权」关闭，收不到任何推送。
+  const wsToken = await loginToken('liqiang')
+  const ws = new WebSocket(`${WS_URL}?token=${encodeURIComponent(wsToken)}`)
   const frames = []
   ws.addEventListener('message', (ev) => {
     let frame

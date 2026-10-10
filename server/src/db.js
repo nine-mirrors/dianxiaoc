@@ -6,7 +6,7 @@
  *   - 可写集合（tasks/tickets/新增 visits/诊断快照）落 SQLite，重启不丢 → 跨角色闭环成立。
  */
 import { DatabaseSync } from 'node:sqlite'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -76,6 +76,26 @@ export const VISIT_TO_RAW_KEY = {
 }
 
 /* ═══════════════ SQLite 初始化 ═══════════════ */
+
+/**
+ * ⚠ P0-① 换机克隆必崩修复：先确保 `data/` 存在，再开库。
+ *
+ * `server/data/` 在 `.gitignore` 里（运行时数据不进仓库），所以**新克隆的仓库
+ * 根本没有这个目录**。而 `new DatabaseSync()` 在文件不存在且**父目录也不存在**时
+ * 不会自动建目录，会直接抛：
+ *   ERR_SQLITE_ERROR: unable to open database file
+ * 由于本行在**模块顶层**执行，抛错即整个 `import` 失败 → 后端起不来 → 演示白屏。
+ *
+ * `auth.js` 的 `loadAccounts()` 里虽有建目录逻辑，但它受 ESM import 时序约束
+ * （`import './db.js'` 先于 auth.js 模块体执行），**救不了这里**，所以必须自建。
+ */
+if (!existsSync(DATA_DIR)) {
+  mkdirSync(DATA_DIR, { recursive: true })
+  console.log('[db] 已创建数据目录：', DATA_DIR)
+}
+// 上传目录同理（整改回执照片落地处），避免首个上传请求才报错
+const UPLOADS_DIR = join(DATA_DIR, 'uploads')
+if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true })
 
 const db = new DatabaseSync(join(DATA_DIR, 'store.db'))
 

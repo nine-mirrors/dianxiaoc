@@ -11,12 +11,12 @@
 ```
 03_产品Demo/
 ├── store-app/          # 前端（Vue3 + Vite + TS + Pinia）
-├── server/             # 可选真后端（Express + SQLite，提供 REST + SSE）
+├── server/             # 真后端（Express + SQLite，提供 30 个 REST + SSE + WebSocket）
 └── README.md
 ```
 
 - `store-app/` 是演示主程序，**单独即可完整演示全部功能**。
-- `server/` 仅在需要「真大模型 / 真 SSE 流式 / 真 REST」时启用；不启动也完全不影响演示。
+- **`server/` 必须启动**（`cd server && npm start`，3000 端口）。本项目**无 mock 层**，后端未起时页面会显示「后端未连接」且没有数据。详见《启动说明.md》。
 
 ---
 
@@ -25,7 +25,7 @@
 ```bash
 cd store-app
 npm install
-npm run dev          # 开发模式，默认 http://127.0.0.1:5173
+npm run dev          # 开发模式，实际使用 http://127.0.0.1:5180（演示统一端口）
 ```
 
 构建与离线产物：
@@ -39,12 +39,14 @@ npm run typecheck   # 类型检查（vue-tsc）
 
 > **单文件验收**：`npm run build:single` 产出的 `dist/index.html` 单文件双击即开、不依赖 CDN，但**仍需后端在 3000 端口运行**（无 mock）。前端零 CDN 依赖。
 
-### 环境变量（store-app/.env，可选）
+### 环境变量（store-app/.env）
+
+> 首次克隆后需复制一份：`cp .env.example .env`（Windows：`copy .env.example .env`）。仓库已提供 `store-app/.env.example`。
 
 | 变量 | 说明 | 默认 |
 | --- | --- | --- |
-| `VITE_API_BASE` | 真后端地址（唯一数据通路，无 mock 开关） | `http://127.0.0.1:3000` |
-| `VITE_API_BASE` | 后端地址 | `http://localhost:3000` |
+| `VITE_API_BASE` | 真后端地址（唯一数据通路，**无 mock 开关**） | `http://127.0.0.1:3000` |
+| `VITE_API_MODE` | 固定为 `http`（保留字段，仅为兼容旧配置） | `http` |
 
 ---
 
@@ -71,11 +73,11 @@ npm run typecheck   # 类型检查（vue-tsc）
 - 不出现「健康分 / 六维度」等内部术语，全程大白话。
 
 ### 跨角色闭环（T05.3）
-经理在 P5 下派任务 → 任务写入本地任务库（localStorage 持久化）→ 业代端 P2 刷新即可见「待办提醒」。**演示时可先开经理端下派，再回业代端查看**，形成完整闭环。
+经理在 P5 下派任务 → 任务写入 **SQLite 真库**（`server/data/store.db`）→ 通过 **WebSocket 实时推送**到业代端 P2，无需刷新。**演示时可先开经理端下派，再切到业代端看实时弹出的待办提醒**，形成完整闭环。
 
 ---
 
-## 真后端（server/，可选）
+## 真后端（server/，必启）
 
 需要真大模型 / 真 SSE 流式 / 真 REST 时启用：
 
@@ -184,5 +186,5 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 - **必须先起后端**：`cd server && npm start`（3000 端口），否则页面顶部提示「后端未连接」。
 - 单文件产物：`npm run build:single` → `dist/index.html` 双击即开（仍需后端运行）。
 - 演示速度倍率 / 骨架屏开关在桌面端手机壳外的设置齿轮里（不影响移动端）。
-- 角色选择后状态写入 `localStorage`，刷新保持；清缓存可重置为默认业代。
+- 登录态（token + 身份）写入 `localStorage`，刷新自动恢复；后端重启需重新登录（token 8小时有效）。
 - 评委追问「数字怎么来的」：P4 风险预判卡可展开**推导依据**；补货量口径见 `server/src/forecast.js`（动态安全库存）；效期/价签来自 MCP 进销存工具。

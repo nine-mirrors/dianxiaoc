@@ -22,6 +22,7 @@ import {
 import { buildForecast, buildForecastAuthoritative, forecastDigest } from './forecast.js'
 import { fetchInventoryFacts, mcpHealth } from './mcpClient.js'
 import { withCache, cacheHealth, cacheClear } from './cache.js'
+import { loadEnv } from './env.js'
 import { verifyAccount, issueSession, accountFromToken, demoAccountList, requireAuth, requireRole, accountOf } from './auth.js'
 import { attachRealtime, broadcast, clientCount } from './realtime.js'
 import { analyzeShelfWithBoxes, patchVisionAnnotations } from './vision.js'
@@ -66,13 +67,8 @@ app.use(express.json({ limit: '20mb' }))
 /* ═══════════════ .env 读取（server/.env，可配 LLM key） ═══════════════ */
 
 import { readFileSync } from 'node:fs'
-const ENV_PATH = join(__dirname, '../.env')
-if (existsSync(ENV_PATH)) {
-  readFileSync(ENV_PATH, 'utf8').split('\n').forEach((line) => {
-    const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.*?)\s*$/)
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '')
-  })
-}
+// .env 加载统一到 env.js（见该文件顶部注释：为什么必须各模块自载）
+loadEnv()
 
 /** 文本 LLM（多轮追问，默认 DeepSeek，OpenAI 兼容） */
 const LLM = {
@@ -761,6 +757,9 @@ const wrap = (fn) => async (req, res) => {
 
 /* ═══════════════ T1 统一鉴权（全站业务接口默认需登录） ═══════════════ */
 
+/** 单据类型白名单：订货单 / 整改单（全项目仅这两种，见 db.js serial 与前端三处调用） */
+const TICKET_KINDS = ['order', 'rectification']
+
 /** 任务状态白名单（P1-5，与 TICKET_STATUS 同一处风格） */
 const TASK_STATUS = ['open', 'done']
 
@@ -1194,6 +1193,23 @@ app.post('/api/v1/ai/generate/stream', async (req, res) => {
 app.post('/api/v1/tickets', wrap((req) => {
   const body = req.body ?? {}
   // ⚠ 入参校验（QA 实测 items:[null] / items:"abc" 会直接 500 并泄露内部错误）
+  /**
+   * ⚠ 回归修复（队长实测发现）：`kind` 原先**完全没校验**，
+   *   而 db.js 的 INSERT 第 2 个参数就是 `ticket.kind` —— 传undefined 时
+   *   node:sqlite 抛 `TypeError: Provided value cannot be bound to SQLite parameter 2`
+   *   → **HTTP 500**。前端 P4整改回执与 P6 店主下单都走这个接口，漏传就崩。
+   *   同理 `storeId` 缺失也会绑不上（parameter 3）。
+   *   原则：**任何输入都不该导致 500**，500 只留给真正的服务端故障。
+   */
+  if (typeof body.kind !== 'string' || !body.kind.trim()) {
+    throw new ApiError(400, `kind 必填，且必须是 ${TICKET_KINDS.map((k) => `'${k}'`).join(' 或 ')}`)
+  }
+  if (!TICKET_KINDS.includes(body.kind)) {
+    throw new ApiError(400, `kind 必须是 ${TICKET_KINDS.map((k) => `'${k}'`).join(' 或 ')}`)
+  }
+  if (typeof body.storeId !== 'string' || !body.storeId.trim()) {
+    throw new ApiError(400, 'storeId 必填')
+  }
   if (body.items != null && !Array.isArray(body.items)) throw new ApiError(400, 'items 必须是数组')
   if (Array.isArray(body.items)) {
     body.items = body.items.filter(Boolean).map((i) => {

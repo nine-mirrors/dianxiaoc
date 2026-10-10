@@ -153,6 +153,2466 @@
       "alert": true,
       "lat": 30.7773,
       "lng": 103.9915
+    },
+    {
+      "id": "S101",
+      "name": "城东片区-01",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 101 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 96,
+      "prevScore": 92,
+      "alert": false,
+      "lat": 30.656,
+      "lng": 103.95
+    },
+    {
+      "id": "S102",
+      "name": "城东片区-02",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 102 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 96,
+      "prevScore": 93,
+      "alert": false,
+      "lat": 30.662,
+      "lng": 103.95
+    },
+    {
+      "id": "S103",
+      "name": "城东片区-03",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 103 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 96,
+      "prevScore": 93,
+      "alert": false,
+      "lat": 30.668,
+      "lng": 103.95
+    },
+    {
+      "id": "S104",
+      "name": "城东片区-04",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 104 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 95,
+      "prevScore": 97,
+      "alert": false,
+      "lat": 30.674,
+      "lng": 103.95
+    },
+    {
+      "id": "S105",
+      "name": "城东片区-05",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 105 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 94,
+      "prevScore": 97,
+      "alert": false,
+      "lat": 30.68,
+      "lng": 103.95
+    },
+    {
+      "id": "S106",
+      "name": "城东片区-06",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 106 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 94,
+      "prevScore": 92,
+      "alert": false,
+      "lat": 30.686,
+      "lng": 103.95
+    },
+    {
+      "id": "S107",
+      "name": "城东片区-07",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 107 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 94,
+      "prevScore": 95,
+      "alert": false,
+      "lat": 30.692,
+      "lng": 103.95
+    },
+    {
+      "id": "S108",
+      "name": "城东片区-08",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 108 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 92,
+      "prevScore": 94,
+      "alert": false,
+      "lat": 30.698,
+      "lng": 103.95
+    },
+    {
+      "id": "S109",
+      "name": "城东片区-09",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 109 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 92,
+      "prevScore": 91,
+      "alert": false,
+      "lat": 30.704,
+      "lng": 103.95
+    },
+    {
+      "id": "S110",
+      "name": "城东片区-10",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 110 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 92,
+      "prevScore": 91,
+      "alert": false,
+      "lat": 30.71,
+      "lng": 103.95
+    },
+    {
+      "id": "S111",
+      "name": "城东片区-11",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 111 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 92,
+      "prevScore": 94,
+      "alert": false,
+      "lat": 30.716,
+      "lng": 103.95
+    },
+    {
+      "id": "S112",
+      "name": "城东片区-12",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 112 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 91,
+      "prevScore": 88,
+      "alert": false,
+      "lat": 30.722,
+      "lng": 103.95
+    },
+    {
+      "id": "S113",
+      "name": "城东片区-13",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 113 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 91,
+      "prevScore": 92,
+      "alert": false,
+      "lat": 30.728,
+      "lng": 103.95
+    },
+    {
+      "id": "S114",
+      "name": "城东片区-14",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 114 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 91,
+      "prevScore": 91,
+      "alert": false,
+      "lat": 30.734,
+      "lng": 103.95
+    },
+    {
+      "id": "S115",
+      "name": "城东片区-15",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 115 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 91,
+      "prevScore": 94,
+      "alert": false,
+      "lat": 30.74,
+      "lng": 103.95
+    },
+    {
+      "id": "S116",
+      "name": "城东片区-16",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 116 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 91,
+      "prevScore": 89,
+      "alert": false,
+      "lat": 30.746,
+      "lng": 103.95
+    },
+    {
+      "id": "S117",
+      "name": "城东片区-17",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 117 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 91,
+      "prevScore": 94,
+      "alert": false,
+      "lat": 30.752,
+      "lng": 103.95
+    },
+    {
+      "id": "S118",
+      "name": "城东片区-18",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 118 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 91,
+      "prevScore": 94,
+      "alert": false,
+      "lat": 30.758,
+      "lng": 103.95
+    },
+    {
+      "id": "S119",
+      "name": "城东片区-19",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 119 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 91,
+      "prevScore": 89,
+      "alert": false,
+      "lat": 30.764,
+      "lng": 103.95
+    },
+    {
+      "id": "S120",
+      "name": "城东片区-20",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 120 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 90,
+      "prevScore": 89,
+      "alert": false,
+      "lat": 30.65,
+      "lng": 103.956
+    },
+    {
+      "id": "S121",
+      "name": "城东片区-21",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 121 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 90,
+      "prevScore": 92,
+      "alert": false,
+      "lat": 30.656,
+      "lng": 103.956
+    },
+    {
+      "id": "S122",
+      "name": "城东片区-22",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 122 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 90,
+      "prevScore": 93,
+      "alert": false,
+      "lat": 30.662,
+      "lng": 103.956
+    },
+    {
+      "id": "S123",
+      "name": "城东片区-23",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 123 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 90,
+      "prevScore": 89,
+      "alert": false,
+      "lat": 30.668,
+      "lng": 103.956
+    },
+    {
+      "id": "S124",
+      "name": "城东片区-24",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 124 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 90,
+      "prevScore": 92,
+      "alert": false,
+      "lat": 30.674,
+      "lng": 103.956
+    },
+    {
+      "id": "S125",
+      "name": "城东片区-25",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 125 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 89,
+      "prevScore": 92,
+      "alert": false,
+      "lat": 30.68,
+      "lng": 103.956
+    },
+    {
+      "id": "S126",
+      "name": "城东片区-26",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 126 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 89,
+      "prevScore": 89,
+      "alert": false,
+      "lat": 30.686,
+      "lng": 103.956
+    },
+    {
+      "id": "S127",
+      "name": "城东片区-27",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 127 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 89,
+      "prevScore": 92,
+      "alert": false,
+      "lat": 30.692,
+      "lng": 103.956
+    },
+    {
+      "id": "S128",
+      "name": "城东片区-28",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 128 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 89,
+      "prevScore": 88,
+      "alert": false,
+      "lat": 30.698,
+      "lng": 103.956
+    },
+    {
+      "id": "S129",
+      "name": "城东片区-29",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 129 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 89,
+      "prevScore": 91,
+      "alert": false,
+      "lat": 30.704,
+      "lng": 103.956
+    },
+    {
+      "id": "S130",
+      "name": "城东片区-30",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 130 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 89,
+      "prevScore": 90,
+      "alert": false,
+      "lat": 30.71,
+      "lng": 103.956
+    },
+    {
+      "id": "S131",
+      "name": "城东片区-31",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 131 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 89,
+      "prevScore": 89,
+      "alert": false,
+      "lat": 30.716,
+      "lng": 103.956
+    },
+    {
+      "id": "S132",
+      "name": "城东片区-32",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 132 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 88,
+      "prevScore": 84,
+      "alert": false,
+      "lat": 30.722,
+      "lng": 103.956
+    },
+    {
+      "id": "S133",
+      "name": "城东片区-33",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 133 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 88,
+      "prevScore": 88,
+      "alert": false,
+      "lat": 30.728,
+      "lng": 103.956
+    },
+    {
+      "id": "S134",
+      "name": "城东片区-34",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 134 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 88,
+      "prevScore": 89,
+      "alert": false,
+      "lat": 30.734,
+      "lng": 103.956
+    },
+    {
+      "id": "S135",
+      "name": "城东片区-35",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 135 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 87,
+      "prevScore": 83,
+      "alert": false,
+      "lat": 30.74,
+      "lng": 103.956
+    },
+    {
+      "id": "S136",
+      "name": "城东片区-36",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 136 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 87,
+      "prevScore": 88,
+      "alert": false,
+      "lat": 30.746,
+      "lng": 103.956
+    },
+    {
+      "id": "S137",
+      "name": "城东片区-37",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 137 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 87,
+      "prevScore": 88,
+      "alert": false,
+      "lat": 30.752,
+      "lng": 103.956
+    },
+    {
+      "id": "S138",
+      "name": "城东片区-38",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 138 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 87,
+      "prevScore": 85,
+      "alert": false,
+      "lat": 30.758,
+      "lng": 103.956
+    },
+    {
+      "id": "S139",
+      "name": "城东片区-39",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 139 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 87,
+      "prevScore": 84,
+      "alert": false,
+      "lat": 30.764,
+      "lng": 103.956
+    },
+    {
+      "id": "S140",
+      "name": "城东片区-40",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 140 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 86,
+      "prevScore": 82,
+      "alert": false,
+      "lat": 30.65,
+      "lng": 103.962
+    },
+    {
+      "id": "S141",
+      "name": "城东片区-41",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 141 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 84,
+      "prevScore": 82,
+      "alert": false,
+      "lat": 30.656,
+      "lng": 103.962
+    },
+    {
+      "id": "S142",
+      "name": "城东片区-42",
+      "regionId": "R_EAST",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城东片区 142 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 84,
+      "prevScore": 85,
+      "alert": false,
+      "lat": 30.662,
+      "lng": 103.962
+    },
+    {
+      "id": "S143",
+      "name": "城南片区-01",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 101 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 83,
+      "prevScore": 81,
+      "alert": false,
+      "lat": 30.656,
+      "lng": 103.95
+    },
+    {
+      "id": "S144",
+      "name": "城南片区-02",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 102 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 83,
+      "prevScore": 83,
+      "alert": false,
+      "lat": 30.662,
+      "lng": 103.95
+    },
+    {
+      "id": "S145",
+      "name": "城南片区-03",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 103 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 83,
+      "prevScore": 85,
+      "alert": false,
+      "lat": 30.668,
+      "lng": 103.95
+    },
+    {
+      "id": "S146",
+      "name": "城南片区-04",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 104 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 83,
+      "prevScore": 85,
+      "alert": false,
+      "lat": 30.674,
+      "lng": 103.95
+    },
+    {
+      "id": "S147",
+      "name": "城南片区-05",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 105 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 83,
+      "prevScore": 79,
+      "alert": false,
+      "lat": 30.68,
+      "lng": 103.95
+    },
+    {
+      "id": "S148",
+      "name": "城南片区-06",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 106 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 82,
+      "prevScore": 84,
+      "alert": false,
+      "lat": 30.686,
+      "lng": 103.95
+    },
+    {
+      "id": "S149",
+      "name": "城南片区-07",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 107 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 82,
+      "prevScore": 82,
+      "alert": false,
+      "lat": 30.692,
+      "lng": 103.95
+    },
+    {
+      "id": "S150",
+      "name": "城南片区-08",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 108 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 81,
+      "prevScore": 83,
+      "alert": false,
+      "lat": 30.698,
+      "lng": 103.95
+    },
+    {
+      "id": "S151",
+      "name": "城南片区-09",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 109 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 81,
+      "prevScore": 83,
+      "alert": false,
+      "lat": 30.704,
+      "lng": 103.95
+    },
+    {
+      "id": "S152",
+      "name": "城南片区-10",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 110 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 81,
+      "prevScore": 82,
+      "alert": false,
+      "lat": 30.71,
+      "lng": 103.95
+    },
+    {
+      "id": "S153",
+      "name": "城南片区-11",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 111 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 80,
+      "prevScore": 79,
+      "alert": false,
+      "lat": 30.716,
+      "lng": 103.95
+    },
+    {
+      "id": "S154",
+      "name": "城南片区-12",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 112 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 80,
+      "prevScore": 84,
+      "alert": false,
+      "lat": 30.722,
+      "lng": 103.95
+    },
+    {
+      "id": "S155",
+      "name": "城南片区-13",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 113 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 80,
+      "prevScore": 77,
+      "alert": false,
+      "lat": 30.728,
+      "lng": 103.95
+    },
+    {
+      "id": "S156",
+      "name": "城南片区-14",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 114 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 80,
+      "prevScore": 82,
+      "alert": false,
+      "lat": 30.734,
+      "lng": 103.95
+    },
+    {
+      "id": "S157",
+      "name": "城南片区-15",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 115 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 79,
+      "prevScore": 82,
+      "alert": false,
+      "lat": 30.74,
+      "lng": 103.95
+    },
+    {
+      "id": "S158",
+      "name": "城南片区-16",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 116 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 79,
+      "prevScore": 82,
+      "alert": false,
+      "lat": 30.746,
+      "lng": 103.95
+    },
+    {
+      "id": "S159",
+      "name": "城南片区-17",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 117 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 78,
+      "prevScore": 75,
+      "alert": false,
+      "lat": 30.752,
+      "lng": 103.95
+    },
+    {
+      "id": "S160",
+      "name": "城南片区-18",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 118 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 78,
+      "prevScore": 79,
+      "alert": false,
+      "lat": 30.758,
+      "lng": 103.95
+    },
+    {
+      "id": "S161",
+      "name": "城南片区-19",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 119 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 78,
+      "prevScore": 78,
+      "alert": false,
+      "lat": 30.764,
+      "lng": 103.95
+    },
+    {
+      "id": "S162",
+      "name": "城南片区-20",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 120 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 77,
+      "prevScore": 74,
+      "alert": false,
+      "lat": 30.65,
+      "lng": 103.956
+    },
+    {
+      "id": "S163",
+      "name": "城南片区-21",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 121 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 77,
+      "prevScore": 80,
+      "alert": false,
+      "lat": 30.656,
+      "lng": 103.956
+    },
+    {
+      "id": "S164",
+      "name": "城南片区-22",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 122 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 77,
+      "prevScore": 74,
+      "alert": false,
+      "lat": 30.662,
+      "lng": 103.956
+    },
+    {
+      "id": "S165",
+      "name": "城南片区-23",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 123 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 77,
+      "prevScore": 80,
+      "alert": false,
+      "lat": 30.668,
+      "lng": 103.956
+    },
+    {
+      "id": "S166",
+      "name": "城南片区-24",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 124 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 76,
+      "prevScore": 72,
+      "alert": false,
+      "lat": 30.674,
+      "lng": 103.956
+    },
+    {
+      "id": "S167",
+      "name": "城南片区-25",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 125 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 76,
+      "prevScore": 75,
+      "alert": false,
+      "lat": 30.68,
+      "lng": 103.956
+    },
+    {
+      "id": "S168",
+      "name": "城南片区-26",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 126 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 76,
+      "prevScore": 75,
+      "alert": false,
+      "lat": 30.686,
+      "lng": 103.956
+    },
+    {
+      "id": "S169",
+      "name": "城南片区-27",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 127 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 76,
+      "prevScore": 77,
+      "alert": false,
+      "lat": 30.692,
+      "lng": 103.956
+    },
+    {
+      "id": "S170",
+      "name": "城南片区-28",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 128 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 75,
+      "prevScore": 78,
+      "alert": false,
+      "lat": 30.698,
+      "lng": 103.956
+    },
+    {
+      "id": "S171",
+      "name": "城南片区-29",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 129 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 74,
+      "prevScore": 77,
+      "alert": false,
+      "lat": 30.704,
+      "lng": 103.956
+    },
+    {
+      "id": "S172",
+      "name": "城南片区-30",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 130 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 74,
+      "prevScore": 77,
+      "alert": false,
+      "lat": 30.71,
+      "lng": 103.956
+    },
+    {
+      "id": "S173",
+      "name": "城南片区-31",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 131 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 74,
+      "prevScore": 78,
+      "alert": false,
+      "lat": 30.716,
+      "lng": 103.956
+    },
+    {
+      "id": "S174",
+      "name": "城南片区-32",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 132 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 74,
+      "prevScore": 73,
+      "alert": false,
+      "lat": 30.722,
+      "lng": 103.956
+    },
+    {
+      "id": "S175",
+      "name": "城南片区-33",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 133 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 73,
+      "prevScore": 76,
+      "alert": false,
+      "lat": 30.728,
+      "lng": 103.956
+    },
+    {
+      "id": "S176",
+      "name": "城南片区-34",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 134 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 73,
+      "prevScore": 77,
+      "alert": false,
+      "lat": 30.734,
+      "lng": 103.956
+    },
+    {
+      "id": "S177",
+      "name": "城南片区-35",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 135 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 73,
+      "prevScore": 76,
+      "alert": false,
+      "lat": 30.74,
+      "lng": 103.956
+    },
+    {
+      "id": "S178",
+      "name": "城南片区-36",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 136 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 73,
+      "prevScore": 73,
+      "alert": false,
+      "lat": 30.746,
+      "lng": 103.956
+    },
+    {
+      "id": "S179",
+      "name": "城南片区-37",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 137 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 73,
+      "prevScore": 71,
+      "alert": false,
+      "lat": 30.752,
+      "lng": 103.956
+    },
+    {
+      "id": "S180",
+      "name": "城南片区-38",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 138 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 72,
+      "prevScore": 75,
+      "alert": false,
+      "lat": 30.758,
+      "lng": 103.956
+    },
+    {
+      "id": "S181",
+      "name": "城南片区-39",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 139 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 72,
+      "prevScore": 70,
+      "alert": false,
+      "lat": 30.764,
+      "lng": 103.956
+    },
+    {
+      "id": "S182",
+      "name": "城南片区-40",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 140 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 72,
+      "prevScore": 68,
+      "alert": false,
+      "lat": 30.65,
+      "lng": 103.962
+    },
+    {
+      "id": "S183",
+      "name": "城南片区-41",
+      "regionId": "R_SOUTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城南片区 141 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 72,
+      "prevScore": 75,
+      "alert": false,
+      "lat": 30.656,
+      "lng": 103.962
+    },
+    {
+      "id": "S184",
+      "name": "城北片区-01",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 101 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 72,
+      "prevScore": 75,
+      "alert": false,
+      "lat": 30.656,
+      "lng": 103.95
+    },
+    {
+      "id": "S185",
+      "name": "城北片区-02",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 102 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 71,
+      "prevScore": 69,
+      "alert": false,
+      "lat": 30.662,
+      "lng": 103.95
+    },
+    {
+      "id": "S186",
+      "name": "城北片区-03",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 103 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 71,
+      "prevScore": 69,
+      "alert": false,
+      "lat": 30.668,
+      "lng": 103.95
+    },
+    {
+      "id": "S187",
+      "name": "城北片区-04",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 104 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 71,
+      "prevScore": 71,
+      "alert": false,
+      "lat": 30.674,
+      "lng": 103.95
+    },
+    {
+      "id": "S188",
+      "name": "城北片区-05",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 105 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 71,
+      "prevScore": 70,
+      "alert": false,
+      "lat": 30.68,
+      "lng": 103.95
+    },
+    {
+      "id": "S189",
+      "name": "城北片区-06",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 106 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 69,
+      "prevScore": 67,
+      "alert": false,
+      "lat": 30.686,
+      "lng": 103.95
+    },
+    {
+      "id": "S190",
+      "name": "城北片区-07",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 107 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 69,
+      "prevScore": 68,
+      "alert": false,
+      "lat": 30.692,
+      "lng": 103.95
+    },
+    {
+      "id": "S191",
+      "name": "城北片区-08",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 108 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 68,
+      "prevScore": 69,
+      "alert": false,
+      "lat": 30.698,
+      "lng": 103.95
+    },
+    {
+      "id": "S192",
+      "name": "城北片区-09",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 109 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 68,
+      "prevScore": 68,
+      "alert": false,
+      "lat": 30.704,
+      "lng": 103.95
+    },
+    {
+      "id": "S193",
+      "name": "城北片区-10",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 110 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 68,
+      "prevScore": 67,
+      "alert": false,
+      "lat": 30.71,
+      "lng": 103.95
+    },
+    {
+      "id": "S194",
+      "name": "城北片区-11",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 111 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 67,
+      "prevScore": 71,
+      "alert": false,
+      "lat": 30.716,
+      "lng": 103.95
+    },
+    {
+      "id": "S195",
+      "name": "城北片区-12",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 112 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 67,
+      "prevScore": 69,
+      "alert": false,
+      "lat": 30.722,
+      "lng": 103.95
+    },
+    {
+      "id": "S196",
+      "name": "城北片区-13",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 113 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 66,
+      "prevScore": 63,
+      "alert": false,
+      "lat": 30.728,
+      "lng": 103.95
+    },
+    {
+      "id": "S197",
+      "name": "城北片区-14",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 114 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 66,
+      "prevScore": 63,
+      "alert": false,
+      "lat": 30.734,
+      "lng": 103.95
+    },
+    {
+      "id": "S198",
+      "name": "城北片区-15",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 115 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 66,
+      "prevScore": 65,
+      "alert": false,
+      "lat": 30.74,
+      "lng": 103.95
+    },
+    {
+      "id": "S199",
+      "name": "城北片区-16",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 116 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 65,
+      "prevScore": 68,
+      "alert": false,
+      "lat": 30.746,
+      "lng": 103.95
+    },
+    {
+      "id": "S200",
+      "name": "城北片区-17",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 117 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 65,
+      "prevScore": 62,
+      "alert": false,
+      "lat": 30.752,
+      "lng": 103.95
+    },
+    {
+      "id": "S201",
+      "name": "城北片区-18",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 118 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 65,
+      "prevScore": 67,
+      "alert": false,
+      "lat": 30.758,
+      "lng": 103.95
+    },
+    {
+      "id": "S202",
+      "name": "城北片区-19",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 119 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 65,
+      "prevScore": 67,
+      "alert": false,
+      "lat": 30.764,
+      "lng": 103.95
+    },
+    {
+      "id": "S203",
+      "name": "城北片区-20",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 120 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 64,
+      "prevScore": 66,
+      "alert": false,
+      "lat": 30.65,
+      "lng": 103.956
+    },
+    {
+      "id": "S204",
+      "name": "城北片区-21",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 121 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 63,
+      "prevScore": 66,
+      "alert": false,
+      "lat": 30.656,
+      "lng": 103.956
+    },
+    {
+      "id": "S205",
+      "name": "城北片区-22",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 122 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 63,
+      "prevScore": 66,
+      "alert": false,
+      "lat": 30.662,
+      "lng": 103.956
+    },
+    {
+      "id": "S206",
+      "name": "城北片区-23",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 123 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 63,
+      "prevScore": 64,
+      "alert": false,
+      "lat": 30.668,
+      "lng": 103.956
+    },
+    {
+      "id": "S207",
+      "name": "城北片区-24",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 124 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 63,
+      "prevScore": 66,
+      "alert": false,
+      "lat": 30.674,
+      "lng": 103.956
+    },
+    {
+      "id": "S208",
+      "name": "城北片区-25",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 125 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 63,
+      "prevScore": 65,
+      "alert": false,
+      "lat": 30.68,
+      "lng": 103.956
+    },
+    {
+      "id": "S209",
+      "name": "城北片区-26",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 126 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 63,
+      "prevScore": 62,
+      "alert": false,
+      "lat": 30.686,
+      "lng": 103.956
+    },
+    {
+      "id": "S210",
+      "name": "城北片区-27",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 127 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 62,
+      "prevScore": 59,
+      "alert": false,
+      "lat": 30.692,
+      "lng": 103.956
+    },
+    {
+      "id": "S211",
+      "name": "城北片区-28",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 128 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 62,
+      "prevScore": 59,
+      "alert": false,
+      "lat": 30.698,
+      "lng": 103.956
+    },
+    {
+      "id": "S212",
+      "name": "城北片区-29",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 129 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 62,
+      "prevScore": 64,
+      "alert": false,
+      "lat": 30.704,
+      "lng": 103.956
+    },
+    {
+      "id": "S213",
+      "name": "城北片区-30",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 130 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 61,
+      "prevScore": 63,
+      "alert": false,
+      "lat": 30.71,
+      "lng": 103.956
+    },
+    {
+      "id": "S214",
+      "name": "城北片区-31",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 131 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 61,
+      "prevScore": 58,
+      "alert": false,
+      "lat": 30.716,
+      "lng": 103.956
+    },
+    {
+      "id": "S215",
+      "name": "城北片区-32",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 132 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 57,
+      "prevScore": 56,
+      "alert": true,
+      "lat": 30.722,
+      "lng": 103.956
+    },
+    {
+      "id": "S216",
+      "name": "城北片区-33",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 133 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 56,
+      "prevScore": 56,
+      "alert": true,
+      "lat": 30.728,
+      "lng": 103.956
+    },
+    {
+      "id": "S217",
+      "name": "城北片区-34",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 134 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 54,
+      "prevScore": 53,
+      "alert": true,
+      "lat": 30.734,
+      "lng": 103.956
+    },
+    {
+      "id": "S218",
+      "name": "城北片区-35",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 135 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 52,
+      "prevScore": 48,
+      "alert": true,
+      "lat": 30.74,
+      "lng": 103.956
+    },
+    {
+      "id": "S219",
+      "name": "城北片区-36",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 136 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 52,
+      "prevScore": 53,
+      "alert": true,
+      "lat": 30.746,
+      "lng": 103.956
+    },
+    {
+      "id": "S220",
+      "name": "城北片区-37",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 137 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 51,
+      "prevScore": 50,
+      "alert": true,
+      "lat": 30.752,
+      "lng": 103.956
+    },
+    {
+      "id": "S221",
+      "name": "城北片区-38",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 138 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 50,
+      "prevScore": 47,
+      "alert": true,
+      "lat": 30.758,
+      "lng": 103.956
+    },
+    {
+      "id": "S222",
+      "name": "城北片区-39",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 139 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 46,
+      "prevScore": 50,
+      "alert": true,
+      "lat": 30.764,
+      "lng": 103.956
+    },
+    {
+      "id": "S223",
+      "name": "城北片区-40",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "城北片区 140 号",
+      "ownerName": "店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [],
+      "lastScore": 45,
+      "prevScore": 45,
+      "alert": true,
+      "lat": 30.65,
+      "lng": 103.962
     }
   ]
 }

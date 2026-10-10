@@ -10,6 +10,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadEnv } from './env.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 /**
@@ -26,13 +27,8 @@ const IMAGE_DIRS = [
 
 
 /* ═══════════════ .env 读取（必须在此之前加载：VL 常量在模块顶层求值） ═══════════════ */
-const ENV_PATH = join(__dirname, '../.env')
-if (existsSync(ENV_PATH)) {
-  readFileSync(ENV_PATH, 'utf8').split('\n').forEach((line) => {
-    const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.*?)\s*$/)
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '')
-  })
-}
+// .env 加载统一到 env.js（见该文件顶部注释：为什么必须各模块自载）
+loadEnv()
 
 /**
  * 视觉模型配置。

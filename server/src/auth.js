@@ -14,6 +14,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadEnv } from './env.js'
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { findUserByRole } from './db.js'
 
@@ -37,13 +38,8 @@ const TOKEN_TTL_MS = 8 * 60 * 60 * 1000
  * 因此凡是「模块顶层就要读环境变量」的模块都必须自己先加载 .env
  * （`vision.js` 的 VL 配置是同样处理，此处与其保持一致）。
  */
-const ENV_PATH = join(__dirname, '../.env')
-if (existsSync(ENV_PATH)) {
-  readFileSync(ENV_PATH, 'utf8').split('\n').forEach((line) => {
-    const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.*?)\s*$/)
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '')
-  })
-}
+// .env 加载统一到 env.js（见该文件顶部注释：为什么必须各模块自载）
+loadEnv()
 
 /**
  * ⚠ 签名密钥。
