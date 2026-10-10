@@ -1,0 +1,34 @@
+{
+  "name": "store-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "店小C · 蒙牛 AI 巡店助手 —— 高保真演示原型（纯前端 + 本地 Fixture，全站离线）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "vite build --mode single",
+    "preview": "vite preview --port 4173",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "echarts": "^5.5.1",
+    "leaflet": "^1.9.4",
+    "pinia": "^2.2.2",
+    "vue": "^3.4.38",
+    "vue-router": "^4.4.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.3",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.3",
+    "vite-plugin-singlefile": "^2.0.2"
+  },
+  "optionalDependencies": {
+    "@esbuild/win32-x64": "^0.28.2",
+    "@rollup/rollup-win32-x64-msvc": "^4.64.2"
+  }
+}

@@ -1,0 +1,54 @@
+/**
+ * 设计令牌 —— CSS 变量单一出处。
+ *
+ * 与 PRD 3.1（配色）/ 3.2（健康分分档）/ 3.3（字体尺寸）一一对应；
+ * 与 ARCHITECTURE §8.2 的清单逐字对齐。
+ * ⚠ 任何页面不得硬编码色值或分档区间，必须引用本文件变量或 domain/constants.ts 常量。
+ */
+:root {
+  /* ── 品牌（蒙牛） ── */
+  --mn-green: #009639;
+  --mn-green-dark: #00662a;
+  --mn-green-light: #e8f5ec;
+
+  /* ── 背景与容器 ── */
+  --bg-page: #f5f7f5;
+  --bg-card: #ffffff;
+  --radius-card: 12px;
+  --radius-btn: 24px;
+  --space-unit: 4px;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  /* ── 文字 ── */
+  --text-1: #1a1f1c;
+  --text-2: #4b5563;
+  --text-3: #9ca3af;
+
+  /* ── AI 专属强调 ── */
+  --ai-purple: #6d3bf5;
+  --ai-purple-2: #9b6bff;
+  --ai-purple-light: #f1ebff;
+
+  /* ── 健康分四档（PRD 3.2，全产品统一） ── */
+  --level-excellent: #009639; /* 优秀 85–100 */
+  --level-good: #8bc34a; /* 良好 70–84  */
+  --level-warning: #ff9800; /* 预警 60–69  */
+  --level-risk: #e02020; /* 风险 0–59   */
+
+  /* ── 竞品标识 ── */
+  --competitor: #3b82f6;
+
+  /* ── 语义色 ── */
+  --color-danger: #e02020;
+  --color-warning: #ff9800;
+  --color-success: #009639;
+  --color-info: #3b82f6;
+  --border-color: #eceef0;
+
+  /* ── 字体（系统字体栈，零外链） ── */
+  --font-sans: 'PingFang SC', 'HarmonyOS Sans', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+
+  /* ── 演示尺寸（PRD 3.3） ── */
+  --phone-w: 390px;
+  --phone-h: 844px;
+}

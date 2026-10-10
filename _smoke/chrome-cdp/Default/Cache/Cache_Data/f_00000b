@@ -1,0 +1,1159 @@
+export const schemaVersion = "1.0";
+export const defaultSteps = [
+	{
+		text: "正在上传货架照片…",
+		delayMs: 480
+	},
+	{
+		text: "已识别 14 个目标：SKU 8 / 空位 1 / 竞品 2 / 价签 3",
+		delayMs: 480
+	},
+	{
+		text: "正在比对「C 类便利店陈列标准」…",
+		delayMs: 480
+	},
+	{
+		text: "正在结合近 4 周动销数据推理…",
+		delayMs: 480
+	},
+	{
+		text: "诊断完成",
+		delayMs: 480
+	}
+];
+export const items = [
+	{
+		key: "S3",
+		storeId: "S3",
+		storeName: "美宜佳·城建学院店",
+		visitId: "V_S3_001",
+		createdAt: "2026-10-02 10:24",
+		visitNo: 6,
+		photoUrl: "/stores/S3/cold.jpg",
+		shootTypes: [
+			"cold"
+		],
+		dimensions: [
+			76,
+			68,
+			70,
+			62,
+			82,
+			85
+		],
+		scoreOverride: null,
+		prevScore: 72,
+		expectedScore: 89,
+		summary: {
+			total: 14,
+			skuCount: 8,
+			emptyCount: 1,
+			competitorCount: 2,
+			priceTagCount: 3,
+			stackCount: 1,
+			text: "✦ AI 识别摘要：蒙牛SKU 8 项 / 空位 1 / 竞品占位 2 / 价签问题 3 / 堆头未执行 1"
+		},
+		annotations: [
+			{
+				id: "A01",
+				layer: "mengniu",
+				x: 3,
+				y: 9,
+				w: 47,
+				h: 12,
+				label: "优益C 原味 ✔正常",
+				skuId: "SKU_007"
+			},
+			{
+				id: "A02",
+				layer: "mengniu",
+				x: 3,
+				y: 27,
+				w: 27,
+				h: 13,
+				label: "优益C 100ml ✔满排",
+				skuId: "SKU_001"
+			},
+			{
+				id: "A03",
+				layer: "oos",
+				x: 30,
+				y: 27,
+				w: 18,
+				h: 13,
+				label: "优益C 450g △仅剩 3 瓶",
+				skuId: "SKU_002"
+			},
+			{
+				id: "A04",
+				layer: "empty",
+				x: 48,
+				y: 27,
+				w: 28,
+				h: 13,
+				label: "空位 ✖缺货",
+				skuId: "SKU_001"
+			},
+			{
+				id: "A05",
+				layer: "competitor",
+				x: 76,
+				y: 27,
+				w: 17,
+				h: 13,
+				label: "味全 ⚠竞品占位",
+				skuId: "SKU_101"
+			},
+			{
+				id: "A06",
+				layer: "mengniu",
+				x: 3,
+				y: 44,
+				w: 37,
+				h: 13,
+				label: "冠益乳 250g ✔正常",
+				skuId: "SKU_003"
+			},
+			{
+				id: "A07",
+				layer: "oos",
+				x: 40,
+				y: 44,
+				w: 20,
+				h: 13,
+				label: "真果粒 △缺 1 列",
+				skuId: "SKU_006"
+			},
+			{
+				id: "A08",
+				layer: "competitor",
+				x: 60,
+				y: 44,
+				w: 32,
+				h: 13,
+				label: "养乐多 ⚠竞品占位",
+				skuId: "SKU_102"
+			},
+			{
+				id: "A09",
+				layer: "oos",
+				x: 3,
+				y: 60,
+				w: 37,
+				h: 13,
+				label: "纯甄常温 △被挤至下层",
+				skuId: "SKU_005"
+			},
+			{
+				id: "A10",
+				layer: "oos",
+				x: 40,
+				y: 60,
+				w: 12,
+				h: 13,
+				label: "冠益乳杯装 △陈列过深",
+				skuId: "SKU_004"
+			},
+			{
+				id: "A11",
+				layer: "mengniu",
+				x: 3,
+				y: 76,
+				w: 42,
+				h: 13,
+				label: "优益C 芦荟味 ✔排面达标",
+				skuId: "SKU_008"
+			},
+			{
+				id: "A12",
+				layer: "pricetag",
+				x: 3,
+				y: 37.5,
+				w: 18,
+				h: 5,
+				label: "✖ 价签缺失",
+				skuId: "SKU_001"
+			},
+			{
+				id: "A13",
+				layer: "pricetag",
+				x: 30,
+				y: 37.5,
+				w: 20,
+				h: 5,
+				label: "△ 3.5元 ≠ 标准 4.0元",
+				skuId: "SKU_002"
+			},
+			{
+				id: "A14",
+				layer: "pricetag",
+				x: 3,
+				y: 54.5,
+				w: 18,
+				h: 5,
+				label: "✖ 价签缺失",
+				skuId: "SKU_003"
+			}
+		],
+		issues: [
+			{
+				id: "IS1",
+				severity: "severe",
+				title: "冷柜第 2 层第 3 列整列缺货",
+				location: "冷藏柜 · 应陈列 优益C 100ml",
+				impact: "影响：日均约 3.9 瓶销量流失",
+				actions: [
+					"补货 12 瓶",
+					"标记已处理"
+				],
+				relatedAnnotationIds: [
+					"A04",
+					"A02"
+				]
+			},
+			{
+				id: "IS2",
+				severity: "severe",
+				title: "竞品味全占位 1 个黄金列位",
+				location: "冷藏柜第 2 层 · 蒙牛排面被挤压",
+				impact: "影响：黄金视线层动销损失约 2.1 倍",
+				actions: [
+					"查看竞争话术"
+				],
+				relatedAnnotationIds: [
+					"A05"
+				]
+			},
+			{
+				id: "IS3",
+				severity: "medium",
+				title: "价签缺失 2 处 / 价格不符 1 处",
+				location: "冷藏柜第 2 层、第 3 层 · 优益C / 冠益乳",
+				impact: "优益C 标 3.5 元，标准价 4.0 元",
+				actions: [
+					"打印价签"
+				],
+				relatedAnnotationIds: [
+					"A12",
+					"A13",
+					"A14"
+				]
+			},
+			{
+				id: "IS4",
+				severity: "medium",
+				title: "本月联合堆头未执行",
+				location: "门店入口区 · 活动：冠益乳 × 优益C 双品堆头",
+				impact: "影响：活动期约损失 ¥260 增量销售",
+				actions: [
+					"申请物料"
+				],
+				relatedAnnotationIds: [
+				]
+			}
+		],
+		risk: {
+			weeklyBottles: 27,
+			weeklyAmount: 108,
+			monthlyBottles: 117,
+			monthlyAmount: 468,
+			items: [
+				{
+					skuId: "SKU_001",
+					skuName: "优益C 100ml",
+					dailyAvgSales: 11,
+					stdFacings: 4,
+					actualFacings: 2.5,
+					gapRatio: 0.375,
+					elasticity: 0.35,
+					dailyLossBottles: 3.9,
+					unitPrice: 4
+				}
+			],
+			derivation: "① 排面缺口：同类 C 类店冷柜标准排面 4 列，本店黄金层（第 2 层，离地 1.2–1.6m）蒙牛实际有效排面 2.5 列 → 缺口占比 (4 − 2.5) ÷ 4 = 37.5%\n② 动销基准：优益C 100ml 近 4 周日均动销 11 瓶/天\n③ 弹性假设：每减少 1 列排面 ≈ 损失 35% 单列动销（行业口径排面弹性系数 0.35）\n④ 日均潜在损失 = 11 × 37.5% × 0.35 ≈ 3.9 瓶/天\n⑤ 本周预计流失 = 3.9 × 7 ≈ 27 瓶；按零售指导价 ¥4.0/瓶 → 约 ¥108\n⑥ 月度预计流失 = 27 × 4.3 ≈ 117 瓶 → 约 ¥468\n假设说明：默认客流与近 4 周持平、期间不补货且不调整陈列；若本周完成补货并拿回黄金列位，预计可挽回其中约 70% 的损失。"
+		},
+		plan: {
+			storeTypeLabel: "该店类型为 C类便利",
+			restock: [
+				{
+					skuId: "SKU_001",
+					skuName: "优益C 100ml",
+					bottles: 12,
+					amount: 48
+				},
+				{
+					skuId: "SKU_002",
+					skuName: "优益C 原味 450g",
+					bottles: 9,
+					amount: 36
+				},
+				{
+					skuId: "SKU_006",
+					skuName: "真果粒 250ml",
+					bottles: 6,
+					amount: 24
+				}
+			],
+			placement: [
+				{
+					text: "优益C 上移至冷柜第 2 层第 3 列（黄金视线层 1.2–1.6m）"
+				},
+				{
+					text: "常温纯甄调回第 1 层，与视线齐平"
+				}
+			],
+			totalBottles: 27,
+			totalAmount: 108,
+			coverDays: 3
+		}
+	},
+	{
+		key: "S1",
+		storeId: "S1",
+		storeName: "家家悦·学府路店",
+		visitId: "V_S1_001",
+		createdAt: "2026-10-02 09:12",
+		visitNo: 8,
+		photoUrl: "/stores/S1/cold.jpg",
+		shootTypes: [
+			"cold"
+		],
+		dimensions: [
+			92,
+			95,
+			85,
+			88,
+			90,
+			90
+		],
+		scoreOverride: null,
+		prevScore: 87,
+		expectedScore: 96,
+		summary: {
+			total: 3,
+			skuCount: 3,
+			emptyCount: 0,
+			competitorCount: 0,
+			priceTagCount: 1,
+			stackCount: 0,
+			text: "✦ AI 识别摘要：蒙牛SKU 3 项 / 空位 0 / 竞品占位 0 / 价签问题 1 / 堆头未执行 0"
+		},
+		annotations: [
+			{
+				id: "B01",
+				layer: "mengniu",
+				x: 3,
+				y: 9,
+				w: 47,
+				h: 12,
+				label: "优益C 原味 ✔满排",
+				skuId: "SKU_007"
+			},
+			{
+				id: "B02",
+				layer: "mengniu",
+				x: 3,
+				y: 27,
+				w: 70,
+				h: 13,
+				label: "优益C 100ml ✔满排",
+				skuId: "SKU_001"
+			},
+			{
+				id: "B03",
+				layer: "pricetag",
+				x: 3,
+				y: 37.5,
+				w: 18,
+				h: 5,
+				label: "✖ 价签缺失",
+				skuId: "SKU_007"
+			}
+		],
+		issues: [
+			{
+				id: "IS1",
+				severity: "low",
+				title: "常温架 1 处价签轻度缺失",
+				location: "常温货架 · 应陈列 特仑苏 250ml",
+				impact: "影响：暂无销量损失",
+				actions: [
+					"打印价签"
+				],
+				relatedAnnotationIds: [
+					"B03"
+				]
+			}
+		],
+		risk: {
+			weeklyBottles: 6,
+			weeklyAmount: 30,
+			monthlyBottles: 26,
+			monthlyAmount: 130,
+			items: [
+				{
+					skuId: "SKU_009",
+					skuName: "特仑苏 250ml",
+					dailyAvgSales: 8,
+					stdFacings: 6,
+					actualFacings: 5,
+					gapRatio: 0.167,
+					elasticity: 0.35,
+					dailyLossBottles: 0.9,
+					unitPrice: 5
+				}
+			],
+			derivation: "① 排面缺口：A 类店常温标准排面 6 列，实际有效 5 列 → 缺口占比 (6 − 5) ÷ 6 = 16.7%\n② 动销基准：特仑苏 250ml 近 4 周日均动销 8 瓶/天\n③ 弹性假设：排面弹性系数 0.35\n④ 日均潜在损失 = 8 × 16.7% × 0.35 ≈ 0.5 瓶/天，叠加促销位周转损耗取 0.9 瓶/天\n⑤ 本周预计流失 ≈ 6 瓶；按零售指导价 ¥5.0/瓶 → 约 ¥30\n⑥ 月度预计流失 = 6 × 4.3 ≈ 26 瓶 → 约 ¥130"
+		},
+		plan: {
+			storeTypeLabel: "该店类型为 A类连锁超市",
+			restock: [
+				{
+					skuId: "SKU_009",
+					skuName: "特仑苏 250ml",
+					bottles: 6,
+					amount: 30
+				}
+			],
+			placement: [
+				{
+					text: "特仑苏保持冷柜第 3 层视平线陈列，维持 6 列满排"
+				}
+			],
+			totalBottles: 6,
+			totalAmount: 30,
+			coverDays: 2
+		}
+	},
+	{
+		key: "S2",
+		storeId: "S2",
+		storeName: "好邻居·地铁口店",
+		visitId: "V_S2_002",
+		createdAt: "2026-10-02 10:05",
+		visitNo: 6,
+		photoUrl: "/stores/S2/cold.jpg",
+		shootTypes: [
+			"cold"
+		],
+		dimensions: [
+			82,
+			80,
+			78,
+			72,
+			85,
+			90
+		],
+		scoreOverride: null,
+		prevScore: 48,
+		expectedScore: 88,
+		summary: {
+			total: 4,
+			skuCount: 4,
+			emptyCount: 0,
+			competitorCount: 0,
+			priceTagCount: 1,
+			stackCount: 0,
+			text: "✦ AI 识别摘要：蒙牛SKU 4 项 / 空位 0 / 竞品占位 0 / 价签问题 1 / 堆头未执行 0"
+		},
+		annotations: [
+			{
+				id: "C01",
+				layer: "mengniu",
+				x: 3,
+				y: 9,
+				w: 47,
+				h: 12,
+				label: "优益C 原味 ✔满排",
+				skuId: "SKU_007"
+			},
+			{
+				id: "C02",
+				layer: "mengniu",
+				x: 3,
+				y: 27,
+				w: 60,
+				h: 13,
+				label: "优益C 100ml ✔3 列满排",
+				skuId: "SKU_001"
+			},
+			{
+				id: "C03",
+				layer: "mengniu",
+				x: 3,
+				y: 44,
+				w: 40,
+				h: 13,
+				label: "真果粒 ✔排面达标",
+				skuId: "SKU_006"
+			},
+			{
+				id: "C04",
+				layer: "pricetag",
+				x: 3,
+				y: 37.5,
+				w: 18,
+				h: 5,
+				label: "✖ 价签缺失",
+				skuId: "SKU_006"
+			}
+		],
+		issues: [
+			{
+				id: "IS1",
+				severity: "low",
+				title: "真果粒价签缺失 1 处",
+				location: "冷藏柜第 3 层 · 真果粒 250ml",
+				impact: "影响：暂无销量损失",
+				actions: [
+					"打印价签"
+				],
+				relatedAnnotationIds: [
+					"C04"
+				]
+			}
+		],
+		risk: {
+			weeklyBottles: 8,
+			weeklyAmount: 32,
+			monthlyBottles: 34,
+			monthlyAmount: 136,
+			items: [
+				{
+					skuId: "SKU_001",
+					skuName: "优益C 100ml",
+					dailyAvgSales: 9,
+					stdFacings: 3,
+					actualFacings: 2.6,
+					gapRatio: 0.133,
+					elasticity: 0.35,
+					dailyLossBottles: 1.1,
+					unitPrice: 4
+				}
+			],
+			derivation: "① 排面缺口：C 类店冷柜标准 3 列，实际有效 2.6 列 → 缺口占比 (3 − 2.6) ÷ 3 = 13.3%\n② 动销基准：优益C 100ml 近 4 周日均动销 9 瓶/天\n③ 弹性假设：排面弹性系数 0.35\n④ 日均潜在损失 ≈ 1.1 瓶/天\n⑤ 本周预计流失 ≈ 8 瓶；按零售指导价 ¥4.0/瓶 → 约 ¥32\n⑥ 月度预计流失 = 8 × 4.3 ≈ 34 瓶 → 约 ¥136"
+		},
+		plan: {
+			storeTypeLabel: "该店类型为 C类便利",
+			restock: [
+				{
+					skuId: "SKU_001",
+					skuName: "优益C 100ml",
+					bottles: 6,
+					amount: 24
+				}
+			],
+			placement: [
+				{
+					text: "保持冷柜第 2 层黄金位 3 列满排"
+				}
+			],
+			totalBottles: 6,
+			totalAmount: 24,
+			coverDays: 2
+		}
+	},
+	{
+		key: "S2_BEFORE",
+		storeId: "S2",
+		storeName: "好邻居·地铁口店",
+		visitId: "V_S2_001",
+		createdAt: "2026-09-25 15:40",
+		visitNo: 5,
+		photoUrl: "/stores/S2/cold_before.jpg",
+		shootTypes: [
+			"cold"
+		],
+		dimensions: [
+			50,
+			30,
+			60,
+			45,
+			40,
+			65
+		],
+		scoreOverride: 48,
+		prevScore: 44,
+		expectedScore: 80,
+		summary: {
+			total: 6,
+			skuCount: 3,
+			emptyCount: 2,
+			competitorCount: 1,
+			priceTagCount: 2,
+			stackCount: 0,
+			text: "✦ AI 识别摘要：蒙牛SKU 3 项 / 空位 2 / 竞品占位 1 / 价签问题 2 / 堆头未执行 0"
+		},
+		annotations: [
+			{
+				id: "D01",
+				layer: "mengniu",
+				x: 3,
+				y: 9,
+				w: 30,
+				h: 12,
+				label: "优益C 原味 ✔正常",
+				skuId: "SKU_007"
+			},
+			{
+				id: "D02",
+				layer: "empty",
+				x: 33,
+				y: 27,
+				w: 25,
+				h: 13,
+				label: "空位 ✖缺货",
+				skuId: "SKU_001"
+			},
+			{
+				id: "D03",
+				layer: "empty",
+				x: 58,
+				y: 27,
+				w: 20,
+				h: 13,
+				label: "空位 ✖缺货",
+				skuId: "SKU_001"
+			},
+			{
+				id: "D04",
+				layer: "competitor",
+				x: 78,
+				y: 27,
+				w: 15,
+				h: 13,
+				label: "每益添 ⚠竞品占位",
+				skuId: "SKU_103"
+			},
+			{
+				id: "D05",
+				layer: "pricetag",
+				x: 3,
+				y: 37.5,
+				w: 18,
+				h: 5,
+				label: "✖ 价签缺失",
+				skuId: "SKU_007"
+			},
+			{
+				id: "D06",
+				layer: "pricetag",
+				x: 33,
+				y: 37.5,
+				w: 18,
+				h: 5,
+				label: "✖ 价签缺失",
+				skuId: "SKU_001"
+			}
+		],
+		issues: [
+			{
+				id: "IS1",
+				severity: "severe",
+				title: "冷柜第 2 层连续 2 列缺货",
+				location: "冷藏柜 · 应陈列 优益C 100ml",
+				impact: "影响：日均约 8.3 瓶销量流失",
+				actions: [
+					"补货 18 瓶"
+				],
+				relatedAnnotationIds: [
+					"D02",
+					"D03"
+				]
+			},
+			{
+				id: "IS2",
+				severity: "severe",
+				title: "竞品每益添占位 1 个黄金列位",
+				location: "冷藏柜第 2 层 · 蒙牛排面被挤压",
+				impact: "影响：黄金视线层动销损失约 2.1 倍",
+				actions: [
+					"查看竞争话术"
+				],
+				relatedAnnotationIds: [
+					"D04"
+				]
+			},
+			{
+				id: "IS3",
+				severity: "medium",
+				title: "价签缺失 2 处",
+				location: "冷藏柜第 1 层、第 2 层",
+				impact: "影响：顾客无法比价，转化率下降",
+				actions: [
+					"打印价签"
+				],
+				relatedAnnotationIds: [
+					"D05",
+					"D06"
+				]
+			},
+			{
+				id: "IS4",
+				severity: "medium",
+				title: "常温区真果粒缺 1 列",
+				location: "常温货架 · 真果粒 250ml",
+				impact: "影响：日均约 2 瓶销量流失",
+				actions: [
+					"补货 12 瓶"
+				],
+				relatedAnnotationIds: [
+				]
+			}
+		],
+		risk: {
+			weeklyBottles: 58,
+			weeklyAmount: 232,
+			monthlyBottles: 249,
+			monthlyAmount: 996,
+			items: [
+				{
+					skuId: "SKU_001",
+					skuName: "优益C 100ml",
+					dailyAvgSales: 9,
+					stdFacings: 3,
+					actualFacings: 1,
+					gapRatio: 0.667,
+					elasticity: 0.35,
+					dailyLossBottles: 8.3,
+					unitPrice: 4
+				}
+			],
+			derivation: "① 排面缺口：C 类店冷柜标准 3 列，实际有效 1 列 → 缺口占比 (3 − 1) ÷ 3 = 66.7%\n② 动销基准：优益C 100ml 近 4 周日均动销 9 瓶/天\n③ 弹性假设：排面弹性系数 0.35\n④ 日均潜在损失 ≈ 8.3 瓶/天\n⑤ 本周预计流失 ≈ 58 瓶；按零售指导价 ¥4.0/瓶 → 约 ¥232\n⑥ 月度预计流失 = 58 × 4.3 ≈ 249 瓶 → 约 ¥996\n整改结果：本周完成补货 + 拿回黄金列位后，实际分数由 48 回升至 80（+32）。"
+		},
+		plan: {
+			storeTypeLabel: "该店类型为 C类便利",
+			restock: [
+				{
+					skuId: "SKU_001",
+					skuName: "优益C 100ml",
+					bottles: 18,
+					amount: 72
+				},
+				{
+					skuId: "SKU_006",
+					skuName: "真果粒 250ml",
+					bottles: 12,
+					amount: 48
+				},
+				{
+					skuId: "SKU_002",
+					skuName: "优益C 原味 450g",
+					bottles: 9,
+					amount: 36
+				}
+			],
+			placement: [
+				{
+					text: "冷柜第 2 层恢复 3 列蒙牛满排"
+				},
+				{
+					text: "真果粒补至常温第 1 层端头"
+				}
+			],
+			totalBottles: 39,
+			totalAmount: 156,
+			coverDays: 3
+		}
+	},
+	{
+		key: "S4",
+		storeId: "S4",
+		storeName: "华联超市·万达店",
+		visitId: "V_S4_001",
+		createdAt: "2026-09-25 14:05",
+		visitNo: 4,
+		photoUrl: "/stores/S4/cold.jpg",
+		shootTypes: [
+			"cold"
+		],
+		dimensions: [
+			68,
+			52,
+			75,
+			70,
+			45,
+			80
+		],
+		scoreOverride: null,
+		prevScore: 62,
+		expectedScore: 82,
+		summary: {
+			total: 5,
+			skuCount: 3,
+			emptyCount: 1,
+			competitorCount: 1,
+			priceTagCount: 1,
+			stackCount: 1,
+			text: "✦ AI 识别摘要：蒙牛SKU 3 项 / 空位 1 / 竞品占位 1 / 价签问题 1 / 堆头未执行 1"
+		},
+		annotations: [
+			{
+				id: "E01",
+				layer: "mengniu",
+				x: 3,
+				y: 9,
+				w: 47,
+				h: 12,
+				label: "特仑苏 ✔排面达标",
+				skuId: "SKU_009"
+			},
+			{
+				id: "E02",
+				layer: "oos",
+				x: 3,
+				y: 27,
+				w: 30,
+				h: 13,
+				label: "纯甄 △被挤至下层",
+				skuId: "SKU_005"
+			},
+			{
+				id: "E03",
+				layer: "empty",
+				x: 33,
+				y: 27,
+				w: 22,
+				h: 13,
+				label: "空位 ✖缺货",
+				skuId: "SKU_003"
+			},
+			{
+				id: "E04",
+				layer: "competitor",
+				x: 60,
+				y: 27,
+				w: 30,
+				h: 13,
+				label: "味全 ⚠竞品占位",
+				skuId: "SKU_101"
+			},
+			{
+				id: "E05",
+				layer: "stack",
+				x: 45,
+				y: 62,
+				w: 45,
+				h: 25,
+				label: "⚠ 本月堆头物料未执行",
+				skuId: "SKU_003"
+			}
+		],
+		issues: [
+			{
+				id: "IS1",
+				severity: "severe",
+				title: "冷柜第 2 层出现整列空位",
+				location: "冷藏柜 · 应陈列 冠益乳 250g",
+				impact: "影响：日均约 5.9 瓶销量流失",
+				actions: [
+					"补货 12 瓶"
+				],
+				relatedAnnotationIds: [
+					"E03"
+				]
+			},
+			{
+				id: "IS2",
+				severity: "medium",
+				title: "堆头物料缺失 3 项",
+				location: "门店入口区 · 本月大卖场联合堆头",
+				impact: "影响：活动期约损失 ¥320 增量销售",
+				actions: [
+					"申请物料"
+				],
+				relatedAnnotationIds: [
+					"E05"
+				]
+			},
+			{
+				id: "IS3",
+				severity: "medium",
+				title: "纯甄被挤至第 3 层",
+				location: "冷藏柜 · 纯甄常温酸奶陈列层级不达标",
+				impact: "影响：视线层动销损失约 1.8 倍",
+				actions: [
+					"调整陈列"
+				],
+				relatedAnnotationIds: [
+					"E02"
+				]
+			}
+		],
+		risk: {
+			weeklyBottles: 41,
+			weeklyAmount: 185,
+			monthlyBottles: 176,
+			monthlyAmount: 792,
+			items: [
+				{
+					skuId: "SKU_003",
+					skuName: "冠益乳 250g",
+					dailyAvgSales: 10,
+					stdFacings: 4,
+					actualFacings: 2.5,
+					gapRatio: 0.375,
+					elasticity: 0.35,
+					dailyLossBottles: 5.9,
+					unitPrice: 4.5
+				}
+			],
+			derivation: "① 排面缺口：B 类大卖场冷柜标准 4 列，实际有效 2.5 列 → 缺口占比 (4 − 2.5) ÷ 4 = 37.5%\n② 动销基准：冠益乳 250g 近 4 周日均动销 10 瓶/天\n③ 弹性假设：排面弹性系数 0.35\n④ 日均潜在损失 ≈ 5.9 瓶/天\n⑤ 本周预计流失 ≈ 41 瓶；按零售指导价 ¥4.5/瓶 → 约 ¥185\n⑥ 月度预计流失 = 41 × 4.3 ≈ 176 瓶 → 约 ¥792"
+		},
+		plan: {
+			storeTypeLabel: "该店类型为 B类大卖场",
+			restock: [
+				{
+					skuId: "SKU_003",
+					skuName: "冠益乳 250g",
+					bottles: 12,
+					amount: 66
+				},
+				{
+					skuId: "SKU_005",
+					skuName: "纯甄常温酸奶",
+					bottles: 10,
+					amount: 45
+				},
+				{
+					skuId: "SKU_006",
+					skuName: "真果粒 250ml",
+					bottles: 8,
+					amount: 32
+				}
+			],
+			placement: [
+				{
+					text: "纯甄回调至冷柜第 2 层视线层"
+				},
+				{
+					text: "入口堆头执行「冠益乳 × 真果粒」双品陈列"
+				}
+			],
+			totalBottles: 30,
+			totalAmount: 143,
+			coverDays: 3
+		}
+	},
+	{
+		key: "S5",
+		storeId: "S5",
+		storeName: "永辉生活·中央公园店",
+		visitId: "V_S5_001",
+		createdAt: "2026-09-25 16:30",
+		visitNo: 7,
+		photoUrl: "/stores/S5/cold.jpg",
+		shootTypes: [
+			"cold"
+		],
+		dimensions: [
+			48,
+			30,
+			55,
+			38,
+			40,
+			60
+		],
+		scoreOverride: null,
+		prevScore: 46,
+		expectedScore: 72,
+		summary: {
+			total: 6,
+			skuCount: 3,
+			emptyCount: 2,
+			competitorCount: 2,
+			priceTagCount: 2,
+			stackCount: 1,
+			text: "✦ AI 识别摘要：蒙牛SKU 3 项 / 空位 2 / 竞品占位 2 / 价签问题 2 / 堆头未执行 1"
+		},
+		annotations: [
+			{
+				id: "F01",
+				layer: "empty",
+				x: 3,
+				y: 27,
+				w: 28,
+				h: 13,
+				label: "空位 ✖缺货",
+				skuId: "SKU_001"
+			},
+			{
+				id: "F02",
+				layer: "empty",
+				x: 31,
+				y: 27,
+				w: 25,
+				h: 13,
+				label: "空位 ✖缺货",
+				skuId: "SKU_002"
+			},
+			{
+				id: "F03",
+				layer: "competitor",
+				x: 56,
+				y: 27,
+				w: 18,
+				h: 13,
+				label: "味全 ⚠竞品占位",
+				skuId: "SKU_101"
+			},
+			{
+				id: "F04",
+				layer: "competitor",
+				x: 74,
+				y: 27,
+				w: 18,
+				h: 13,
+				label: "每益添 ⚠竞品占位",
+				skuId: "SKU_103"
+			},
+			{
+				id: "F05",
+				layer: "pricetag",
+				x: 3,
+				y: 37.5,
+				w: 18,
+				h: 5,
+				label: "✖ 价签缺失",
+				skuId: "SKU_001"
+			},
+			{
+				id: "F06",
+				layer: "stack",
+				x: 45,
+				y: 62,
+				w: 45,
+				h: 25,
+				label: "⚠ 本月堆头物料未执行",
+				skuId: "SKU_003"
+			}
+		],
+		issues: [
+			{
+				id: "IS1",
+				severity: "severe",
+				title: "缺货 5 项 · 冷柜 2 列连续空位",
+				location: "冷藏柜第 2 层 · 优益C 100ml / 优益C 450g",
+				impact: "影响：日均约 11.1 瓶销量流失",
+				actions: [
+					"紧急补货 24 瓶"
+				],
+				relatedAnnotationIds: [
+					"F01",
+					"F02"
+				]
+			},
+			{
+				id: "IS2",
+				severity: "severe",
+				title: "竞品占据 2 个黄金列位",
+				location: "冷藏柜第 2 层 · 排面被味全 / 每益添瓜分",
+				impact: "影响：蒙牛排面占比跌至 38%",
+				actions: [
+					"查看竞争话术"
+				],
+				relatedAnnotationIds: [
+					"F03",
+					"F04"
+				]
+			},
+			{
+				id: "IS3",
+				severity: "medium",
+				title: "价签缺失 2 处",
+				location: "冷藏柜 · 优益C 系列",
+				impact: "影响：顾客无法比价",
+				actions: [
+					"打印价签"
+				],
+				relatedAnnotationIds: [
+					"F05"
+				]
+			},
+			{
+				id: "IS4",
+				severity: "medium",
+				title: "本月堆头未执行",
+				location: "门店入口区 · 社区生鲜联合堆头",
+				impact: "影响：活动期约损失 ¥400 增量销售",
+				actions: [
+					"申请物料"
+				],
+				relatedAnnotationIds: [
+					"F06"
+				]
+			},
+			{
+				id: "IS5",
+				severity: "low",
+				title: "连续 3 周健康分下滑",
+				location: "近 3 周：-3.2 / -2.1 / -1.8",
+				impact: "影响：已进入区域红灯清单",
+				actions: [
+					"今天就巡"
+				],
+				relatedAnnotationIds: [
+				]
+			}
+		],
+		risk: {
+			weeklyBottles: 78,
+			weeklyAmount: 312,
+			monthlyBottles: 335,
+			monthlyAmount: 1340,
+			items: [
+				{
+					skuId: "SKU_001",
+					skuName: "优益C 100ml",
+					dailyAvgSales: 12,
+					stdFacings: 4,
+					actualFacings: 1.5,
+					gapRatio: 0.625,
+					elasticity: 0.35,
+					dailyLossBottles: 11.1,
+					unitPrice: 4
+				}
+			],
+			derivation: "① 排面缺口：B 类社区生鲜冷柜标准 4 列，实际有效 1.5 列 → 缺口占比 (4 − 1.5) ÷ 4 = 62.5%\n② 动销基准：优益C 100ml 近 4 周日均动销 12 瓶/天\n③ 弹性假设：排面弹性系数 0.35\n④ 日均潜在损失 ≈ 11.1 瓶/天\n⑤ 本周预计流失 ≈ 78 瓶；按零售指导价 ¥4.0/瓶 → 约 ¥312\n⑥ 月度预计流失 = 78 × 4.3 ≈ 335 瓶 → 约 ¥1340\n⚠ 该店已连续 3 周下滑（-3.2 / -2.1 / -1.8），且优益C 断货 3 天以上，建议 24 小时内整改。"
+		},
+		plan: {
+			storeTypeLabel: "该店类型为 B类社区生鲜",
+			restock: [
+				{
+					skuId: "SKU_001",
+					skuName: "优益C 100ml",
+					bottles: 24,
+					amount: 96
+				},
+				{
+					skuId: "SKU_002",
+					skuName: "优益C 原味 450g",
+					bottles: 12,
+					amount: 48
+				},
+				{
+					skuId: "SKU_003",
+					skuName: "冠益乳 250g",
+					bottles: 12,
+					amount: 66
+				}
+			],
+			placement: [
+				{
+					text: "优益C 系列集中上移至冷柜第 2 层，形成 3 列连排"
+				},
+				{
+					text: "入口端架执行「优益C × 冠益乳」社区特惠堆头"
+				}
+			],
+			totalBottles: 48,
+			totalAmount: 210,
+			coverDays: 4
+		}
+	}
+];
+export default {
+	schemaVersion: schemaVersion,
+	defaultSteps: defaultSteps,
+	items: items
+};

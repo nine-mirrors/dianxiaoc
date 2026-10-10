@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0",
+  "items": [
+    {
+      "id": "U_REP",
+      "name": "李强",
+      "role": "rep",
+      "avatarText": "李",
+      "duty": "拍货架 · AI诊断 · 拿方案",
+      "sub": "辖区 128 家 · 今日待巡 5 家",
+      "regionId": "R_EAST"
+    },
+    {
+      "id": "U_MGR",
+      "name": "王敏",
+      "role": "manager",
+      "avatarText": "王",
+      "duty": "看板 / 派任务",
+      "sub": "城东片区 · 128 家门店",
+      "regionId": "R_EAST"
+    },
+    {
+      "id": "U_OWNER",
+      "name": "张大姐",
+      "role": "owner",
+      "avatarText": "张",
+      "duty": "自助诊断 / 订货",
+      "sub": "好邻居 · 地铁口店店主",
+      "regionId": "R_EAST"
+    }
+  ]
+}

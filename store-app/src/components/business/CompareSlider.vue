@@ -1,0 +1,201 @@
+<script setup lang="ts">
+/**
+ * ★ 原图 / 标注图 拖拽分割对比滑块（PRD 4.4-C，视觉冲击最强）。
+ *
+ * 用法：左侧（左半）显示标注图，右侧（右半）显示原图，拖动分割线看差异。
+ * 支持鼠标与触摸拖拽；松手后保持在拖动位置。
+ */
+import { ref, onUnmounted } from 'vue'
+import AnnotatedImage from './AnnotatedImage.vue'
+import SmartImage from '@/components/common/SmartImage.vue'
+import { IMAGE_BOTTOM_CROP } from '@/domain/constants'
+import type { Annotation, AnnotationLayer } from '@/types'
+
+interface Props {
+  src: string
+  annotations: Annotation[]
+  filter?: 'all' | AnnotationLayer
+  highlightIds?: string[]
+  aspect?: number
+}
+const props = withDefaults(defineProps<Props>(), {
+  src: '',
+  annotations: () => [],
+  filter: 'all',
+  highlightIds: () => [],
+  aspect: 2 / 3,
+})
+
+/** 透传内层标注图 hover（标注→问题 双向高亮反向链路） */
+const emit = defineEmits<{ (e: 'hover', ids: string[]): void }>()
+
+/** 分割位置百分比（0–100） */
+const pos = ref<number>(52)
+/** 是否正在拖动 */
+const dragging = ref<boolean>(false)
+/** 舞台元素引用 */
+const stageRef = ref<HTMLElement | null>(null)
+
+/** 容器 padding-top，与 AnnotatedImage 保持一致 */
+const padTop = `${(1 / props.aspect) * IMAGE_BOTTOM_CROP * 100}%`
+
+/**
+ * 计算分割位置。
+ *
+ * @param clientX 指针 X 坐标
+ */
+function moveTo(clientX: number): void {
+  const el = stageRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const p = ((clientX - rect.left) / rect.width) * 100
+  pos.value = Math.max(2, Math.min(98, p))
+}
+
+/** 指针按下 */
+function onDown(e: MouseEvent | TouchEvent): void {
+  dragging.value = true
+  const x = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
+  moveTo(x)
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('touchmove', onMove)
+  window.addEventListener('mouseup', onUp)
+  window.addEventListener('touchend', onUp)
+}
+
+/** 指针移动 */
+function onMove(e: MouseEvent | TouchEvent): void {
+  if (!dragging.value) return
+  const x = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
+  moveTo(x)
+}
+
+/** 指针抬起 */
+function onUp(): void {
+  dragging.value = false
+  window.removeEventListener('mousemove', onMove)
+  window.removeEventListener('touchmove', onMove)
+  window.removeEventListener('mouseup', onUp)
+  window.removeEventListener('touchend', onUp)
+}
+
+onUnmounted(onUp)
+</script>
+
+<template>
+  <div class="cmp">
+    <div ref="stageRef" class="cmp__stage" :style="{ paddingTop: padTop }" @mousedown.prevent="onDown" @touchstart.prevent="onDown">
+      <!-- 右半：原图（底层，铺满） -->
+      <div class="cmp__layer cmp__layer--base">
+        <SmartImage :src="src" alt="货架原图" />
+        <span class="cmp__corner cmp__corner--right">原图</span>
+      </div>
+
+      <!-- 左半：标注图（按 clip-path 裁切） -->
+      <div class="cmp__layer cmp__layer--clip" :style="{ clipPath: `inset(0 ${100 - pos}% 0 0)` }">
+        <AnnotatedImage
+          :src="src"
+          :annotations="annotations"
+          :filter="filter"
+          :highlight-ids="highlightIds"
+          :show-legend="false"
+          :aspect="aspect"
+          @hover="emit('hover', $event)"
+        />
+        <span class="cmp__corner cmp__corner--left">✦ AI 标注</span>
+      </div>
+
+      <!-- 分割线 + 手柄 -->
+      <div class="cmp__divider" :style="{ left: `${pos}%` }">
+        <span class="cmp__handle">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <circle cx="13" cy="13" r="12" fill="#fff" fill-opacity="0.94" />
+            <path d="M10 9.5 6.5 13 10 16.5M16 9.5 19.5 13 16 16.5" stroke="#009639" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+      </div>
+    </div>
+
+    <p class="cmp__tip">← 左右拖动查看「原图 / AI 标注」对比 →</p>
+  </div>
+</template>
+
+<style scoped>
+.cmp {
+  width: 100%;
+}
+
+.cmp__stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #eef0ef;
+  user-select: none;
+  cursor: ew-resize;
+}
+
+.cmp__layer {
+  position: absolute;
+  inset: 0;
+}
+
+.cmp__layer :deep(img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.cmp__corner {
+  position: absolute;
+  bottom: 8px;
+  z-index: 6;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(26, 31, 28, 0.7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.cmp__corner--left {
+  left: 8px;
+  background: linear-gradient(135deg, var(--ai-purple) 0%, var(--ai-purple-2) 100%);
+}
+
+.cmp__corner--right {
+  right: 8px;
+}
+
+.cmp__divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 8;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.cmp__handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cmp__tip {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-3);
+}
+</style>

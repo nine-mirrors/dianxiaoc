@@ -1,0 +1,110 @@
+%% ============================================================
+%% 店小C · 蒙牛 AI 巡店助手 —— 三条核心流程时序图
+%% 1) 拍照 → AI 诊断 → 结果渲染（含分步加载动画）
+%% 2) 多轮追问
+%% 3) 经理下派任务 → 业代端待办可见（跨角色闭环）
+%% ============================================================
+
+%% ---------- 流程一：拍照 → AI 诊断 → 结果渲染 ----------
+sequenceDiagram
+    autonumber
+    participant U as 业代 李强
+    participant V3 as CaptureView P3
+    participant OV as AiLoadingOverlay
+    participant API as api index.ts 契约层
+    participant H as mock handlers
+    participant D as domain 计算模块
+    participant RT as router
+    participant V4 as DiagnosisView P4
+
+    U->>V3: 选门店 S3 / 选冷藏柜 / 预置照片已就绪
+    U->>V3: 点击「✦ 开始 AI 诊断」
+    V3->>OV: 打开全屏紫渐变遮罩
+    V3->>API: POST /api/v1/diagnoses {storeId:S3, photoIds, shootTypes:[cold]}
+    API->>H: 分发（注入 mock 延迟 2400ms × speed）
+    H->>H: db.stores 查陈列标准 + 查预置识别结果
+    alt 预置门店命中（主线演示）
+        H->>D: resolveHealth(fixture.dimensionScores)
+        D-->>H: score 72 / level good / dimensions 6
+    else 陌生照片兜底（unknownPhoto=true）
+        H->>D: computeHealth(通用识别统计)
+        D-->>H: 动态 score + dimensions
+    end
+    H->>D: buildIssues / predictRisk / buildPlan
+    D-->>H: issues 4 / risk 27瓶 ¥108 / plan 36瓶 ¥144
+    H-->>API: {code:0, data:{diagnosis 含 steps 5 步}}
+    API-->>V3: Diagnosis
+    loop 播放 steps 每步 480ms
+        OV->>OV: 显示步骤文案 + 打绿勾 + 进度条 0→100%
+    end
+    Note over OV: 请求返回 与 动画播完 取较晚者
+    OV-->>RT: 遮罩淡出
+    RT->>V4: 跳转 /rep/diagnosis/:id
+    V4->>API: GET /api/v1/diagnoses/:id
+    API-->>V4: Diagnosis 完整
+    V4->>V4: 分块淡入 A 摘要 → B 健康分 → C 标注图 → D 问题 → E 风险 → F 对话 → G 方案 → H 行动栏，错峰 80ms
+
+
+%% ---------- 流程二：多轮追问 ----------
+sequenceDiagram
+    autonumber
+    participant U as 业代 李强
+    participant CP as ChatPanel 模块 F
+    participant API as api index.ts
+    participant H as mock handlers
+    participant CE as domain chatEngine
+    participant LA as llmAdapter 默认关闭
+    participant AP as ActionPlan 模块 G
+
+    U->>CP: 点击快捷问题「该补多少？」
+    CP->>CP: push 用户气泡（右绿底） + 显示 AI 思考中
+    CP->>API: POST /api/v1/ai/chat {diagnosisId, message, history}
+    API->>H: 分发（延迟 400ms）
+    H->>CE: reply(message, ctx={store, diagnosis})
+    CE->>CE: 关键词打分匹配 chat-qa.json 六组
+    alt 命中预设问答
+        CE-->>H: {answerId:Q2, reply 全文, highlightSection:plan}
+    else 未命中 且 LLM 开关打开
+        CE->>LA: askLLM(prompt)
+        LA-->>CE: 远程回复（失败则静默降级到兜底）
+    else 未命中 或 LLM 关闭
+        CE-->>H: 兜底话术 + 推荐三个可问问题
+    end
+    H-->>API: {code:0, data:ChatReply}
+    API-->>CP: ChatReply
+    CP->>CP: useTypewriter 打字机输出 400ms/句
+    opt reply 含 highlightSection
+        CP->>AP: 滚动到 G 区块并高亮闪一下
+    end
+
+
+%% ---------- 流程三：经理下派任务 → 业代端待办可见 ----------
+sequenceDiagram
+    autonumber
+    participant M as 经理 王敏
+    participant DV as DashboardView P5
+    participant DL as TaskDispatchDialog
+    participant API as api index.ts
+    participant DB as mock db 内存 + localStorage
+    participant SS as session store
+    participant TS as tasks store
+    participant RV as TodayRouteView P2
+
+    M->>DV: 风险 Top5 → ①永辉生活 43 红 → 点「下派任务」
+    DV->>DL: 打开弹层（门店预填/类型/时限/AI 话术预填/指派李强）
+    M->>DL: 点「确认下发」
+    DL->>API: POST /api/v1/tasks {storeId:S5, taskType:OOS, dueAt, note, assigneeId:U_REP}
+    API->>DB: tasks.unshift(newTask) 并 persist 到 localStorage
+    DB-->>API: {code:0, data:Task}
+    API-->>DL: Task
+    DL->>DV: Toast「任务已下发给 业代·李强」
+    M->>DV: 顶栏头像 → 切换角色 → 业代
+    DV->>SS: session.login(rep)
+    SS->>TS: tasks.refresh(U_REP)
+    SS-->>RV: 路由跳转 /rep/today
+    RV->>API: GET /api/v1/visits/today?repId=U_REP
+    API->>DB: 读 routeStores + visits + tasks
+    DB-->>API: {summary, todoTasks:[新增的 S5 任务], routeStores}
+    API-->>RV: TodayRoute
+    RV->>RV: 顶部橙色待办条 +1，展示 S5 任务卡，并高亮滚到第 ⑤ 张门店卡
+    Note over RV: ★ 闭环演示点：经理派单 → 业代手机立刻可见

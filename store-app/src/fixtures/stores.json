@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "1.0",
+  "items": [
+    {
+      "id": "S1",
+      "name": "家家悦·学府路店",
+      "regionId": "R_NORTH",
+      "type": "A",
+      "typeLabel": "A类连锁超市",
+      "address": "学府路 128 号 1F",
+      "ownerName": "刘店长",
+      "standard": {
+        "coldCols": 6,
+        "ambientCols": 12,
+        "stacks": 1
+      },
+      "photos": [
+        {
+          "id": "P_S1_COLD",
+          "type": "cold",
+          "url": "/stores/S1/cold.jpg",
+          "caption": "冷藏柜正面"
+        }
+      ],
+      "lastScore": 91,
+      "prevScore": 87,
+      "alert": false,
+      "lat": 30.7702,
+      "lng": 103.9821
+    },
+    {
+      "id": "S2",
+      "name": "好邻居·地铁口店",
+      "regionId": "R_EAST",
+      "type": "C",
+      "typeLabel": "C类便利店",
+      "address": "地铁 2 号线 C 口北侧 30m",
+      "ownerName": "张大姐",
+      "standard": {
+        "coldCols": 3,
+        "ambientCols": 5,
+        "stacks": 0
+      },
+      "photos": [
+        {
+          "id": "P_S2_COLD",
+          "type": "cold",
+          "url": "/stores/S2/cold.jpg",
+          "caption": "冷藏柜正面（整改后）"
+        },
+        {
+          "id": "P_S2_COLD_BEFORE",
+          "type": "cold",
+          "url": "/stores/S2/cold_before.jpg",
+          "caption": "冷藏柜正面（整改前）"
+        }
+      ],
+      "lastScore": 80,
+      "prevScore": 48,
+      "alert": false,
+      "lat": 30.7569,
+      "lng": 103.9672
+    },
+    {
+      "id": "S3",
+      "name": "美宜佳·城建学院店",
+      "regionId": "R_EAST",
+      "type": "C",
+      "typeLabel": "C类便利店",
+      "address": "城建学院南门对面 50m",
+      "ownerName": "陈店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 5,
+        "stacks": 0
+      },
+      "photos": [
+        {
+          "id": "P_S3_COLD",
+          "type": "cold",
+          "url": "/stores/S3/cold.jpg",
+          "caption": "冷藏柜正面"
+        },
+        {
+          "id": "P_S3_AMBIENT",
+          "type": "ambient",
+          "url": "/stores/S3/ambient.jpg",
+          "caption": "常温货架"
+        },
+        {
+          "id": "P_S3_STACK",
+          "type": "stack",
+          "url": "/stores/S3/stack.jpg",
+          "caption": "堆头 / 端架"
+        }
+      ],
+      "lastScore": 72,
+      "prevScore": 72,
+      "alert": false,
+      "lat": 30.7638,
+      "lng": 103.9748
+    },
+    {
+      "id": "S4",
+      "name": "华联超市·万达店",
+      "regionId": "R_SOUTH",
+      "type": "B",
+      "typeLabel": "B类大卖场",
+      "address": "万达广场 B1 层超市入口",
+      "ownerName": "赵店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [
+        {
+          "id": "P_S4_COLD",
+          "type": "cold",
+          "url": "/stores/S4/cold.jpg",
+          "caption": "冷藏柜正面"
+        }
+      ],
+      "lastScore": 64,
+      "prevScore": 62,
+      "alert": false,
+      "lat": 30.7488,
+      "lng": 103.9592
+    },
+    {
+      "id": "S5",
+      "name": "永辉生活·中央公园店",
+      "regionId": "R_NORTH",
+      "type": "B",
+      "typeLabel": "B类社区生鲜",
+      "address": "中央公园东门 1F 商铺",
+      "ownerName": "孙店长",
+      "standard": {
+        "coldCols": 4,
+        "ambientCols": 8,
+        "stacks": 1
+      },
+      "photos": [
+        {
+          "id": "P_S5_COLD",
+          "type": "cold",
+          "url": "/stores/S5/cold.jpg",
+          "caption": "冷藏柜正面"
+        }
+      ],
+      "lastScore": 43,
+      "prevScore": 46,
+      "alert": true,
+      "lat": 30.7773,
+      "lng": 103.9915
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+classDiagram
+    class User {
+        +string id
+        +string name
+        +Role role
+        +string avatarText
+        +string regionId
+    }
+    class Store {
+        +string id
+        +string name
+        +StoreType type
+        +string address
+        +string ownerName
+        +number distanceKm
+        +ShelfStandard standard
+        +List~Photo~ photos
+        +number lastScore
+        +number prevScore
+    }
+    class ShelfStandard {
+        +number coldCols
+        +number ambientCols
+        +number stacks
+    }
+    class Photo {
+        +string id
+        +ShootType type
+        +string url
+        +string caption
+    }
+    class SKU {
+        +string id
+        +string name
+        +Brand brand
+        +string spec
+        +number guidePrice
+    }
+    class Visit {
+        +string id
+        +string storeId
+        +string repId
+        +string visitedAt
+        +number visitNo
+        +List~string~ photoIds
+        +number score
+        +VisitStatus status
+    }
+    class Diagnosis {
+        +string id
+        +string visitId
+        +string storeId
+        +RecognitionSummary summary
+        +List~Annotation~ annotations
+        +List~DimensionScore~ dimensions
+        +HealthScore health
+        +List~Issue~ issues
+        +RiskPrediction risk
+        +ActionPlan plan
+        +List~Step~ steps
+    }
+    class Annotation {
+        +string id
+        +string layer
+        +number x
+        +number y
+        +number w
+        +number h
+        +string label
+        +string skuId
+    }
+    class DimensionScore {
+        +string key
+        +string name
+        +number weight
+        +number score
+        +string level
+    }
+    class HealthScore {
+        +number score
+        +string level
+        +string color
+        +number delta
+        +number expectedScore
+        +string source
+    }
+    class Issue {
+        +string id
+        +Severity severity
+        +string title
+        +string location
+        +string impact
+        +List~string~ actions
+        +List~string~ relatedAnnotationIds
+    }
+    class RiskPrediction {
+        +number weeklyBottles
+        +number weeklyAmount
+        +number monthlyBottles
+        +number monthlyAmount
+        +List~RiskItem~ items
+        +string derivation
+    }
+    class ActionPlan {
+        +List~RestockItem~ restock
+        +List~PlacementItem~ placement
+        +number totalBottles
+        +number totalAmount
+    }
+    class Task {
+        +string id
+        +string storeId
+        +string assigneeId
+        +string creatorId
+        +TaskType taskType
+        +string dueAt
+        +string note
+        +TaskStatus status
+    }
+    class ChatMessage {
+        +string id
+        +ChatRole role
+        +string content
+        +number createdAt
+    }
+    class DashboardOverview {
+        +List~Kpi~ kpis
+        +List~LevelBucket~ distribution
+        +List~TrendSeries~ trend
+        +List~RiskStore~ riskTop5
+        +List~StoreRow~ storeRows
+    }
+
+    User "1" --> "0..*" Task : 指派给
+    Store "1" --> "0..*" Visit : 产生
+    Store "1" --> "0..*" Photo : 拥有
+    Store "1" --> "1" ShelfStandard : 陈列标准
+    Visit "1" --> "1" Diagnosis : 对应
+    Diagnosis "1" --> "0..*" Annotation : 识别框
+    Diagnosis "1" --> "6" DimensionScore : 六维度
+    Diagnosis "1" --> "1" HealthScore : 总分
+    Diagnosis "1" --> "0..*" Issue : 问题清单
+    Diagnosis "1" --> "1" RiskPrediction : 风险预判
+    Diagnosis "1" --> "1" ActionPlan : 行动方案
+    Issue "1" --> "0..*" Annotation : 高亮联动
+    Annotation "0..1" --> "1" SKU : 对应商品
+    ActionPlan "1" --> "0..*" SKU : 引用
+    Task "0..*" --> "1" Store : 归属门店

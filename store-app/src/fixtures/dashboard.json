@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "1.0",
+  "items": {
+    "regionId": "R_EAST",
+    "regionIds": [
+      { "id": "R_EAST", "name": "城东片区" },
+      { "id": "R_SOUTH", "name": "城南片区" },
+      { "id": "R_NORTH", "name": "城北片区" }
+    ],
+    "kpis": [
+      {
+        "key": "avgScore",
+        "label": "区域平均健康分",
+        "value": "74.3",
+        "delta": "↑0.8",
+        "trend": "up",
+        "target": "目标 80",
+        "danger": false
+      },
+      {
+        "key": "redStores",
+        "label": "红灯门店",
+        "value": "12",
+        "delta": "↓5",
+        "trend": "down",
+        "target": "需 24h 处理",
+        "danger": true
+      },
+      {
+        "key": "oosRate",
+        "label": "本周缺货率",
+        "value": "7.2%",
+        "delta": "↓1.1pt",
+        "trend": "down",
+        "target": null,
+        "danger": false
+      },
+      {
+        "key": "coverage",
+        "label": "蒙牛铺货率",
+        "value": "86.4%",
+        "delta": "↑1.9pt",
+        "trend": "up",
+        "target": null,
+        "danger": false
+      }
+    ],
+    "distribution": [
+      { "level": "excellent", "label": "优秀", "count": 42, "ratio": 0.328, "color": "#009639" },
+      { "level": "good", "label": "良好", "count": 53, "ratio": 0.414, "color": "#8BC34A" },
+      { "level": "warning", "label": "预警", "count": 21, "ratio": 0.164, "color": "#FF9800" },
+      { "level": "risk", "label": "风险", "count": 12, "ratio": 0.094, "color": "#E02020" }
+    ],
+    "trend": [
+      {
+        "key": "score",
+        "name": "平均健康分",
+        "points": [62.1, 64.5, 66.8, 68.2, 70.4, 71.9, 73.5, 74.3],
+        "weeks": ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
+        "unit": "分"
+      },
+      {
+        "key": "oosRate",
+        "name": "缺货率",
+        "points": [18.4, 16.9, 15.2, 13.8, 11.5, 9.8, 8.3, 7.2],
+        "weeks": ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
+        "unit": "%"
+      },
+      {
+        "key": "coverage",
+        "name": "铺货率",
+        "points": [71.2, 73.5, 75.8, 78.1, 80.4, 82.6, 84.5, 86.4],
+        "weeks": ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
+        "unit": "%"
+      }
+    ],
+    "riskTop5": [
+      {
+        "storeId": "S5",
+        "storeName": "永辉生活·中央公园店",
+        "score": 43,
+        "level": "risk",
+        "reason": "连续 3 周下滑 · 缺货 5 项"
+      },
+      {
+        "storeId": "S4",
+        "storeName": "华联超市·万达店",
+        "score": 64,
+        "level": "warning",
+        "reason": "排面被挤压 · 堆头物料缺失 3 项"
+      },
+      {
+        "storeId": "S3",
+        "storeName": "美宜佳·城建学院店",
+        "score": 72,
+        "level": "good",
+        "reason": "黄金列位被竞品占用 · 缺货 1 列"
+      },
+      {
+        "storeId": "S2",
+        "storeName": "好邻居·地铁口店",
+        "score": 80,
+        "level": "good",
+        "reason": "价签缺失 1 处 · 已完成整改闭环"
+      },
+      {
+        "storeId": "S1",
+        "storeName": "家家悦·学府路店",
+        "score": 91,
+        "level": "excellent",
+        "reason": "仅 1 处价签轻度缺失 · 区域标杆店"
+      }
+    ],
+    "storeRows": [
+      {
+        "storeId": "S5",
+        "storeName": "永辉生活·中央公园店",
+        "score": 43,
+        "level": "risk",
+        "mainIssue": "缺货 5 项",
+        "weekDelta": -3,
+        "visitId": "V_S5_001"
+      },
+      {
+        "storeId": "S4",
+        "storeName": "华联超市·万达店",
+        "score": 64,
+        "level": "warning",
+        "mainIssue": "排面被挤压",
+        "weekDelta": 2,
+        "visitId": "V_S4_001"
+      },
+      {
+        "storeId": "S3",
+        "storeName": "美宜佳·城建学院店",
+        "score": 72,
+        "level": "good",
+        "mainIssue": "黄金列位被占",
+        "weekDelta": 0,
+        "visitId": "V_S3_001"
+      },
+      {
+        "storeId": "S2",
+        "storeName": "好邻居·地铁口店",
+        "score": 80,
+        "level": "good",
+        "mainIssue": "价签缺失 1 处",
+        "weekDelta": 32,
+        "visitId": "V_S2_002"
+      },
+      {
+        "storeId": "S1",
+        "storeName": "家家悦·学府路店",
+        "score": 91,
+        "level": "excellent",
+        "mainIssue": "无重大问题",
+        "weekDelta": 4,
+        "visitId": "V_S1_001"
+      }
+    ]
+  }
+}

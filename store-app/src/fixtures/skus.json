@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "items": [
+    { "id": "SKU_001", "name": "优益C 100ml", "brand": "蒙牛", "spec": "100ml×5", "guidePrice": 4.0 },
+    { "id": "SKU_002", "name": "优益C 原味 450g", "brand": "蒙牛", "spec": "450g", "guidePrice": 4.0 },
+    { "id": "SKU_003", "name": "冠益乳 250g", "brand": "蒙牛", "spec": "250g×4", "guidePrice": 5.5 },
+    { "id": "SKU_004", "name": "冠益乳 杯装 100g", "brand": "蒙牛", "spec": "100g×8", "guidePrice": 3.5 },
+    { "id": "SKU_005", "name": "纯甄常温酸奶", "brand": "蒙牛", "spec": "200g×12", "guidePrice": 4.5 },
+    { "id": "SKU_006", "name": "真果粒 250ml", "brand": "蒙牛", "spec": "250ml×12", "guidePrice": 4.0 },
+    { "id": "SKU_007", "name": "优益C 原味", "brand": "蒙牛", "spec": "100ml×5 整提", "guidePrice": 4.0 },
+    { "id": "SKU_008", "name": "优益C 芦荟味", "brand": "蒙牛", "spec": "100ml×5", "guidePrice": 4.0 },
+    { "id": "SKU_009", "name": "特仑苏 250ml", "brand": "蒙牛", "spec": "250ml×12", "guidePrice": 5.0 },
+
+    { "id": "SKU_101", "name": "味全 332ml", "brand": "味全", "spec": "332ml", "guidePrice": 3.5 },
+    { "id": "SKU_102", "name": "养乐多 100ml", "brand": "养乐多", "spec": "100ml×5", "guidePrice": 2.5 },
+    { "id": "SKU_103", "name": "伊利每益添", "brand": "伊利", "spec": "100ml×5", "guidePrice": 3.8 }
+  ]
+}

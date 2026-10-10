@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0",
+  "items": [
+    {
+      "id": "V_S1_001",
+      "storeId": "S1",
+      "storeName": "家家悦·学府路店",
+      "repId": "U_REP",
+      "visitedAt": "2026-10-02 09:12",
+      "visitNo": 8,
+      "photoIds": ["P_S1_COLD"],
+      "score": 91,
+      "status": "done"
+    },
+    {
+      "id": "V_S2_002",
+      "storeId": "S2",
+      "storeName": "好邻居·地铁口店",
+      "repId": "U_REP",
+      "visitedAt": "2026-10-02 10:05",
+      "visitNo": 6,
+      "photoIds": ["P_S2_COLD"],
+      "score": 80,
+      "status": "done"
+    },
+    {
+      "id": "V_S2_001",
+      "storeId": "S2",
+      "storeName": "好邻居·地铁口店",
+      "repId": "U_REP",
+      "visitedAt": "2026-09-25 15:40",
+      "visitNo": 5,
+      "photoIds": ["P_S2_COLD_BEFORE"],
+      "score": 48,
+      "status": "done"
+    },
+    {
+      "id": "V_S3_001",
+      "storeId": "S3",
+      "storeName": "美宜佳·城建学院店",
+      "repId": "U_REP",
+      "visitedAt": "2026-09-25 11:20",
+      "visitNo": 5,
+      "photoIds": ["P_S3_COLD"],
+      "score": 72,
+      "status": "done"
+    },
+    {
+      "id": "V_S4_001",
+      "storeId": "S4",
+      "storeName": "华联超市·万达店",
+      "repId": "U_REP",
+      "visitedAt": "2026-09-25 14:05",
+      "visitNo": 4,
+      "photoIds": ["P_S4_COLD"],
+      "score": 64,
+      "status": "done"
+    },
+    {
+      "id": "V_S5_001",
+      "storeId": "S5",
+      "storeName": "永辉生活·中央公园店",
+      "repId": "U_REP",
+      "visitedAt": "2026-09-25 16:30",
+      "visitNo": 7,
+      "photoIds": ["P_S5_COLD"],
+      "score": 43,
+      "status": "alert"
+    }
+  ]
+}
