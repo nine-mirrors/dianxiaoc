@@ -536,7 +536,7 @@ function buildSystemPrompt(store, diagnosis) {
     '你是「店小C」，蒙牛业代的 AI 巡店助手，像资深快消老师傅一样带教新人。',
     `当前门店：${diagnosis.storeName}（${diagnosis.plan.storeTypeLabel}），健康分 ${diagnosis.health.score}（${diagnosis.health.level}），目标 ${diagnosis.health.expectedScore} 分。`,
     `主要问题：\n${issueLines}`,
-    `风险预判：本周预计流失 ${diagnosis.risk.weeklyBottles} 瓶 / ¥${diagnosis.risk.weeklyAmount}；月度 ${diagnosis.risk.monthlyBottles} 瓶。`,
+    `风险预判（权威值，直接引用、禁止自行推算）：日均总损失 ${diagnosis.risk?.dailyLossBottles ?? 0} 瓶/天；本周预计流失 ${diagnosis.risk?.weeklyBottles ?? 0} 瓶 / ¥${diagnosis.risk?.weeklyAmount ?? 0}；月度 ${diagnosis.risk?.monthlyBottles ?? 0} 瓶 / ¥${diagnosis.risk?.monthlyAmount ?? 0}。`,
     `行动方案：\n${planLines}\n· 陈列调整 ${diagnosis.plan.placement.length} 项`,
     // ★ 阶段 C：fixture 作 RAG 参考注入，AI 文案绑定运行时数据而非复述 fixture
     buildRagReference(diagnosis),
@@ -576,11 +576,23 @@ async function buildAiContext(diagnosis) {
     '【进销存 MCP 取数】',
     factLines.length ? factLines.join('\n') : '· 进销存暂未取到数据，请勿编造效期与价签数字',
     '',
+    // ★ 风险权威值必须注入：否则 AI 会把 issues.impact 里的「日均 3.9 瓶」「2.1 倍」
+    //   自己心算成 6.1 瓶/天 ×7 = 42 瓶，与后端算法口径 29 瓶自相矛盾（答辩现场一比就穿帮）。
+    '【风险预判权威口径（系统已算好，直接引用，禁止自行推算）】',
+    `· 日均总损失 ${Number(diagnosis.risk?.dailyLossBottles ?? 0)} 瓶/天`,
+    `· 本周预计流失 ${diagnosis.risk?.weeklyBottles ?? 0} 瓶 / ¥${diagnosis.risk?.weeklyAmount ?? 0}`,
+    `· 月度预计流失 ${diagnosis.risk?.monthlyBottles ?? 0} 瓶 / ¥${diagnosis.risk?.monthlyAmount ?? 0}`,
+    '',
     '【补货算法推导（按此口径回答，不要另算）】',
     forecastDigest(fc) || '· 无',
     fc.summary,
     // ★ 阶段 C：口径保护说明必须进 prompt，否则 AI 会照算法原值讲、和页面数字对不上
     diagnosis.plan?.algoNote ? `\n【门店基线口径说明】${diagnosis.plan.algoNote}` : '',
+    '',
+    // ★ 数字纪律：AI 只负责"把依据讲成人话"，不得做任何乘法/加法产生新数字。
+    '【数字纪律（重要）】所有瓶数、金额、天数、倍数一律照抄上面给出的数值，',
+    '不要自己计算、不要把多个 loss 相加、不要用「日均×7」自行推导周值；',
+    '若某个数字上面没给，就只描述现象不写数字。',
   ].join('\n')
 }
 
