@@ -174,7 +174,7 @@ const legend = computed(() => {
   width: 100%;
   overflow: hidden;
   border-radius: 8px;
-  background: #eef0ef;
+  background: var(--border-color);
 }
 
 .anno__img {
@@ -193,8 +193,8 @@ const legend = computed(() => {
   z-index: 3;
   padding: 2px 8px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--ai-purple) 0%, var(--ai-purple-2) 100%);
-  color: #fff;
+  background: var(--ai-grad);
+  color: var(--milk);
   font-size: 10px;
   font-weight: 600;
 }

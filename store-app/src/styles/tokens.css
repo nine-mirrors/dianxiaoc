@@ -1,148 +1,368 @@
 /**
- * 设计令牌 —— CSS 变量单一出处。
+ * 设计令牌 —— CSS 变量单一出处（Design System 1.2）。
  *
- * 与 PRD 3.1（配色）/ 3.2（健康分分档）/ 3.3（字体尺寸）一一对应；
- * 与 ARCHITECTURE §8.2 的清单逐字对齐。
- * ⚠ 任何页面不得硬编码色值或分档区间，必须引用本文件变量或 domain/constants.ts 常量。
+ * 品牌色取蒙牛官方 Pantone 7481C（#00B451）+ 蒙牛官网线上取色；
+ * 分日 / 夜双主题：:root 为日间，[data-theme="dark"] 覆盖为夜间。
+ *
+ * ⚠ 铁律：
+ * 1. 任何页面不得硬编码色值，必须引用本文件变量；
+ * 2. 新增色彩走语义令牌（颜色=信息），主色只有一个（品牌翠绿），
+ *    AI 独占智紫、红=风险、橙=缺货、蓝=信息、金=报告、青=冷链；
+ * 3. 旧令牌名一律保留（只改色值），保证既有组件零改动换肤。
  */
 :root {
-  /* ── 品牌（蒙牛） ── */
-  --mn-green: #009639;
-  --mn-green-dark: #00662a;
-  --mn-green-light: #e8f5ec;
+  /* ══════════ 品牌（蒙牛 Pantone 7481C） ══════════ */
+  --mn-green: #00b451; /* = 新 --brand，旧名保留 */
+  --mn-green-dark: #00934a; /* = --brand-deep */
+  --mn-green-light: #e8faf0; /* = --brand-mist */
+
+  --brand: #00b451;
+  --brand-deep: #00934a;
+  --brand-bright: #17c964;
+  --brand-mist: #e8faf0;
+  --brand-mist-2: #d9f5e4;
+
+  /* ── 语义扩展色（DS1.2 11 色体系） ── */
+  --sky: #2fa7e0; /* 信息 / 低温 / 链接 */
+  --sky-mist: #e8f5fd;
+  --amber: #ff8a1e; /* 缺货 / 临期 */
+  --amber-mist: #fff2e2;
+  --red: #e60012; /* 风险 / 红灯 / 印章 */
+  --red-mist: #fde9e7;
+  --gold: #c6a15b; /* 品质 / 报告 / 成就 */
+  --gold-mist: #f7eedd;
+  --teal: #0fb5a8; /* 冷链 / 第二数据序列 */
+  --teal-mist: #e2f6f4;
+  --milk: #fbfaf5; /* 奶白 */
+  --ink: #14241b; /* 墨玉 */
+
+  /* ── AI 专属强调（智紫，与人工操作的绿严格区分） ── */
+  --ai-purple: #7c6cf0;
+  --ai-purple-2: #8f7fff;
+  --ai-purple-light: #f0eefb;
+  --ai: #7c6cf0;
+  --ai-bright: #8f7fff;
+  --ai-deep: #6a58e6;
+  --ai-mist: #f0eefb;
+  --ai-grad: linear-gradient(135deg, #8f7fff, #6a58e6);
+
+  /* ── 品牌渐变 ── */
+  --grad-brand: linear-gradient(135deg, #17c964, #00a64d);
+  --grad-brand-deep: linear-gradient(135deg, #0c9e4c, #087a3d);
+  --grad-gold: linear-gradient(135deg, #d8bb84, #b08a3e);
+  --grad-ink: linear-gradient(135deg, #22332a, #13201a);
+  --grad-sky: linear-gradient(135deg, #39c4ff, #1192d3);
 
   /* ── 背景与容器 ── */
-  --bg-page: #f5f7f5;
+  --bg-page: #f3f8f4;
   --bg-card: #ffffff;
-  --radius-card: 12px;
-  --radius-btn: 24px;
+  --bg-elevated: #ffffff;
+  --bg-mask: rgba(10, 26, 18, 0.46);
+
+  /* ── 圆角（DS1.2 五档；旧名保留映射） ── */
+  --r-xs: 8px;
+  --r-s: 10px;
+  --r-m: 14px;
+  --r-l: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+  --radius-card: 14px;
+  --radius-btn: 999px;
+
   --space-unit: 4px;
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  /* ── 阴影（三级高度 + 品牌/AI 彩色投影；旧名保留） ── */
+  --sh-1: 0 2px 8px rgba(20, 60, 40, 0.06);
+  --sh-2: 0 8px 22px rgba(20, 60, 40, 0.1);
+  --sh-3: 0 18px 44px rgba(20, 60, 40, 0.16);
+  --sh-brand: 0 10px 22px rgba(0, 150, 74, 0.32);
+  --sh-ai: 0 8px 20px rgba(124, 108, 240, 0.28);
+  --shadow-card: var(--sh-1);
 
   /* ── 文字 ── */
-  --text-1: #1a1f1c;
-  --text-2: #4b5563;
-  --text-3: #9ca3af;
+  --text-1: #14241b;
+  --text-2: #4a5d52;
+  --text-3: #81918a;
+  --text-4: #b3bfb7;
 
-  /* ── AI 专属强调 ── */
-  --ai-purple: #6d3bf5;
-  --ai-purple-2: #9b6bff;
-  --ai-purple-light: #f1ebff;
-
-  /* ── 健康分四档（PRD 3.2，全产品统一） ── */
-  --level-excellent: #009639; /* 优秀 85–100 */
-  --level-good: #8bc34a; /* 良好 70–84  */
-  --level-warning: #ff9800; /* 预警 60–69  */
-  --level-risk: #e02020; /* 风险 0–59   */
+  /* ── 健康分四档（PRD 3.2，全产品统一；深色档均达 AA） ── */
+  --level-excellent: #00a64d; /* 优秀 85–100 */
+  --level-good: #8bbf3a; /* 良好 70–84  */
+  --level-warning: #ef8a1e; /* 预警 60–69  */
+  --level-risk: #e03225; /* 风险 0–59   */
 
   /* ── 竞品标识 ── */
-  --competitor: #3b82f6;
+  --competitor: #2fa7e0;
 
-  /* ── 语义色 ── */
-  --color-danger: #e02020;
-  --color-warning: #ff9800;
-  --color-success: #009639;
-  --color-info: #3b82f6;
-  --border-color: #eceef0;
+  /* ── 语义色（旧名保留，值对齐 11 色体系） ── */
+  --color-danger: #e60012;
+  --color-warning: #ff8a1e;
+  --color-success: #00b451;
+  --color-info: #2fa7e0;
+  --border-color: #e7efe9;
+  --border-strong: #d3e2d9;
 
   /* ── 字体（系统字体栈，零外链） ── */
   --font-sans: 'PingFang SC', 'HarmonyOS Sans', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  --font-serif: Georgia, 'Songti SC', 'STKaiti', 'Noto Serif SC', serif;
 
   /* ── 演示尺寸（PRD 3.3） ── */
   --phone-w: 390px;
   --phone-h: 844px;
 
-  /* ════════════════════════════════════════════════════════════
-   * 认知心理学设计令牌（新增分组）
-   * 约定：只新增、不删改既有令牌；延续蒙牛绿（信任/健康/行动）
-   * + AI 紫（智能/高级）的清爽调性，不引入荧光色与青色科技风。
-   * ════════════════════════════════════════════════════════════ */
+  /* ══════════ 认知心理学设计令牌（P1 既有，全部保留） ══════════ */
 
-  /* ── 菲茨定律：目标越大、距离越近，操作越快越准 ──
-     * 移动端点按元素命中盒不小于 44px（视觉可更小，padding/伪元素撑热区）；
-     * 紧凑场景不小于 36px；桌面鼠标精确点击不小于 28px。 */
-  --touch-target-min: 44px; /* 移动端可点元素最小边长（iOS HIG / Material 共识） */
-  --touch-target-sm: 36px; /* 紧凑列表内次级点按目标的下限 */
-  --click-min: 28px; /* 桌面端鼠标点击目标最小边长 */
-  --btn-h-lg: 48px; /* 主操作按钮：移动端默认，高度 ≥ 44px 热区 */
-  --btn-h-md: 40px; /* 中按钮：与现有 .u-btn 高度保持一致 */
-  --btn-h-sm: 32px; /* 小按钮：仅桌面/辅助操作，移动端需外扩热区 */
+  --touch-target-min: 44px;
+  --touch-target-sm: 36px;
+  --click-min: 28px;
+  --btn-h-lg: 48px;
+  --btn-h-md: 40px;
+  --btn-h-sm: 32px;
 
-  /* ── 格式塔（邻近/相似/连续）：统一间距刻度 ──
-     * 全产品间距只允许取这 8 档（4 的倍数），相关元素取小档靠近，
-     * 不同分组取大档留白，靠间距而非加框来表达"组"。 */
-  --space-1: calc(var(--space-unit) * 1); /* 4px：图标与文字等紧邻元素 */
-  --space-2: calc(var(--space-unit) * 2); /* 8px：组内条目之间 */
-  --space-3: calc(var(--space-unit) * 3); /* 12px */
-  --space-4: calc(var(--space-unit) * 4); /* 16px：卡片内边距 */
-  --space-5: calc(var(--space-unit) * 6); /* 24px：分组容器之间 */
-  --space-6: calc(var(--space-unit) * 8); /* 32px：区块之间 */
-  --space-7: calc(var(--space-unit) * 12); /* 48px */
-  --space-8: calc(var(--space-unit) * 16); /* 64px：页面级大留白 */
-  --gap-item: var(--space-2); /* 组内间距（邻近律：近=相关），勿与组间混用 */
-  --gap-group: var(--space-5); /* 组间间距，须明显大于组内（建议 ≥ 3 倍） */
+  --space-1: calc(var(--space-unit) * 1);
+  --space-2: calc(var(--space-unit) * 2);
+  --space-3: calc(var(--space-unit) * 3);
+  --space-4: calc(var(--space-unit) * 4);
+  --space-5: calc(var(--space-unit) * 6);
+  --space-6: calc(var(--space-unit) * 8);
+  --space-7: calc(var(--space-unit) * 12);
+  --space-8: calc(var(--space-unit) * 16);
+  --gap-item: var(--space-2);
+  --gap-group: var(--space-5);
 
-  /* ── 米勒定律（7±2）：卡片信息分块，降低工作记忆负担 ──
-     * 同一信息块内部紧凑（chunk），不同信息块之间明显拉开（section），
-     * 配合现有 --radius-card / --shadow-card 形成"块"的边界。 */
-  --chunk-gap: var(--space-3); /* 12px：同组信息块内各行（标题+数值+说明） */
-  --section-gap: var(--space-6); /* 32px：异组信息块/卡片分区，一眼可数出块数 */
+  --chunk-gap: var(--space-3);
+  --section-gap: var(--space-6);
 
-  /* ── 色彩心理：语义色（保持既有色相，仅新增"浅底+深字"AA 组合） ──
-     * --c-* 为既有 --color-* 的短名别名，用于实心图标/风险灯/图表，
-     * 不用于小号文字；小号文字一律用同色 *-fg（对浅底与白底均 ≥4.5:1）。 */
+  /* 语义短名 + AA 浅底深字配对 */
   --c-success: var(--color-success);
   --c-warning: var(--color-warning);
   --c-danger: var(--color-danger);
   --c-info: var(--color-info);
-  --success-bg: var(--mn-green-light); /* #e8f5ec 安心/成功浅底 */
-  --success-fg: var(--mn-green-dark); /* #00662a 深绿文字，AA */
-  --warning-bg: #fff4e0; /* 温和暖橙浅底：预警、临期 */
-  --warning-fg: #8f5200; /* 深棕橙文字，AA（#ff9800 本身对比不足，禁作文字） */
-  --danger-bg: #fdecea; /* 低刺激浅红：风险灯、缺货、删除确认 */
-  --danger-fg: #c01818; /* 深红文字，AA，与 --color-danger 同色相 */
-  --info-bg: #eaf3fe; /* 浅蓝：AI 提示、中性说明（与 --ai-purple 区分用途） */
-  --info-fg: #1d4ed8; /* 深蓝文字，AA，与 --color-info 同色相 */
+  --success-bg: var(--brand-mist);
+  --success-fg: #007a3e;
+  --warning-bg: var(--amber-mist);
+  --warning-fg: #c96600;
+  --danger-bg: var(--red-mist);
+  --danger-fg: #cf1a26;
+  --info-bg: var(--sky-mist);
+  --info-fg: #0b74b8;
 
-  /* ── 中性灰阶（--text-1/2/3 已存在，直接复用，此处仅补第 4 档） ── */
-  --text-4: #c6cbd1; /* 禁用/占位等最弱文字，不承载关键信息（不作正文） */
+  /* ── 动效 ── */
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+  --ease-entrance: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* ── 动效预期：时长与缓动单一出处，动效层统一引用，禁止随手写数值 ── */
-  --dur-fast: 150ms; /* 按压、勾选、开关等即时反馈 */
-  --dur-base: 250ms; /* 默认过渡：展开折叠、颜色变化（与现有 .u-btn 0.15s 同量级） */
-  --dur-slow: 400ms; /* 入场、页面/结果块错峰淡入 */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* 通用缓动，自然减速 */
-  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2); /* 强调/轻微回弹：主操作成功反馈 */
-  --ease-entrance: cubic-bezier(0, 0, 0.2, 1); /* 元素进入：快速起步，响应更跟手 */
-  --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* 元素退出：加速离场，不拖泥带水 */
-  /* prefers-reduced-motion 约定（本文件只定约定、不写媒体查询，落地交给动效层）：
-     * 1. 动效层必须包裹 @media (prefers-reduced-motion: reduce) 兜底；
-     * 2. 非必要动画关闭，确需保留的过渡时长压到 --dur-fast 或更短；
-     * 3. 仅保留 opacity/颜色等不改变布局位置的过渡，禁止位移、视差、自动播放；
-     * 4. 语义信息（成功/风险）不得只依赖动画传达。 */
-
-  /* ── 无障碍：焦点环与层级 ──
-     * 焦点态使用 outline + 偏移，2px 实线深色环在浅底/白底上均远超 3:1；
-     * 不得只靠颜色或仅去掉轮廓：键盘可见焦点是硬性行为，不是装饰。 */
+  /* ── 无障碍：焦点环与层级 ── */
   --focus-ring-width: 2px;
   --focus-ring-style: solid;
-  --focus-ring-color: var(--text-1); /* #1a1f1c，对页面/卡片底约 15.5:1 */
+  --focus-ring-color: var(--brand-deep);
   --focus-ring: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
-  --focus-offset: 2px; /* outline-offset，避免贴边糊在一起 */
-  --z-base: 0; /* 常规流内容 */
-  --z-sticky: 100; /* 吸顶筛选/表头 */
-  --z-dropdown: 1000; /* 下拉菜单、气泡 */
-  --z-fixed: 1020; /* 固定底栏（如结算条） */
-  --z-modal-mask: 1100; /* 弹层遮罩 */
-  --z-modal: 1110; /* 对话框本体 */
-  --z-toast: 1200; /* 全局提示，永远最上 */
+  --focus-offset: 2px;
+  --z-base: 0;
+  --z-sticky: 100;
+  --z-dropdown: 1000;
+  --z-fixed: 1020;
+  --z-modal-mask: 1100;
+  --z-modal: 1110;
+  --z-toast: 1200;
 
-  /* ── 响应式断点（只定变量与口径，本文件不写任何媒体查询） ──
-     * 注意：传统 @media 条件里多数浏览器不能解析 var()，
-     * 写媒体查询时直接写下方像素值并注释"= --bp-*"；变量供 JS 判定、
-     * 容器查询与文档统一口径使用。 */
-  --bp-sm: 640px; /* 大手机/小平板竖屏 */
-  --bp-md: 1024px; /* 平板横屏/窄桌面 */
-  --bp-lg: 1440px; /* 常规桌面 */
-  --bp-xl: 1920px; /* 大屏桌面 */
+  /* ── 响应式断点（媒体查询写像素值并注释 = 哪个令牌） ── */
+  --bp-sm: 640px;
+  --bp-md: 1024px;
+  --bp-lg: 1440px;
+  --bp-xl: 1920px;
+
+  color-scheme: light;
+}
+
+/* ════════════════════════════════════════════════════════════════
+ * 夜间主题（DS1.2）：带品牌倾向的墨绿黑，不是简单反色。
+ * 由 useTheme 在 <html> 上切 data-theme="dark"；色值对暗底全部提亮，
+ * 文字/卡片对比保持 WCAG AA。打印时强制浅色（见全局 @media print）。
+ * ════════════════════════════════════════════════════════════════ */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --mn-green: #2dd47e;
+  --mn-green-dark: #17b86a;
+  --mn-green-light: rgba(45, 212, 126, 0.14);
+
+  --brand: #2dd47e;
+  --brand-deep: #17b86a;
+  --brand-bright: #46e092;
+  --brand-mist: rgba(45, 212, 126, 0.14);
+  --brand-mist-2: rgba(45, 212, 126, 0.2);
+
+  --sky: #5dbce8;
+  --sky-mist: rgba(93, 188, 232, 0.14);
+  --amber: #ffa94d;
+  --amber-mist: rgba(255, 169, 77, 0.15);
+  --red: #ff6a52;
+  --red-mist: rgba(255, 106, 82, 0.15);
+  --gold: #d8b976;
+  --gold-mist: rgba(216, 185, 118, 0.15);
+  --teal: #3cc9be;
+  --teal-mist: rgba(60, 201, 190, 0.14);
+  --milk: #16211b;
+  --ink: #e8f5ec;
+
+  --ai-purple: #9b8cff;
+  --ai-purple-2: #b3a7ff;
+  --ai-purple-light: rgba(155, 140, 255, 0.15);
+  --ai: #9b8cff;
+  --ai-bright: #b3a7ff;
+  --ai-deep: #8473f5;
+  --ai-mist: rgba(155, 140, 255, 0.15);
+  --ai-grad: linear-gradient(135deg, #b3a7ff, #8473f5);
+
+  --grad-brand: linear-gradient(135deg, #46e092, #17b86a);
+  --grad-brand-deep: linear-gradient(135deg, #17b86a, #0e8f52);
+  --grad-gold: linear-gradient(135deg, #e3c98e, #c39b4f);
+  --grad-ink: linear-gradient(135deg, #1b2a21, #0c1510);
+
+  --bg-page: #0c1510;
+  --bg-card: #13201a;
+  --bg-elevated: #1a2b22;
+  --bg-mask: rgba(0, 0, 0, 0.62);
+
+  --sh-1: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --sh-2: 0 8px 22px rgba(0, 0, 0, 0.42);
+  --sh-3: 0 18px 44px rgba(0, 0, 0, 0.55);
+  --sh-brand: 0 10px 22px rgba(23, 184, 106, 0.25);
+  --sh-ai: 0 8px 20px rgba(155, 140, 255, 0.22);
+  --shadow-card: var(--sh-1);
+
+  --text-1: #e8f5ec;
+  --text-2: #a9bcb0;
+  --text-3: #7e9387;
+  --text-4: #4d5f54;
+
+  --level-excellent: #2dd47e;
+  --level-good: #a9dc4e;
+  --level-warning: #ffa94d;
+  --level-risk: #ff6a52;
+
+  --competitor: #5dbce8;
+
+  --color-danger: #ff6a52;
+  --color-warning: #ffa94d;
+  --color-success: #2dd47e;
+  --color-info: #5dbce8;
+  --border-color: #24332a;
+  --border-strong: #34463a;
+
+  --c-success: var(--color-success);
+  --c-warning: var(--color-warning);
+  --c-danger: var(--color-danger);
+  --c-info: var(--color-info);
+  --success-bg: rgba(45, 212, 126, 0.14);
+  --success-fg: #5fe39c;
+  --warning-bg: rgba(255, 169, 77, 0.15);
+  --warning-fg: #ffc078;
+  --danger-bg: rgba(255, 106, 82, 0.15);
+  --danger-fg: #ff9280;
+  --info-bg: rgba(93, 188, 232, 0.15);
+  --info-fg: #84d0f0;
+
+  --focus-ring-color: #2dd47e;
+}
+
+/* 主题切换：颜色类属性平滑过渡（由 useTheme 短暂加 .theme-anim 类，
+   避免平时 hover 也产生颜色过渡延迟；reduced-motion 下整体关闭） */
+.theme-anim,
+.theme-anim * {
+  transition:
+    background-color 400ms ease,
+    border-color 400ms ease,
+    color 400ms ease,
+    fill 400ms ease,
+    stroke 400ms ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-anim,
+  .theme-anim * {
+    transition: none !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+ * 手机壳强制日间（.dxc-phone-light）
+ * 桌面演示形态下，手机壳内是一台“仿真手机屏”，恒为日间品牌主题：
+ * 自定义属性沿 DOM 继承，壳根上重新声明的日令牌比 <html> 夜间令牌
+ * 更近，壳内所有 var() 组件自动日间化，与壳外桌面区的日夜主题互不干扰。
+ * 真机 ≤480px 退化为全屏、无手机壳时，跟随全局主题（W5/W6 再做移动暗色精修）。
+ * ════════════════════════════════════════════════════════════════ */
+.dxc-phone-light {
+  color-scheme: light;
+  --mn-green: #00b451;
+  --mn-green-dark: #00934a;
+  --mn-green-light: #e8faf0;
+  --brand: #00b451;
+  --brand-deep: #00934a;
+  --brand-bright: #17c964;
+  --brand-mist: #e8faf0;
+  --brand-mist-2: #d9f5e4;
+  --sky: #2fa7e0;
+  --sky-mist: #e8f5fd;
+  --amber: #ff8a1e;
+  --amber-mist: #fff2e2;
+  --red: #e60012;
+  --red-mist: #fde9e7;
+  --gold: #c6a15b;
+  --gold-mist: #f7eedd;
+  --teal: #0fb5a8;
+  --teal-mist: #e2f6f4;
+  --milk: #fbfaf5;
+  --ink: #14241b;
+  --ai-purple: #7c6cf0;
+  --ai-purple-2: #8f7fff;
+  --ai-purple-light: #f0eefb;
+  --ai: #7c6cf0;
+  --ai-bright: #8f7fff;
+  --ai-deep: #6a58e6;
+  --ai-mist: #f0eefb;
+  --ai-grad: linear-gradient(135deg, #8f7fff, #6a58e6);
+  --grad-brand: linear-gradient(135deg, #17c964, #00a64d);
+  --grad-brand-deep: linear-gradient(135deg, #0c9e4c, #087a3d);
+  --grad-gold: linear-gradient(135deg, #d8bb84, #b08a3e);
+  --grad-ink: linear-gradient(135deg, #22332a, #13201a);
+  --grad-sky: linear-gradient(135deg, #39c4ff, #1192d3);
+  --bg-page: #f3f8f4;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-mask: rgba(10, 26, 18, 0.46);
+  --sh-1: 0 2px 8px rgba(20, 60, 40, 0.06);
+  --sh-2: 0 8px 22px rgba(20, 60, 40, 0.1);
+  --sh-3: 0 18px 44px rgba(20, 60, 40, 0.16);
+  --sh-brand: 0 10px 22px rgba(0, 150, 74, 0.32);
+  --sh-ai: 0 8px 20px rgba(124, 108, 240, 0.28);
+  --shadow-card: 0 2px 8px rgba(20, 60, 40, 0.06);
+  --text-1: #14241b;
+  --text-2: #4a5d52;
+  --text-3: #81918a;
+  --text-4: #b3bfb7;
+  --level-excellent: #00a64d;
+  --level-good: #8bbf3a;
+  --level-warning: #ef8a1e;
+  --level-risk: #e03225;
+  --competitor: #2fa7e0;
+  --color-danger: #e60012;
+  --color-warning: #ff8a1e;
+  --color-success: #00b451;
+  --color-info: #2fa7e0;
+  --border-color: #e7efe9;
+  --border-strong: #d3e2d9;
+  --success-bg: #e8faf0;
+  --success-fg: #007a3e;
+  --warning-bg: #fff2e2;
+  --warning-fg: #c96600;
+  --danger-bg: #fde9e7;
+  --danger-fg: #cf1a26;
+  --info-bg: #e8f5fd;
+  --info-fg: #0b74b8;
+  --focus-ring-color: #00934a;
 }

@@ -26,10 +26,17 @@ let chart: echarts.ECharts | null = null
 
 /** 容器尺寸观察（Tab v-show 切换 / 断点切换 / 窗口拖拽都靠它），卸载时断开 */
 let resizeObserver: ResizeObserver | null = null
+/** 主题观察：<html data-theme> 日/夜切换后重读令牌并重绘，卸载时断开 */
+let themeObserver: MutationObserver | null = null
 /** resize 合并到下一帧执行，拖拽窗口时每帧最多重绘一次 */
 let resizeRaf = 0
 /** 上一次字号档：仅跨档时才整图 setOption，同档拖拽只走廉价的 resize */
 let lastFontScale = 1
+
+/** 读取 :root / [data-theme] 上当前生效的设计令牌（去空白；取不到时回退空串） */
+function css(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
 
 /** 门店总数 */
 function totalCount(): number {
@@ -77,48 +84,58 @@ function render(): void {
   const total = totalCount()
   const scale = fontScale()
   lastFontScale = scale
-  chart.setOption({
-    animation: !prefersReducedMotion(),
-    color: props.data.map((d) => d.color),
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}：{c} 家（{d}%）',
-      backgroundColor: 'rgba(26,31,28,0.92)',
-      borderWidth: 0,
-      textStyle: { color: '#fff', fontSize: 12 },
-    },
-    legend: {
-      orient: 'vertical',
-      right: 8,
-      top: 'center',
-      icon: 'circle',
-      itemWidth: 8,
-      itemHeight: 8,
-      itemGap: 10,
-      textStyle: { color: '#4b5563', fontSize: Math.round(12 * scale) },
-    },
-    title: {
-      text: String(total),
-      subtext: '家门店',
-      left: '37%',
-      top: '38%',
-      textAlign: 'center',
-      textStyle: { fontSize: Math.round(26 * scale), fontWeight: 700, color: '#1a1f1c' },
-      subtextStyle: { fontSize: Math.round(12 * scale), color: '#6b7280' },
-    },
-    series: [
-      {
-        type: 'pie',
-        radius: ['52%', '72%'],
-        center: ['37%', '50%'],
-        avoidLabelOverlap: true,
-        itemStyle: { borderColor: '#fff', borderWidth: 2 },
-        label: { show: false },
-        emphasis: { scaleSize: 4 },
-        data: props.data.map((d) => ({ name: d.label, value: d.count })),
+  // 全部颜色现读设计令牌：四档序列读 --level-*（夜间自动换成提亮档），
+  // 不再写死 fixture 的日值 hex；fixture 仅在令牌意外缺失时兜底。
+  const levelColor = (d: LevelBucket): string => css(`--level-${d.level}`) || d.color
+  chart.setOption(
+    {
+      animation: !prefersReducedMotion(),
+      color: props.data.map(levelColor),
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}：{c} 家（{d}%）',
+        // tooltip 浮在卡片之上：深底/浅底都用抬升表面 + 正文文字色，保证可读
+        backgroundColor: css('--bg-elevated'),
+        borderColor: css('--border-color'),
+        borderWidth: 1,
+        padding: 8,
+        textStyle: { color: css('--text-1'), fontSize: 12 },
       },
-    ],
-  })
+      legend: {
+        orient: 'vertical',
+        right: 8,
+        top: 'center',
+        icon: 'circle',
+        itemWidth: 8,
+        itemHeight: 8,
+        itemGap: 10,
+        textStyle: { color: css('--text-2'), fontSize: Math.round(12 * scale) },
+      },
+      title: {
+        text: String(total),
+        subtext: '家门店',
+        left: '37%',
+        top: '38%',
+        textAlign: 'center',
+        textStyle: { fontSize: Math.round(26 * scale), fontWeight: 700, color: css('--text-1') },
+        subtextStyle: { fontSize: Math.round(12 * scale), color: css('--text-3') },
+      },
+      series: [
+        {
+          type: 'pie',
+          radius: ['52%', '72%'],
+          center: ['37%', '50%'],
+          avoidLabelOverlap: true,
+          // 扇区分割线与卡片表面同色（日间白、夜间深墨绿）
+          itemStyle: { borderColor: css('--bg-card'), borderWidth: 2 },
+          label: { show: false },
+          emphasis: { scaleSize: 4 },
+          data: props.data.map((d) => ({ name: d.label, value: d.count, itemStyle: { color: levelColor(d) } })),
+        },
+      ],
+    },
+    true,
+  )
 }
 
 /** 窗口 resize 兜底入口（主路径是 ResizeObserver，这里只统一并入下一帧） */
@@ -164,6 +181,14 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(scheduleSync)
     resizeObserver.observe(el.value)
   }
+  // 观察 <html> 的 data-theme：日/夜切换后整图重读令牌 setOption（含 resize）
+  if (typeof MutationObserver !== 'undefined') {
+    themeObserver = new MutationObserver(() => {
+      if (chart) chart.resize()
+      render()
+    })
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+  }
   window.addEventListener('resize', onResize)
 })
 
@@ -171,6 +196,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   resizeObserver?.disconnect()
   resizeObserver = null
+  themeObserver?.disconnect()
+  themeObserver = null
   if (resizeRaf) {
     cancelAnimationFrame(resizeRaf)
     resizeRaf = 0

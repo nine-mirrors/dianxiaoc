@@ -8,7 +8,8 @@
 <template>
   <div class="phone-shell">
     <!-- 390×844 手机屏 -->
-    <div class="phone">
+    <!-- 手机屏：dxc-phone-light 使壳内恒为日间品牌主题（日夜切换只作用于壳外桌面区） -->
+    <div class="phone dxc-phone-light">
       <div class="phone__notch" aria-hidden="true" />
       <div class="phone__screen">
         <slot />

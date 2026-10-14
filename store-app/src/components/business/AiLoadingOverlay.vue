@@ -14,6 +14,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
 import type { Step } from '@/types'
 
 interface Props {
@@ -151,11 +152,9 @@ onBeforeUnmount(() => {
           <AppIcon name="close" :size="15" color="#4b5563" />
         </button>
 
-        <div class="overlay__orb" aria-hidden="true">
-          <span class="overlay__ring" />
-          <span class="overlay__spark">
-            <AppIcon name="sparkles" :size="24" color="#fff" />
-          </span>
+        <!-- 招牌等待主符号：牛奶注入奶滴（card 规格，文案由标题承担，故不重复显示） -->
+        <div class="overlay__drop" aria-hidden="true">
+          <MilkDropLoader size="card" label="" />
         </div>
 
         <p class="overlay__title">{{ title }}</p>
@@ -225,49 +224,10 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 
-/* ── 品牌 Orb：AI 紫底 + 蒙牛绿旋转弧，呼吸 / 旋转均为 transform ── */
-.overlay__orb {
-  position: relative;
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 12px;
-}
-
-.overlay__spark {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: linear-gradient(140deg, var(--ai-purple) 0%, var(--ai-purple-2) 100%);
-  animation: orb-breathe 2.2s ease-in-out infinite;
-}
-
-.overlay__ring {
-  position: absolute;
-  inset: -5px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  border-top-color: var(--mn-green);
-  border-right-color: rgba(109, 59, 245, 0.4);
-  animation: ring-spin 1.8s linear infinite;
-}
-
-@keyframes ring-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes orb-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
+/* ── 招牌主符号：牛奶注入奶滴（card 规格 120px，卡片白底） ── */
+.overlay__drop {
+  width: fit-content;
+  margin: 2px auto 10px;
 }
 
 .overlay__title {
@@ -487,8 +447,6 @@ onBeforeUnmount(() => {
 
 /* ── prefers-reduced-motion：一切停在静态态 ── */
 @media (prefers-reduced-motion: reduce) {
-  .overlay__spark,
-  .overlay__ring,
   .overlay__step.is-active .overlay__dot::after {
     animation: none;
   }

@@ -122,8 +122,8 @@ function levelText(d: MorningDraft): string {
 .brief {
   padding: 16px 18px;
   border-radius: var(--radius-card, 14px);
-  background: linear-gradient(135deg, var(--ai-purple-light) 0%, #fff 60%);
-  border: 1px solid var(--ai-purple-light);
+  background: linear-gradient(135deg, var(--ai-mist) 0%, var(--bg-card) 60%);
+  border: 1px solid var(--ai-mist);
 }
 
 .brief__head {
@@ -150,12 +150,12 @@ function levelText(d: MorningDraft): string {
   font-weight: 700;
 }
 .brief__src.is-llm {
-  background: var(--ai-purple-light);
-  color: var(--ai-purple);
+  background: var(--ai-mist);
+  color: var(--ai);
 }
 .brief__src.is-rule {
-  background: #eef0f2;
-  color: var(--text-2, #4b5563);
+  background: var(--bg-page);
+  color: var(--text-2);
 }
 
 /* AI 发起动作：紫色；最终人工确认在弹层的绿色主按钮上 */
@@ -163,8 +163,8 @@ function levelText(d: MorningDraft): string {
 .brief__dispatch {
   border: none;
   border-radius: 999px;
-  background: var(--ai-purple);
-  color: #fff;
+  background: var(--ai);
+  color: var(--milk);
   font-weight: 700;
   cursor: pointer;
   transition: background var(--dur-fast) ease;
@@ -176,7 +176,7 @@ function levelText(d: MorningDraft): string {
   font-size: 12.5px;
 }
 .brief__btn:hover {
-  background: var(--ai-purple-2);
+  background: var(--ai-bright);
 }
 .brief__btn:disabled {
   opacity: 0.6;
@@ -187,17 +187,17 @@ function levelText(d: MorningDraft): string {
 .brief__hint {
   margin: 12px 0 0;
   font-size: 12.5px;
-  color: var(--text-3, #6b7280);
+  color: var(--text-3);
 }
 
 .brief__headline {
   margin: 12px 0;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--ai-purple-light);
+  background: var(--ai-mist);
   font-size: 13px;
   line-height: 1.6;
-  color: var(--ai-purple);
+  color: var(--ai);
 }
 
 .brief__list {
@@ -212,9 +212,9 @@ function levelText(d: MorningDraft): string {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--ai-purple-light);
+  border: 1px solid var(--ai-mist);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .draft__main {
@@ -227,7 +227,7 @@ function levelText(d: MorningDraft): string {
 .draft__name {
   font-size: 13.5px;
   font-weight: 700;
-  color: var(--text-1, #1f2937);
+  color: var(--text-1);
 }
 
 .draft__level {
@@ -249,7 +249,7 @@ function levelText(d: MorningDraft): string {
 
 .draft__sub {
   font-size: 11.5px;
-  color: var(--text-3, #6b7280);
+  color: var(--text-3);
 }
 
 /* 行内 AI 下派：浅紫底 + 紫字（比实心大按钮弱一级，避免与整卡主操作抢视觉） */
@@ -259,26 +259,26 @@ function levelText(d: MorningDraft): string {
   align-items: center;
   gap: 4px;
   padding: 5px 12px;
-  background: var(--ai-purple-light);
-  color: var(--ai-purple);
+  background: var(--ai-mist);
+  color: var(--ai);
   font-size: 12px;
 }
 .brief__dispatch:hover {
-  background: var(--ai-purple);
-  color: #fff;
+  background: var(--ai);
+  color: var(--milk);
 }
 
 .brief__empty {
   margin: 10px 0 0;
   font-size: 12.5px;
-  color: var(--text-3, #6b7280);
+  color: var(--text-3);
 }
 
 .brief__footnote {
   margin: 12px 0 0;
   padding-top: 10px;
-  border-top: 1px dashed var(--ai-purple-light);
+  border-top: 1px dashed var(--ai-mist);
   font-size: 12px;
-  color: var(--text-3, #6b7280);
+  color: var(--text-3);
 }
 </style>

@@ -1,3 +1,13 @@
+<script lang="ts">
+/**
+ * 普通 <script> 块：仅用于在模块求值阶段（main.ts import App 时、mount 之前）
+ * 同步首帧主题，避免整页加载瞬间的日 / 夜白闪。逻辑本身在 useTheme 单例内幂等。
+ */
+import { initTheme } from '@/composables/useTheme'
+
+initTheme()
+</script>
+
 <script setup lang="ts">
 /**
  * 根组件。
@@ -12,11 +22,12 @@
  *    增减判定，仅用于观感，不参与任何业务与守卫逻辑）；
  *  - 桌面看板：out-in 淡入 + ≤8px 上移，不使用绝对定位，避免干扰窗口滚动。
  */
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PhoneFrame from '@/components/common/PhoneFrame.vue'
 import ToastHost from '@/components/common/ToastHost.vue'
 import AppErrorBoundary from '@/components/common/AppErrorBoundary.vue'
+import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,6 +67,44 @@ const retrySeed = ref(0)
 function retryRouteContent(): void {
   retrySeed.value += 1
 }
+
+/**
+ * 启动品牌闪屏：仅整页加载出现一次（SPA 内部导航不挂载，自然不出现）。
+ * 独立 fixed 层（z 1300 高于 Toast），不包裹、不阻塞 RouterView 渲染；
+ * 「最短展示时长到达」且「路由首次就绪」两个条件都满足后才淡出移除。
+ */
+const prefersReducedMotion =
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const SPLASH_MIN_MS = prefersReducedMotion ? 600 : 1700
+
+const splashOn = ref(true)
+let splashMinElapsed = false
+let splashRouteReady = false
+let splashDone = false
+let splashTimer: number | undefined
+
+function dismissSplash(): void {
+  if (splashDone || !splashMinElapsed || !splashRouteReady) return
+  splashDone = true
+  splashOn.value = false
+}
+
+onMounted(() => {
+  splashTimer = window.setTimeout(() => {
+    splashMinElapsed = true
+    dismissSplash()
+  }, SPLASH_MIN_MS)
+  void router.isReady().then(() => {
+    splashRouteReady = true
+    dismissSplash()
+  })
+})
+
+onBeforeUnmount(() => {
+  if (splashTimer !== undefined) window.clearTimeout(splashTimer)
+})
 </script>
 
 <template>
@@ -88,4 +137,96 @@ function retryRouteContent(): void {
 
   <!-- 桌面看板 Toast（手机壳分支已在壳内渲染，互斥只挂一份） -->
   <ToastHost v-if="!usePhoneFrame" />
+
+  <!-- ══ 启动品牌闪屏：整页加载一次，独立 fixed 层（z 1300 高于 Toast），
+       与 PhoneFrame / RouterView / ToastHost 完全平级，不包裹任何既有结构，
+       路由在其下方照常首帧渲染，不阻塞 ══ -->
+  <Transition name="app-splash">
+    <div v-if="splashOn" class="app-splash">
+      <MilkDropLoader size="full" label="" />
+      <div class="app-splash__brand">
+        <span class="app-splash__logo">
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z" fill="#fff" />
+          </svg>
+        </span>
+        <span class="app-splash__name">
+          <b>店小C</b>
+          <small>MENGNIU AI</small>
+        </span>
+      </div>
+      <p class="app-splash__tip">牛奶注入中 · AI 正在准备</p>
+    </div>
+  </Transition>
 </template>
+
+<style scoped>
+/* 深绿品牌底全屏（色值对齐 design-system-v5 定稿 splash 渐变） */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: linear-gradient(150deg, #06964c, #02803f);
+}
+
+.app-splash__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #fff;
+}
+
+.app-splash__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.app-splash__name b {
+  display: block;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 2px;
+}
+
+.app-splash__name small {
+  display: block;
+  margin-top: 1px;
+  font-size: 8px;
+  letter-spacing: 3px;
+  opacity: 0.75;
+}
+
+.app-splash__tip {
+  margin: 0;
+  color: #bff0d4;
+  font-size: 10.5px;
+  letter-spacing: 2px;
+}
+
+.app-splash-leave-active {
+  transition: opacity 320ms var(--ease-standard);
+  pointer-events: none;
+}
+
+.app-splash-leave-to {
+  opacity: 0;
+}
+
+/* 减弱动效：0.6s 到时直接移除，无淡出过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .app-splash-leave-active {
+    transition: none;
+  }
+}
+</style>

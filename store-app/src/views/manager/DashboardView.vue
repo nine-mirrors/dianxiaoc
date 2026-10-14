@@ -861,7 +861,7 @@ const taskSummary = computed(() => {
 .p5__bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #009639, #8bc34a);
+  background: linear-gradient(90deg, var(--brand), var(--level-good));
   transition: width 0.4s ease;
 }
 

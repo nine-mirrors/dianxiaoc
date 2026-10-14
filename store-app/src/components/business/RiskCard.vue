@@ -21,7 +21,7 @@ const expanded = ref<boolean>(false)
 <template>
   <div class="risk-card">
     <header class="risk-card__head">
-      <span class="risk-card__icon"><AppIcon name="alert-triangle" :size="16" color="#fff" /></span>
+      <span class="risk-card__icon"><AppIcon name="alert-triangle" :size="16" color="var(--milk)" /></span>
       <b>风险预判</b>
       <AiBadge text="AI" />
     </header>
@@ -84,8 +84,9 @@ const expanded = ref<boolean>(false)
   align-items: center;
   gap: 6px;
   padding: 9px 12px;
-  background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-danger) 100%);
-  color: #fff;
+  /* 橙→红警示渐变（语义令牌，夜间自动换提亮档），文字用奶白令牌保证对比 */
+  background: linear-gradient(135deg, var(--amber) 0%, var(--red) 100%);
+  color: var(--milk);
   font-size: 14px;
 }
 
@@ -99,7 +100,7 @@ const expanded = ref<boolean>(false)
 
 .risk-card__body {
   padding: 12px;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .risk-card__lead {

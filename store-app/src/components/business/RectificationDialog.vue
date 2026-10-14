@@ -212,7 +212,7 @@ async function submit(): Promise<void> {
   z-index: 1500;
   display: flex;
   align-items: flex-end;
-  background: rgba(15, 25, 18, 0.45);
+  background: var(--bg-mask);
 }
 
 .rc {
@@ -222,7 +222,7 @@ async function submit(): Promise<void> {
   overflow-y: auto;
   padding: 18px 16px 16px;
   border-radius: 18px 18px 0 0;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .rc__title {
@@ -318,10 +318,10 @@ async function submit(): Promise<void> {
   gap: 6px;
   width: 100%;
   height: 42px;
-  border: 1px dashed var(--mn-green);
+  border: 1px dashed var(--brand);
   border-radius: 12px;
-  background: #fff;
-  color: var(--mn-green);
+  background: var(--bg-card);
+  color: var(--brand);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

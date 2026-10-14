@@ -28,10 +28,34 @@ let chart: echarts.ECharts | null = null
 
 /** 容器尺寸观察（Tab v-show 切换 / 断点切换 / 窗口拖拽都靠它），卸载时断开 */
 let resizeObserver: ResizeObserver | null = null
+/** 主题观察：<html data-theme> 日/夜切换后重读令牌并重绘，卸载时断开 */
+let themeObserver: MutationObserver | null = null
 /** resize 合并到下一帧执行，拖拽窗口时每帧最多重绘一次 */
 let resizeRaf = 0
 /** 上一次字号档：仅跨档时才整图 setOption，同档拖拽只走廉价的 resize */
 let lastFontScale = 1
+
+/** 读取 :root / [data-theme] 上当前生效的设计令牌（去空白；取不到时回退空串） */
+function css(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+/** 给 #rgb / #rrggbb 令牌色附加透明度（面积填充用）；非 hex 输入原样返回 */
+function withAlpha(color: string, alpha: number): string {
+  const m = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)
+  if (!m) return color
+  let hex = m[1]
+  if (hex.length === 3) {
+    hex = hex
+      .split('')
+      .map((c) => c + c)
+      .join('')
+  }
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 
 /** 当前选中的序列 */
 const active = computed<TrendSeries | undefined>(() => props.series.find((s) => s.key === activeKey.value))
@@ -67,11 +91,12 @@ const ariaLabel = computed<string>(() => {
   }`
 })
 
-/** 各指标折线色（区别于环图色，突出 AI 洞察） */
-const LINE_COLORS: Record<TrendKey, string> = {
-  score: '#009639',
-  oosRate: '#E02020',
-  coverage: '#6D3BF5',
+/** 各指标折线色对应的设计令牌（健康分=品牌绿 / 缺货率=风险红 / 铺货率=AI 智紫），
+ *  每次渲染现读，日/夜主题下自动取当前生效值 */
+const LINE_COLOR_TOKENS: Record<TrendKey, string> = {
+  score: '--brand',
+  oosRate: '--red',
+  coverage: '--ai',
 }
 
 function render(): void {
@@ -86,33 +111,40 @@ function render(): void {
   const s = active.value
   const axisFont = Math.round(11 * fontScale())
   lastFontScale = fontScale()
+  const lineColor = css(LINE_COLOR_TOKENS[s.key])
+  // 坐标轴 / 分割线 / tooltip 全部读中性令牌，深底下不刺眼
+  const axisLabelColor = css('--text-3')
+  const axisLineColor = css('--border-color')
   chart.setOption(
     {
       animation: !prefersReducedMotion(),
-      color: [LINE_COLORS[s.key]],
+      color: [lineColor],
       tooltip: {
         trigger: 'axis',
         valueFormatter: (v: unknown) => `${v}${s.unit}`,
-        backgroundColor: 'rgba(26,31,28,0.92)',
-        borderWidth: 0,
-        textStyle: { color: '#fff', fontSize: 12 },
+        // tooltip 用抬升表面 + 边框 + 正文文字色，深底浅底都可读
+        backgroundColor: css('--bg-elevated'),
+        borderColor: css('--border-color'),
+        borderWidth: 1,
+        padding: 8,
+        textStyle: { color: css('--text-1'), fontSize: 12 },
       },
       grid: { left: 40, right: 16, top: 20, bottom: 26 },
       xAxis: {
         type: 'category',
         data: s.weeks,
         boundaryGap: false,
-        axisLine: { lineStyle: { color: '#e5e7eb' } },
+        axisLine: { lineStyle: { color: axisLineColor } },
         axisTick: { show: false },
-        axisLabel: { color: '#6b7280', fontSize: axisFont },
+        axisLabel: { color: axisLabelColor, fontSize: axisFont },
       },
       yAxis: {
         type: 'value',
         min: (v: { min: number; max: number }) => Math.floor(v.min - 2),
         axisLine: { show: false },
         axisTick: { show: false },
-        splitLine: { lineStyle: { color: '#f0f2f0', type: 'dashed' } },
-        axisLabel: { color: '#6b7280', fontSize: axisFont, formatter: `{value}${s.unit}` },
+        splitLine: { lineStyle: { color: axisLineColor, type: 'dashed' } },
+        axisLabel: { color: axisLabelColor, fontSize: axisFont, formatter: `{value}${s.unit}` },
       },
       series: [
         {
@@ -122,8 +154,9 @@ function render(): void {
           symbol: 'circle',
           symbolSize: 5,
           lineStyle: { width: 2.5 },
-          itemStyle: { color: LINE_COLORS[s.key], borderColor: '#fff', borderWidth: 1 },
-          areaStyle: { color: 'rgba(0,150,57,0.10)' },
+          // 节点描边与卡片表面同色（日间白、夜间深墨绿）
+          itemStyle: { color: lineColor, borderColor: css('--bg-card'), borderWidth: 1 },
+          areaStyle: { color: withAlpha(lineColor, 0.1) },
         },
       ],
     },
@@ -174,6 +207,14 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(scheduleSync)
     resizeObserver.observe(el.value)
   }
+  // 观察 <html> 的 data-theme：日/夜切换后整图重读令牌 setOption（含 resize）
+  if (typeof MutationObserver !== 'undefined') {
+    themeObserver = new MutationObserver(() => {
+      if (chart) chart.resize()
+      render()
+    })
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+  }
   window.addEventListener('resize', onResize)
 })
 
@@ -181,6 +222,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   resizeObserver?.disconnect()
   resizeObserver = null
+  themeObserver?.disconnect()
+  themeObserver = null
   if (resizeRaf) {
     cancelAnimationFrame(resizeRaf)
     resizeRaf = 0
@@ -227,7 +270,7 @@ watch([() => props.series, activeKey], render, { deep: true })
   padding: 4px 12px;
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-2);
   font-size: 12px;
   cursor: pointer;
@@ -235,9 +278,9 @@ watch([() => props.series, activeKey], render, { deep: true })
 }
 
 .trend__tab.is-active {
-  border-color: var(--mn-green);
-  background: var(--mn-green-light);
-  color: var(--mn-green-dark);
+  border-color: var(--brand);
+  background: var(--brand-mist);
+  color: var(--brand-deep);
   font-weight: 600;
 }
 

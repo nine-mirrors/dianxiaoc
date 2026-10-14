@@ -86,8 +86,8 @@ function fmtMs(ms?: number): string {
   margin: 10px 0;
   padding: 14px 14px 10px;
   border-radius: var(--radius-card, 14px);
-  background: linear-gradient(180deg, #f6faf7 0%, #fff 100%);
-  border: 1px solid #e2eee6;
+  background: linear-gradient(180deg, var(--bg-page) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border-color);
 }
 
 .chain__head {
@@ -98,7 +98,7 @@ function fmtMs(ms?: number): string {
   margin: 0 0 8px;
   font-size: 15px;
   font-weight: 800;
-  color: var(--text-1, #1f2937);
+  color: var(--text-1);
 }
 
 .chain__legend {
@@ -118,18 +118,18 @@ function fmtMs(ms?: number): string {
 }
 
 .tag.is-llm {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--ai-mist);
+  color: var(--ai-deep);
 }
 
 .tag.is-tool {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--sky-mist);
+  color: var(--info-fg);
 }
 
 .tag.is-algo {
-  background: #e7f6ec;
-  color: #0a7d43;
+  background: var(--brand-mist);
+  color: var(--success-fg);
 }
 
 .chain__list {
@@ -160,17 +160,18 @@ function fmtMs(ms?: number): string {
   border-radius: 50%;
   font-size: 11px;
   font-weight: 800;
-  color: #fff;
-  background: var(--mn-green, #009639);
+  /* 序号/勾压在彩色圆点上：奶白文字（夜间随 --milk 转深字） */
+  color: var(--milk);
+  background: var(--brand);
   z-index: 1;
 }
 
 .step__dot--fallback {
-  background: #d97706;
+  background: var(--warning-fg);
 }
 
 .step__dot--ready {
-  background: #9aa3af;
+  background: var(--text-3);
 }
 
 .step__line {
@@ -178,7 +179,7 @@ function fmtMs(ms?: number): string {
   width: 2px;
   min-height: 18px;
   margin: 2px 0;
-  background: #dbe7df;
+  background: var(--border-color);
 }
 
 .step__body {
@@ -200,14 +201,14 @@ function fmtMs(ms?: number): string {
 
 .step__title {
   font-size: 13.5px;
-  color: var(--text-1, #1f2937);
+  color: var(--text-1);
 }
 
 .step__detail {
   margin: 4px 0 5px;
   font-size: 12px;
   line-height: 1.55;
-  color: var(--text-2, #4b5563);
+  color: var(--text-2);
 }
 
 .step__meta {
@@ -216,7 +217,7 @@ function fmtMs(ms?: number): string {
   gap: 10px;
   flex-wrap: wrap;
   font-size: 10.5px;
-  color: var(--text-3, #6b7280);
+  color: var(--text-3);
 }
 
 .step__source {
@@ -229,23 +230,23 @@ function fmtMs(ms?: number): string {
 }
 
 .step__status--done {
-  color: var(--mn-green-dark, #0a7d43);
+  color: var(--brand-deep);
 }
 
 .step__status--fallback {
-  color: #b45309;
+  color: var(--warning-fg);
 }
 
 .step__status--ready {
-  color: #6b7280;
+  color: var(--text-3);
 }
 
 .chain__note {
   margin: 8px 0 0;
   padding-top: 8px;
-  border-top: 1px dashed #e2eee6;
+  border-top: 1px dashed var(--border-color);
   font-size: 10.5px;
   line-height: 1.6;
-  color: var(--text-3, #6b7280);
+  color: var(--text-3);
 }
 </style>

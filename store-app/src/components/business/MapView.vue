@@ -44,8 +44,9 @@ const LEVEL_COLOR: Record<string, string> = {
 }
 
 function markerHtml(m: MapMarker): string {
-  const color = LEVEL_COLOR[m.level] ?? 'var(--mn-green)'
-  return `<div style="width:36px;height:36px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)">${m.score}</div>`
+  const color = LEVEL_COLOR[m.level] ?? 'var(--brand)'
+  // 分数文字 / 外圈描边用奶白令牌（日/夜都与四档亮色形成对比）；投影为地图图钉专用，无等价令牌
+  return `<div style="width:36px;height:36px;border-radius:50%;background:${color};color:var(--milk);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid var(--milk);box-shadow:0 2px 8px rgba(0,0,0,.35)">${m.score}</div>`
 }
 
 function render(): void {
@@ -132,7 +133,7 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 400;
   border-radius: 0;
-  background: var(--bg-1, #f5f6f8);
+  background: var(--bg-page);
 }
 
 .map-view {
@@ -142,7 +143,7 @@ onBeforeUnmount(() => {
 
 .map-view--offline {
   background:
-    repeating-linear-gradient(45deg, #eef1ef 0 12px, #e7ebe9 12px 24px);
+    repeating-linear-gradient(45deg, var(--bg-page) 0 12px, var(--border-color) 12px 24px);
 }
 
 .map-offline-tip {
@@ -155,13 +156,13 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e0e4e2;
-  color: #6b7280;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-2);
   font-size: 11.5px;
   line-height: 1.5;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--sh-1);
 }
 
 .map-full-btn {
@@ -172,11 +173,11 @@ onBeforeUnmount(() => {
   padding: 5px 12px;
   border: none;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #1f2937;
+  background: var(--bg-elevated);
+  color: var(--text-1);
   font-size: 12px;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--sh-2);
   cursor: pointer;
 }
 

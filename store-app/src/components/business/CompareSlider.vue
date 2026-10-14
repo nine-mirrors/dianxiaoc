@@ -179,8 +179,14 @@ onUnmounted(onUp)
           @keydown="onHandleKeydown"
         >
           <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-            <circle cx="13" cy="13" r="12" fill="#fff" fill-opacity="0.94" />
-            <path d="M10 9.5 6.5 13 10 16.5M16 9.5 19.5 13 16 16.5" stroke="#009639" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            <circle class="cmp__handle-disc" cx="13" cy="13" r="12" />
+            <path
+              class="cmp__handle-arrow"
+              d="M10 9.5 6.5 13 10 16.5M16 9.5 19.5 13 16 16.5"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
         </span>
       </div>
@@ -200,9 +206,19 @@ onUnmounted(onUp)
   width: 100%;
   overflow: hidden;
   border-radius: 8px;
-  background: #eef0ef;
+  background: var(--border-color);
   user-select: none;
   cursor: ew-resize;
+}
+
+/* 手柄圆面是浮在照片上的 UI 表面：日间白、夜间抬升深墨绿；箭头用品牌绿 */
+.cmp__handle-disc {
+  fill: var(--bg-elevated);
+  fill-opacity: 0.94;
+}
+
+.cmp__handle-arrow {
+  stroke: var(--brand);
 }
 
 .cmp__layer {

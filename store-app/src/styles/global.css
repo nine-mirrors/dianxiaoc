@@ -161,33 +161,31 @@ a {
   transform: scale(0.97);
 }
 
-/* 实心主按钮：底色由 --mn-green(#009639) 加深到同色相 #007a30。
- * #009639 + 白字对比度仅 3.87:1，不达 WCAG AA（4.5:1）；
- * #007a30 + 白字 ≈ 5.5:1，AA 达标。
- * 注意：不要在此改 --mn-green 变量——描边按钮、图标、浅绿态继续用原绿。 */
+/* 实心主按钮：品牌深绿（对应 --brand-deep），文字用奶白令牌
+ * （--milk 在日间近白、夜间转深：夜间品牌色提亮后深字才达 AA）。 */
 .u-btn--primary {
-  background: #007a30;
-  color: #fff;
+  background: var(--brand-deep);
+  color: var(--milk);
 }
 
-/* hover 在 #007a30 基础上再压暗约 4%（同色相 #00752e，白字 ≈ 5.9:1） */
+/* hover 在 --brand-deep 基础上与墨色混合压暗一档（夜间反向提亮，仍是悬停反馈） */
 .u-btn--primary:hover {
-  background: #00752e;
+  background: color-mix(in srgb, var(--brand-deep) 90%, var(--ink));
 }
 
 .u-btn--primary:active {
-  background: var(--mn-green-dark);
+  background: var(--brand-deep);
 }
 
 .u-btn--ghost {
-  background: #fff;
-  border-color: var(--mn-green);
-  color: var(--mn-green);
+  background: var(--bg-card);
+  border-color: var(--brand);
+  color: var(--brand);
 }
 
 .u-btn--ai {
-  background: linear-gradient(135deg, var(--ai-purple) 0%, var(--ai-purple-2) 100%);
-  color: #fff;
+  background: var(--ai-grad);
+  color: var(--milk);
 }
 
 .u-btn:disabled {
@@ -211,14 +209,14 @@ a {
   animation: u-fade-up 0.36s ease both;
 }
 
-/* 成功回写时的绿色闪光反馈（P2 门店卡） */
+/* 成功回写时的绿色闪光反馈（P2 门店卡）：常态走卡片投影令牌，闪光走品牌浅绿令牌 */
 @keyframes u-flash-success {
   0%,
   100% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--sh-1);
   }
   35% {
-    box-shadow: 0 0 0 3px rgba(0, 150, 57, 0.35);
+    box-shadow: 0 0 0 3px var(--brand-mist-2);
   }
 }
 
@@ -341,5 +339,58 @@ canvas {
   /* 主/次按钮按压缩放位移降级为静止，底色按压反馈仍保留 */
   .u-btn:active {
     transform: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+ * 打印强制浅色（印刷体检/巡检报告永远白底黑字）：
+ * 无论当前是 :root 日间还是 [data-theme='dark'] 夜间，
+ * 在打印媒体里把表面 / 文字 / 边框 / 语义浅底令牌重置为日间值，
+ * 彩色品牌色与四档健康色保留（print-color-adjust 已在图表组件开启）。
+ * ════════════════════════════════════════════════════════════ */
+@media print {
+  :root,
+  [data-theme='dark'] {
+    color-scheme: light;
+
+    --bg-page: #ffffff;
+    --bg-card: #ffffff;
+    --bg-elevated: #ffffff;
+    --bg-mask: rgba(10, 26, 18, 0.46);
+
+    --text-1: #14241b;
+    --text-2: #4a5d52;
+    --text-3: #81918a;
+    --text-4: #b3bfb7;
+
+    --border-color: #e7efe9;
+    --border-strong: #d3e2d9;
+
+    --brand-mist: #e8faf0;
+    --brand-mist-2: #d9f5e4;
+    --sky-mist: #e8f5fd;
+    --amber-mist: #fff2e2;
+    --red-mist: #fde9e7;
+    --gold-mist: #f7eedd;
+    --teal-mist: #e2f6f4;
+    --ai-mist: #f0eefb;
+
+    --success-bg: #e8faf0;
+    --success-fg: #007a3e;
+    --warning-bg: #fff2e2;
+    --warning-fg: #c96600;
+    --danger-bg: #fde9e7;
+    --danger-fg: #cf1a26;
+    --info-bg: #e8f5fd;
+    --info-fg: #0b74b8;
+
+    --sh-1: 0 2px 8px rgba(20, 60, 40, 0.06);
+    --sh-2: 0 8px 22px rgba(20, 60, 40, 0.1);
+    --sh-3: 0 18px 44px rgba(20, 60, 40, 0.16);
+  }
+
+  body {
+    background: #fff;
+    color: #14241b;
   }
 }

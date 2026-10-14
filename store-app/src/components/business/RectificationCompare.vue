@@ -129,7 +129,7 @@ const totalGain = computed<number>(() => props.records.reduce((s, r) => s + (r.g
 .rc-cmp__item {
   padding: 10px 12px;
   border-radius: 10px;
-  background: #fafbfa;
+  background: var(--bg-page);
 }
 
 .rc-cmp__item-head {
@@ -184,7 +184,7 @@ const totalGain = computed<number>(() => props.records.reduce((s, r) => s + (r.g
   margin-top: 5px;
   padding: 6px 8px;
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   font-size: 11px;
   line-height: 1.6;
   color: var(--text-2);

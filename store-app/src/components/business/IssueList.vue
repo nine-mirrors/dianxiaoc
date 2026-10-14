@@ -230,8 +230,8 @@ function onSelectKey(issue: Issue, e: KeyboardEvent): void {
   flex: none;
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--mn-green);
-  color: #fff;
+  background: var(--brand);
+  color: var(--milk);
   font-size: 10px;
   font-weight: 600;
 }
@@ -306,10 +306,10 @@ function onSelectKey(issue: Issue, e: KeyboardEvent): void {
 
 .issue__btn {
   padding: 4px 10px;
-  border: 1px solid var(--mn-green);
+  border: 1px solid var(--brand);
   border-radius: 999px;
-  background: #fff;
-  color: var(--mn-green);
+  background: var(--bg-card);
+  color: var(--brand);
   font-size: 11px;
   font-weight: 600;
 }

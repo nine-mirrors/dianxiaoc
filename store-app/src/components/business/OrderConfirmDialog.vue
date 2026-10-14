@@ -83,7 +83,7 @@ const { panelRef } = useDialogFocus({
 
         <footer class="ocd-foot">
           <button type="button" class="ocd-confirm mot-tap" @click="emit('confirm')">
-            <AppIcon name="check" :size="17" color="#fff" />
+            <AppIcon name="check" :size="17" color="var(--milk)" />
             确认下单，业代 2 小时内联系
           </button>
           <!-- 默认焦点落在这里：不可逆操作防误触；「仅看看不买」可一键退出 -->
@@ -104,7 +104,7 @@ const { panelRef } = useDialogFocus({
   z-index: 1500;
   display: flex;
   align-items: flex-end;
-  background: rgba(15, 25, 18, 0.45);
+  background: var(--bg-mask);
 }
 
 .ocd-sheet {
@@ -113,7 +113,7 @@ const { panelRef } = useDialogFocus({
   width: 100%;
   max-height: 90dvh;
   border-radius: 18px 18px 0 0;
-  background: var(--bg-card, #fff);
+  background: var(--bg-card);
   outline: none;
 }
 
@@ -143,7 +143,7 @@ const { panelRef } = useDialogFocus({
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: var(--bg-page, #f5f7f5);
+  background: var(--bg-page);
 }
 
 .ocd-body {
@@ -211,7 +211,7 @@ const { panelRef } = useDialogFocus({
 
 .ocd-total b {
   font-size: 16px;
-  color: var(--mn-green-dark, #00662a);
+  color: var(--brand-deep);
 }
 
 .ocd-foot {
@@ -235,8 +235,8 @@ const { panelRef } = useDialogFocus({
   padding: 0 16px;
   border: none;
   border-radius: 26px;
-  background: linear-gradient(135deg, var(--ai-purple) 0%, var(--ai-purple-2) 100%);
-  color: #fff;
+  background: var(--ai-grad);
+  color: var(--milk);
   font-size: 15.5px;
   font-weight: 700;
 }
@@ -244,10 +244,10 @@ const { panelRef } = useDialogFocus({
 .ocd-cancel {
   width: 100%;
   min-height: 44px;
-  border: 1px solid var(--mn-green, #009639);
+  border: 1px solid var(--brand);
   border-radius: 22px;
-  background: var(--bg-card, #fff);
-  color: var(--mn-green-dark, #00662a);
+  background: var(--bg-card);
+  color: var(--brand-deep);
   font-size: 15px;
   font-weight: 600;
 }

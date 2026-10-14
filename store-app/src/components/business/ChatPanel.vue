@@ -212,7 +212,7 @@ function skip(): void {
         class="chat__row"
         :class="m.role === 'user' ? 'chat__row--user' : 'chat__row--ai'"
       >
-        <span v-if="m.role === 'ai'" class="chat__avatar"><AppIcon name="sparkles" :size="13" color="#fff" /></span>
+        <span v-if="m.role === 'ai'" class="chat__avatar"><AppIcon name="sparkles" :size="13" color="var(--milk)" /></span>
         <div class="chat__bubble">
           <!--
             ★ A2：角标按「本条气泡」的真实来源措辞：
@@ -238,7 +238,7 @@ function skip(): void {
       <div class="u-sr-only" aria-live="polite" aria-atomic="true">{{ spokenText }}</div>
 
       <div v-if="pending && !typing && !streamingId" class="chat__row chat__row--ai">
-        <span class="chat__avatar"><AppIcon name="sparkles" :size="13" color="#fff" /></span>
+        <span class="chat__avatar"><AppIcon name="sparkles" :size="13" color="var(--milk)" /></span>
         <div class="chat__bubble chat__bubble--thinking">
           <i /><i /><i />
         </div>
@@ -297,7 +297,7 @@ function skip(): void {
         @click="send(draft)"
       >
         发送
-        <AppIcon name="sparkles" :size="12" color="#fff" />
+        <AppIcon name="sparkles" :size="12" color="var(--milk)" />
       </button>
     </div>
   </div>
@@ -357,9 +357,9 @@ function skip(): void {
 }
 
 .chat__row--user .chat__bubble {
-  /* #007a30：AA 深绿（白字≈5.5:1），与全局主按钮同色，原 --mn-green 仅 3.9:1 */
-  background: #007a30;
-  color: #fff;
+  /* 用户气泡：品牌深绿实底 + 奶白文字（夜间 --milk 转深字，仍 AA） */
+  background: var(--brand-deep);
+  color: var(--milk);
   border-top-right-radius: 4px;
 }
 
@@ -378,7 +378,7 @@ function skip(): void {
 }
 
 .chat__src--std {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--bg-page);
   /* 来源说明承载信息（11px），text-3 仅 ≈2.5:1，提到 text-2 */
   color: var(--text-2);
 }
@@ -451,15 +451,15 @@ function skip(): void {
   margin: 8px 10px 2px;
   padding: 8px 10px;
   border-radius: 10px;
-  background: #f4f8f6;
-  border: 1px solid #e6efe9;
+  background: var(--bg-page);
+  border: 1px solid var(--border-color);
 }
 
 .chat__opener-tip {
   margin: 0 0 6px;
   font-size: 11.5px;
   /* 引导提示承载信息，text-3 仅 ≈2.5:1，提到 text-2 */
-  color: var(--text-2, #4b5563);
+  color: var(--text-2);
 }
 
 .chat__opener-row {
@@ -470,10 +470,10 @@ function skip(): void {
 
 .chat__opener-btn {
   padding: 5px 10px;
-  border: 1px solid var(--mn-green, #009639);
+  border: 1px solid var(--brand);
   border-radius: 999px;
-  background: #fff;
-  color: var(--mn-green-dark, #0a7d43);
+  background: var(--bg-card);
+  color: var(--brand-deep);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -481,8 +481,8 @@ function skip(): void {
 }
 
 .chat__opener-btn:hover {
-  background: #007a30;
-  color: #fff;
+  background: var(--brand-deep);
+  color: var(--milk);
 }
 
 .chat__opener-btn:active {
@@ -503,10 +503,10 @@ function skip(): void {
 
 .chat__chip {
   padding: 5px 10px;
-  border: 1px solid var(--ai-purple);
+  border: 1px solid var(--ai);
   border-radius: 999px;
-  background: #fff;
-  color: var(--ai-purple);
+  background: var(--bg-card);
+  color: var(--ai);
   font-size: 11.5px;
   font-weight: 500;
 }
@@ -527,13 +527,13 @@ function skip(): void {
   padding: 0 12px;
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card);
   font-size: 13px;
   outline: none;
 }
 
 .chat__field:focus {
-  border-color: var(--ai-purple);
+  border-color: var(--ai);
 }
 
 .chat__send {
@@ -545,8 +545,8 @@ function skip(): void {
   padding: 0 14px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--ai-purple) 0%, var(--ai-purple-2) 100%);
-  color: #fff;
+  background: var(--ai-grad);
+  color: var(--milk);
   font-size: 13px;
   font-weight: 600;
 }

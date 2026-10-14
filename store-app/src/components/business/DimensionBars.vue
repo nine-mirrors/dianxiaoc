@@ -7,12 +7,13 @@ import { colorOf } from '@/domain/constants'
 import type { DimensionScore, HealthLevelKey } from '@/types'
 
 /**
- * 维度分数文字的深色档（白底 ≥4.5:1）；条色仍用 colorOf() 亮色（装饰填充，不承载文字）。
- * 良好档 #558b2f 白底对比 ≈5.1:1。
+ * 维度分数文字的深色档（浅底 ≥4.5:1）；条色仍用 colorOf() 亮色（装饰填充，不承载文字）。
+ * 良好档无专用文字令牌：用 --level-good 与 --ink 混合得到「日间深橄榄 / 夜间浅黄绿」，
+ * 两个主题下对卡片底均 ≥4.5:1。
  */
 const LEVEL_FG: Record<HealthLevelKey, string> = {
-  excellent: 'var(--mn-green-dark)',
-  good: '#558b2f',
+  excellent: 'var(--brand-deep)',
+  good: 'color-mix(in srgb, var(--level-good) 60%, var(--ink))',
   warning: 'var(--warning-fg)',
   risk: 'var(--danger-fg)',
 }
@@ -62,7 +63,7 @@ const props = withDefaults(defineProps<Props>(), { dimensions: () => [] })
   flex: 1;
   height: 8px;
   border-radius: 999px;
-  background: #eef0ef;
+  background: var(--border-color);
   overflow: hidden;
 }
 

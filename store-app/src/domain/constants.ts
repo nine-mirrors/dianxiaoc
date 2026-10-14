@@ -13,12 +13,28 @@ import type {
   TrendKey,
 } from '@/types'
 
-/** 健康分四档（PRD 3.2，全产品统一） */
+/* ════════════════════════════════════════════════════════════════
+ * 色值常量（TS / Canvas / 内联样式无法引用 CSS 变量时的唯一兜底出口）。
+ * 每个常量都与 styles/tokens.css 的 Design System 1.2 令牌同值，
+ * 注释标明对应令牌；这里改值必须同步 tokens.css，外观色一律以令牌为准。
+ * 注意：这些常量取日间令牌值，供装饰填充 / 照片标注框等场景使用。
+ * ════════════════════════════════════════════════════════════════ */
+const COLOR_BRAND = '#00b451' // 对应 --brand
+const COLOR_RED = '#e60012' // 对应 --red
+const COLOR_AMBER = '#ff8a1e' // 对应 --amber
+const COLOR_SKY = '#2fa7e0' // 对应 --sky
+const COLOR_LEVEL_EXCELLENT = '#00a64d' // 对应 --level-excellent
+const COLOR_LEVEL_GOOD = '#8bbf3a' // 对应 --level-good
+const COLOR_LEVEL_WARNING = '#ef8a1e' // 对应 --level-warning
+const COLOR_LEVEL_RISK = '#e03225' // 对应 --level-risk
+const COLOR_NEUTRAL = '#81918a' // 对应 --text-3（中性灰）
+
+/** 健康分四档（PRD 3.2，全产品统一；色值对齐 --level-* 令牌） */
 export const HEALTH_LEVELS = [
-  { key: 'excellent', min: 85, max: 100, label: '优秀', color: '#009639', icon: '✓', advice: '保持当前陈列水平' },
-  { key: 'good', min: 70, max: 84, label: '良好', color: '#8BC34A', icon: '◐', advice: '有小问题，本周内处理' },
-  { key: 'warning', min: 60, max: 69, label: '预警', color: '#FF9800', icon: '△', advice: '需立即处理，否则影响销量' },
-  { key: 'risk', min: 0, max: 59, label: '风险', color: '#E02020', icon: '✖', advice: '红色告警，24 小时内整改' },
+  { key: 'excellent', min: 85, max: 100, label: '优秀', color: COLOR_LEVEL_EXCELLENT, icon: '✓', advice: '保持当前陈列水平' },
+  { key: 'good', min: 70, max: 84, label: '良好', color: COLOR_LEVEL_GOOD, icon: '◐', advice: '有小问题，本周内处理' },
+  { key: 'warning', min: 60, max: 69, label: '预警', color: COLOR_LEVEL_WARNING, icon: '△', advice: '需立即处理，否则影响销量' },
+  { key: 'risk', min: 0, max: 59, label: '风险', color: COLOR_LEVEL_RISK, icon: '✖', advice: '红色告警，24 小时内整改' },
 ] as const
 
 /** 六维度元数据（PRD 7.1，顺序固定 D1–D6） */
@@ -98,12 +114,12 @@ export const ANNOTATION_STYLES: Record<
   AnnotationLayer,
   { color: string; dashed: boolean; label: string; tag: string; badge: boolean }
 > = {
-  mengniu: { color: '#009639', dashed: false, label: '蒙牛正常', tag: '绿实线', badge: false },
-  oos: { color: '#FF9800', dashed: false, label: '缺货预警', tag: '橙实线', badge: false },
-  empty: { color: '#E02020', dashed: true, label: '空位', tag: '红虚线', badge: false },
-  competitor: { color: '#3B82F6', dashed: true, label: '竞品', tag: '蓝虚线', badge: false },
-  pricetag: { color: '#FF9800', dashed: false, label: '价签问题', tag: '橙色角标', badge: true },
-  stack: { color: '#FF9800', dashed: true, label: '堆头未执行', tag: '橙虚线', badge: false },
+  mengniu: { color: COLOR_BRAND, dashed: false, label: '蒙牛正常', tag: '绿实线', badge: false },
+  oos: { color: COLOR_AMBER, dashed: false, label: '缺货预警', tag: '橙实线', badge: false },
+  empty: { color: COLOR_RED, dashed: true, label: '空位', tag: '红虚线', badge: false },
+  competitor: { color: COLOR_SKY, dashed: true, label: '竞品', tag: '蓝虚线', badge: false },
+  pricetag: { color: COLOR_AMBER, dashed: false, label: '价签问题', tag: '橙色角标', badge: true },
+  stack: { color: COLOR_AMBER, dashed: true, label: '堆头未执行', tag: '橙虚线', badge: false },
 }
 
 /** 图层筛选 chips（P4 模块 C） */
@@ -114,11 +130,11 @@ export const LAYER_FILTERS: { key: 'all' | AnnotationLayer; label: string }[] = 
   { key: 'competitor', label: '竞品' },
 ]
 
-/** 严重度元数据（PRD 4.4 D 模块） */
+/** 严重度元数据（PRD 4.4 D 模块；色值对齐 --red / --amber / --text-3 令牌） */
 export const SEVERITY_META: Record<Severity, { label: string; color: string; weight: number }> = {
-  severe: { label: '严重', color: '#E02020', weight: 3 },
-  medium: { label: '中度', color: '#FF9800', weight: 2 },
-  low: { label: '轻度', color: '#9CA3AF', weight: 1 },
+  severe: { label: '严重', color: COLOR_RED, weight: 3 },
+  medium: { label: '中度', color: COLOR_AMBER, weight: 2 },
+  low: { label: '轻度', color: COLOR_NEUTRAL, weight: 1 },
 }
 
 /** 拍摄部位元数据 */
@@ -177,7 +193,8 @@ export function colorOfScore(score: number): string {
  */
 export function colorOf(level: HealthLevelKey): string {
   const hit = HEALTH_LEVELS.find((l) => l.key === level)
-  return hit ? hit.color : '#9CA3AF'
+  /* 兜底中性色对齐 --text-3 令牌 */
+  return hit ? hit.color : COLOR_NEUTRAL
 }
 
 /** 分档中文名 */

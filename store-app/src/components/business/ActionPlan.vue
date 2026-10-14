@@ -83,8 +83,9 @@ const emit = defineEmits<{ (e: 'order'): void; (e: 'adjust'): void }>()
   width: 17px;
   height: 17px;
   border-radius: 50%;
-  background: var(--mn-green);
-  color: #fff;
+  background: var(--brand);
+  /* 数字压在品牌绿圆底上：奶白文字（夜间随 --milk 转深字） */
+  color: var(--milk);
   font-size: 10px;
   font-style: normal;
 }

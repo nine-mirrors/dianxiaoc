@@ -1,30 +1,66 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
   <head>
+    <!-- 防主题闪烁（FOUC）：必须位于 <head> 最前，先于 title 与所有 CSS 同步执行。
+         读 localStorage 'dxc:theme'（用户上次选择），否则跟随系统深浅色，
+         在首帧绘制前给 <html> 设置 data-theme，tokens.css 的夜间变量首帧即生效，不闪白。
+         极简、零依赖；隐私模式等异常下 try/catch 静默兜底为日间默认。 -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('dxc:theme');
+          if (t !== 'dark' && t !== 'light') {
+            t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+      })();
+    </script>
     <meta charset="UTF-8" />
     <!-- 允许用户双指/双击缩放（WCAG 1.4.4 Resize Text）：禁止缩放会导致低视力用户无法放大阅读 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#009639" />
+    <!-- 浏览器顶栏配色：夜间墨绿黑、日间品牌绿，与 data-theme 切换配合 -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c1510" />
+    <meta name="theme-color" content="#00b451" />
     <meta name="description" content="店小C · 蒙牛 AI 巡店助手 —— 拍一张货架照，AI 告诉你该怎么卖" />
-    <!-- 站点图标：内联 data-URI SVG，零外链、不产生任何网络请求 -->
+    <!-- PWA 可安装支持（base 为相对路径 './'，资源均相对 index.html 解析） -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- iOS 对 SVG 主屏幕图标支持有限，链接本身无害；真机需以实际表现为准 -->
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="店小C" />
+    <!-- 站点图标：绿色圆角方块 + 白色奶滴，内联 data-URI SVG，零外链、不产生任何网络请求 -->
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23009639'/%3E%3Cpath d='M42 22a15 15 0 1 0 0 20' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%2300b451'/%3E%3Cpath d='M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z' fill='%23fff'/%3E%3C/svg%3E"
     />
     <!-- 全站零 CDN：无任何外部字体 / 图标 / 图表库 link（ARCHITECTURE 铁律 2） -->
     <title>店小C · 蒙牛 AI 巡店助手</title>
     <style>
-      /* 首屏底色，避免 JS 加载前的白闪 */
+      /* 首屏底色，避免 JS 加载前的白闪；夜间由 tokens.css 的 [data-theme=dark] 接管
+         （data-theme 已由 <head> 顶部脚本在首帧前设置，不会出现亮→暗闪烁） */
       html,
       body {
         margin: 0;
         padding: 0;
-        background: #f5f7f5;
+        background: #f3f8f4;
       }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+    <!-- 注册最小 passthrough service worker（仅为满足 PWA 安装条件，不拦截任何请求）。
+         仅在 https 或 localhost 下注册；相对路径 './sw.js' 在 hash 路由下
+         始终按 index.html 所在目录解析（# 之后的片段不参与 URL 解析）。 -->
+    <script>
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('./sw.js').catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>

@@ -1,0 +1,28 @@
+{
+  "name": "店小C · 蒙牛 AI 巡店助手",
+  "short_name": "店小C",
+  "description": "拍一张货架照，AI 告诉你该怎么卖 —— 蒙牛门店巡检、陈列诊断与整改追踪助手",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f8f4",
+  "theme_color": "#00b451",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["business"],
+  "lang": "zh-CN",
+  "dir": "ltr"
+}
