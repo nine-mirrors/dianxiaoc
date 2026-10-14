@@ -932,6 +932,23 @@ const wrap = (fn) => async (req, res) => {
   }
 }
 
+/* ═══════════════ 企业级可观测：结构化访问日志（轻量、零依赖） ═══════════════
+ * 记录每个请求的 方法/路径/状态/耗时/真实IP；自动跳过高频健康检查噪音。
+ * 慢请求(>800ms)与 4xx/5xx 用前缀标注，演示现场/排查问题一眼可见。 */
+const SLOW_MS = 800
+app.use((req, res, next) => {
+  const t0 = process.hrtime.bigint()
+  res.on('finish', () => {
+    if (req.path === '/health') return // 存活探针不刷日志
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6
+    const status = res.statusCode
+    const tag = status >= 500 ? '❌' : status >= 400 ? '⚠️ ' : ms > SLOW_MS ? '🐢' : '  '
+    // eslint-disable-next-line no-console
+    console.log(`${tag} ${req.method} ${req.originalUrl} ${status} ${ms.toFixed(0)}ms ${req.ip}`)
+  })
+  next()
+})
+
 /* ═══════════════ T1 统一鉴权（全站业务接口默认需登录） ═══════════════ */
 
 /** 单据类型白名单：订货单 / 整改单（全项目仅这两种，见 db.js serial 与前端三处调用） */
@@ -1871,3 +1888,32 @@ const server = app.listen(PORT, HOST, () => {
   }
 })
 attachRealtime(server, '/ws')
+
+/* ═══════════════ 企业级进程兜底：未捕获异常不拖垮演示 ═══════════════
+ * 默认行为下，任何漏网的 Promise rejection 会在未来 Node 版本直接崩进程。
+ * 这里统一记录、保留服务存活；PM2 仍是第二道保险（真崩了自动拉起）。*/
+process.on('unhandledRejection', (reason) => {
+  console.error('[process] 未处理的 Promise 拒绝：', reason)
+})
+process.on('uncaughtException', (err) => {
+  console.error('[process] 未捕获异常：', err)
+})
+
+/* 就绪探针（仅回环）：与公网极简 /health 区分，供本机运维确认关键依赖状态，
+ * 不对外暴露 key 存在性等侦察面。*/
+app.get('/ready', async (_req, res) => {
+  try {
+    const [mcp, cache] = await Promise.all([mcpHealth(), cacheHealth()])
+    res.json({
+      ok: true,
+      uptimeSec: Math.round(process.uptime()),
+      memMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      llmKeyPresent: !!LLM.key,
+      mcp,
+      cache,
+      realtimeClients: clientCount(),
+    })
+  } catch (e) {
+    res.status(503).json({ ok: false, error: String(e?.message || e) })
+  }
+})

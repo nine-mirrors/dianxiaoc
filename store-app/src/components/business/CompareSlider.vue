@@ -101,6 +101,35 @@ function onUp(): void {
   }, 0)
 }
 
+/**
+ * 键盘拖动（WCAG 2.1.1）：←/↓ 每次 -5%，→/↑ 每次 +5%，Home/End 到两端。
+ * 直接写内部 pos（与鼠标 moveTo 同一状态、同一渲染路径），clamp 0–100；
+ * 不触碰 dragging/suppressClick，故 6px 阈值与点击标注锁定逻辑不受影响。
+ */
+function onHandleKeydown(e: KeyboardEvent): void {
+  let next: number
+  switch (e.key) {
+    case 'ArrowLeft':
+    case 'ArrowDown':
+      next = pos.value - 5
+      break
+    case 'ArrowRight':
+    case 'ArrowUp':
+      next = pos.value + 5
+      break
+    case 'Home':
+      next = 0
+      break
+    case 'End':
+      next = 100
+      break
+    default:
+      return
+  }
+  e.preventDefault()
+  pos.value = Math.max(0, Math.min(100, next))
+}
+
 onUnmounted(onUp)
 </script>
 
@@ -136,9 +165,19 @@ onUnmounted(onUp)
         <span class="cmp__corner cmp__corner--left">✦ AI 标注</span>
       </div>
 
-      <!-- 分割线 + 手柄 -->
+      <!-- 分割线 + 手柄（role=slider 键盘可达，WCAG 2.1.1；鼠标/触屏拖拽仍走舞台） -->
       <div class="cmp__divider" :style="{ left: `${pos}%` }">
-        <span class="cmp__handle">
+        <span
+          class="cmp__handle"
+          role="slider"
+          tabindex="0"
+          aria-label="拖动对比原图与识别图"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-valuenow="Math.round(pos)"
+          :aria-valuetext="`对比位置 ${Math.round(pos)}%`"
+          @keydown="onHandleKeydown"
+        >
           <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
             <circle cx="13" cy="13" r="12" fill="#fff" fill-opacity="0.94" />
             <path d="M10 9.5 6.5 13 10 16.5M16 9.5 19.5 13 16 16.5" stroke="#009639" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
@@ -221,6 +260,11 @@ onUnmounted(onUp)
   border-radius: 50%;
   transform: translate(-50%, -50%);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  /* 沿用全局 :focus-visible 焦点环（[tabindex] 已命中），仅把轮廓修正为圆形 */
+}
+
+.cmp__handle:focus-visible {
+  border-radius: 50%;
 }
 
 .cmp__tip {

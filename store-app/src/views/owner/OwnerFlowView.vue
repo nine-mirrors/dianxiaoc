@@ -17,6 +17,7 @@ import OrderConfirmDialog from '@/components/business/OrderConfirmDialog.vue'
 import SmartImage from '@/components/common/SmartImage.vue'
 import { getDiagnosis, createDiagnosis, createTicket, uploadPhoto, streamGenerate, getTickets } from '@/api'
 import { useToast } from '@/composables/useToast'
+import { useHaptics } from '@/composables/useHaptics'
 import { useDemoStore } from '@/stores/demo'
 import { useSessionStore } from '@/stores/session'
 import { useLoadingSteps } from '@/composables/useLoadingSteps'
@@ -26,6 +27,7 @@ import type { Diagnosis, Ticket, Step } from '@/types'
 
 const router = useRouter()
 const toast = useToast()
+const haptics = useHaptics()
 const session = useSessionStore()
 
 /** 流程阶段：guide 引导 / capture 拍照 / result 结果 / success 订货成功 */
@@ -235,7 +237,9 @@ async function order(): Promise<void> {
     })
     ticket.value = res.ticket
     stage.value = 'success'
+    haptics.success() // 下单成功触感（金额类关键动作；iOS 静默降级）
   } catch {
+    haptics.error()
     toast.error('下单失败，请再试一次')
   } finally {
     ordering.value = false

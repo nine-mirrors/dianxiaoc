@@ -27,6 +27,7 @@ import RectificationDialog from '@/components/business/RectificationDialog.vue'
 import RectificationCompare from '@/components/business/RectificationCompare.vue'
 import { getDiagnosis, getVisit, createTicket, streamGenerate, fetchForecast, getRectifications, type Forecast } from '@/api'
 import { useToast } from '@/composables/useToast'
+import { useHaptics } from '@/composables/useHaptics'
 import { useDialogFocus } from '@/composables/useDialogFocus'
 import { LAYER_FILTERS, levelLabel, levelOf, ANNOTATION_STYLES, aiBadgeOf, type AiSource } from '@/domain/constants'
 import { countBySeverity } from '@/domain/issueBuilder'
@@ -35,6 +36,7 @@ import type { AnnotationLayer, Diagnosis, Issue, Rectification, RestockItem, Tic
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const haptics = useHaptics()
 
 /** 是否只读历史态（P2「查看」/ P5「查看详情」进入） */
 const readonly = computed<boolean>(() => route.query.readonly === '1')
@@ -491,8 +493,10 @@ async function submitTicket(): Promise<void> {
     })
     ticket.value = res.ticket
     ticketState.value = 'success'
+    haptics.success()
     toast.success('流程已完成')
   } catch {
+    haptics.error()
     toast.error('生成失败，请重试')
   } finally {
     submitting.value = false

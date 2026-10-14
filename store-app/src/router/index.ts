@@ -16,6 +16,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 //   要求的 component: never 冲突（tsc 报 TS2322）。仅类型标注，不改守卫逻辑。
 import type { RouteRecordRaw } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
+import { reportError } from '@/composables/useAppErrorHandler'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/login' },
@@ -140,6 +141,72 @@ router.beforeEach(async (to) => {
     return { path: session.home, replace: true }
   }
   return true
+})
+
+/**
+ * ★ 路由错误兜底（只追加 onError，不改变上面的 routes / 守卫 / scrollBehavior）。
+ *
+ * 典型白屏场景：发版后 JS chunk 文件名 hash 全变，用户手里的旧标签页 / 浏览器缓存
+ * 还在引用旧 hash，路由懒加载 import() 抛 ChunkLoadError → 页面组件挂载不上 → 白屏。
+ * 策略：识别为 chunk 动态导入失败时，自动 location.reload() 一次拉取最新入口；
+ * 用 sessionStorage 记录「目标路径 + 时间戳」，10 秒内同一目标只自动刷一次
+ * （刷新后该 chunk 仍失败就不再刷，杜绝刷新死循环；超过窗口或换了目标则允许再次自愈）。
+ */
+const CHUNK_RELOAD_KEY = 'dxc:chunk-reload'
+/** 同目标自动刷新的抑制窗口（ms）：覆盖一次页面加载即可，足够拦住瞬时失败循环 */
+const CHUNK_RELOAD_TTL = 10_000
+
+interface ChunkReloadMark {
+  path: string
+  at: number
+}
+
+/**
+ * chunk / 动态模块加载失败的典型报错文案（不同浏览器/构建略有差异）：
+ *  - Chrome：Failed to fetch dynamically imported module
+ *  - Firefox：error loading dynamically imported module
+ *  - Safari：Importing a module script failed
+ *  - 历史/打包模板：Loading chunk xxx failed / Loading CSS chunk xxx failed
+ */
+function isChunkLoadError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? '')
+  return /loading(?:\s+css)?\s+chunk\s+[\w-]+\s+failed|failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed/i.test(
+    message,
+  )
+}
+
+router.onError((error, to) => {
+  const target = String(to?.fullPath ?? to?.path ?? '-')
+  // 所有路由异常先入全局错误管线（计数 / console / 预留上报），不吞错误
+  reportError('route', error, `navigation → ${target}`)
+
+  if (!isChunkLoadError(error)) return
+
+  let lastMark: ChunkReloadMark | null = null
+  try {
+    const raw = window.sessionStorage.getItem(CHUNK_RELOAD_KEY)
+    if (raw) lastMark = JSON.parse(raw) as ChunkReloadMark
+  } catch {
+    lastMark = null
+  }
+  // 抑制窗口内同一目标已经自动刷新过：放弃再次刷新，避免死循环
+  if (
+    lastMark &&
+    lastMark.path === target &&
+    Number.isFinite(lastMark.at) &&
+    Date.now() - lastMark.at < CHUNK_RELOAD_TTL
+  ) {
+    return
+  }
+
+  // 无法写入标记（隐私模式等）就不刷新：否则无法保证「只刷一次」，可能陷入循环
+  try {
+    const mark: ChunkReloadMark = { path: target, at: Date.now() }
+    window.sessionStorage.setItem(CHUNK_RELOAD_KEY, JSON.stringify(mark))
+  } catch {
+    return
+  }
+  window.location.reload()
 })
 
 export default router

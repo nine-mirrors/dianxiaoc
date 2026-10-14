@@ -10,12 +10,16 @@ import { useRoute, useRouter } from 'vue-router'
 import MobileLayout from '@/components/layout/MobileLayout.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AiLoadingOverlay from '@/components/business/AiLoadingOverlay.vue'
+import CameraCapture from '@/components/business/CameraCapture.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import SmartImage from '@/components/common/SmartImage.vue'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useLoadingSteps } from '@/composables/useLoadingSteps'
 import { useDialogFocus } from '@/composables/useDialogFocus'
+import { useDevice } from '@/composables/useDevice'
+import { useHaptics } from '@/composables/useHaptics'
+import type { CameraCapturedPhoto } from '@/composables/useCamera'
 import { getStores, createDiagnosis, createVisit, uploadPhoto } from '@/api'
 import { useDemoStore } from '@/stores/demo'
 import { SHOOT_TYPES } from '@/domain/constants'
@@ -25,6 +29,8 @@ const route = useRoute()
 const router = useRouter()
 const demo = useDemoStore()
 const toast = useToast()
+const device = useDevice()
+const haptics = useHaptics()
 
 /** 门店列表（含照片 url） */
 const { data: storeData, loading } = useApi(() => getStores({ repId: 'U_REP' }), { initial: { stores: [] } })
@@ -111,14 +117,75 @@ const { current, done, percent, play, reset } = useLoadingSteps(localSteps.value
 
 /* ═══════════════ 照片操作 ═══════════════ */
 
-/** 模拟拍照：0.15s 快门白闪即时反馈，动画结束后把照片加入已选（单条 toast） */
+/** 模拟拍照：0.15s 快门白闪即时反馈，动画结束后把照片加入已选（单条 toast）。
+ *  注意：这是桌面演示/旧机/非 HTTPS 的兜底路径，即使接入真机摄像头也不得删除。 */
 const shooting = ref<boolean>(false)
 async function takePhoto(): Promise<void> {
   if (shooting.value) return
   shooting.value = true
+  haptics.select() // 模拟快门触感（真机相机组件内另有快门反馈；iOS 静默降级）
   await new Promise((r) => setTimeout(r, 600))
   shooting.value = false
   addCurrentPhoto()
+}
+
+/** 真机取景器可见性（CameraCapture 内部在 visible→false 时保证释放相机轨道） */
+const cameraVisible = ref<boolean>(false)
+/** 正在做不弹权限的真机能力探测（探测期间禁用拍照钮，防连点） */
+const cameraProbing = ref<boolean>(false)
+
+/**
+ * 「拍照」入口决策树：
+ * 1. 已达 6 张上限直接提示；
+ * 2. useDevice.hasCamera() 异步探测（**不弹权限框**）：具备调用条件 → 打开真机取景器；
+ * 3. 桌面无摄像头 / 旧机 / 非 HTTPS（mediaDevices 缺失）→ 回退模拟拍照演示。
+ * 注：探测结果只代表「能不能发起」，拒绝授权/被占用等由 CameraCapture 错误分支兜住。
+ */
+async function onPhotoPress(): Promise<void> {
+  if (shooting.value || cameraProbing.value || cameraVisible.value) return
+  if (picked.value.length >= 6) {
+    toast.info('最多选择 6 张照片')
+    return
+  }
+  cameraProbing.value = true
+  try {
+    const hasCamera = await device.hasCamera()
+    if (hasCamera) {
+      cameraVisible.value = true
+    } else {
+      await takePhoto()
+    }
+  } finally {
+    cameraProbing.value = false
+  }
+}
+
+/** 真机取景器确认使用照片：与相册共用 acceptPickedFile，caption/toast 标注「真机拍摄」 */
+function onCameraCaptured(payload: CameraCapturedPhoto): void {
+  cameraVisible.value = false
+  const localUrl = URL.createObjectURL(payload.blob)
+  acceptPickedFile({
+    dataUrl: payload.dataUrl,
+    localUrl,
+    name: payload.name,
+    captionPrefix: '真机拍摄',
+    successText: '真机拍摄，已上传，将使用通用陈列规则识别',
+  })
+}
+
+/** 真机取景器关闭（取消 / Esc） */
+function onCameraClose(): void {
+  cameraVisible.value = false
+}
+
+/**
+ * 取景器错误分支选择「相册上传」：关闭取景器并立刻拉起既有 file input。
+ * 组件 emit 与本函数处于同一次用户点击的同步调用栈内，iOS/微信的
+ * file input.click() 用户激活条件仍然成立。
+ */
+function onCameraFallbackAlbum(): void {
+  cameraVisible.value = false
+  pickFromAlbum()
 }
 
 /** 把当前主展示照片加入已选列表 */
@@ -153,50 +220,73 @@ function pickFromAlbum(): void {
   fileInput.value?.click()
 }
 
-/** 读取上传文件 → base64 → 真上传后端（http 模式落盘，mock 模式回落本地 blob） */
+/** 读取上传文件 → base64 → 走与真机拍摄共用的接收逻辑 */
 function onFileChange(e: Event): void {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
+  // 无论后续是否采用都清空 input，保证同一文件可再次选择
+  input.value = ''
   if (!file) return
   if (picked.value.length >= 6) {
     toast.info('最多选择 6 张照片')
-    input.value = ''
     return
   }
   const localUrl = URL.createObjectURL(file)
   const reader = new FileReader()
   reader.onload = () => {
-    // 真上传（拿到后端 photoId）；失败则退回本地占位 id，保证演示不中断
-    uploadPhoto(String(reader.result), file.name)
-      .then(({ photoId }) => {
-        picked.value = [
-          ...picked.value,
-          {
-            id: photoId,
-            url: localUrl,
-            type: shootType.value,
-            caption: `上传照片 · ${file.name.slice(0, 12)}`,
-            unknown: true,
-          },
-        ]
-        toast.success('已上传，将使用通用陈列规则识别')
-      })
-      .catch(() => {
-        picked.value = [
-          ...picked.value,
-          {
-            id: `UP_${Date.now()}`,
-            url: localUrl,
-            type: shootType.value,
-            caption: `上传照片 · ${file.name.slice(0, 12)}`,
-            unknown: true,
-          },
-        ]
-        toast.success('已上传，将使用通用陈列规则识别')
-      })
+    acceptPickedFile({
+      dataUrl: String(reader.result),
+      localUrl,
+      name: file.name,
+      captionPrefix: '上传照片',
+      successText: '已上传，将使用通用陈列规则识别',
+    })
   }
   reader.readAsDataURL(file)
-  input.value = ''
+}
+
+/**
+ * 接收一张「外部图片」（相册选择 / 真机拍摄共用的唯一入口）：
+ * - 最多 6 张上限在此兜底；
+ * - 真上传 uploadPhoto 拿后端 photoId；失败降级本地 UP_ 占位 id，演示不中断；
+ * - 两条来源都按陌生照片处理（unknown:true → createDiagnosis 走通用陈列识别）。
+ *
+ * @returns 是否排入上传（达到上限返回 false）
+ */
+function acceptPickedFile(args: {
+  /** base64 data URL（相册由 FileReader 产出，相机由 canvas 产出） */
+  dataUrl: string
+  /** 本地预览地址（blob:），缩略图与主展示区直接使用 */
+  localUrl: string
+  /** 文件名（上传与 caption 展示用） */
+  name: string
+  /** caption 前缀：相册「上传照片」/ 相机「真机拍摄」 */
+  captionPrefix: string
+  /** 成功排入后的 toast 文案（沿用既有口径） */
+  successText: string
+}): boolean {
+  if (picked.value.length >= 6) {
+    toast.info('最多选择 6 张照片')
+    return false
+  }
+  const buildItem = (id: string): PickedPhoto => ({
+    id,
+    url: args.localUrl,
+    type: shootType.value,
+    caption: `${args.captionPrefix} · ${args.name.slice(0, 12)}`,
+    unknown: true,
+  })
+  // 真上传（拿到后端 photoId）；失败则退回本地占位 id，保证演示不中断
+  uploadPhoto(args.dataUrl, args.name)
+    .then(({ photoId }) => {
+      picked.value = [...picked.value, buildItem(photoId)]
+      toast.success(args.successText)
+    })
+    .catch(() => {
+      picked.value = [...picked.value, buildItem(`UP_${Date.now()}`)]
+      toast.success(args.successText)
+    })
+  return true
 }
 
 /* ═══════════════ 开始 AI 诊断 ═══════════════ */
@@ -246,9 +336,11 @@ async function startDiagnosis(): Promise<void> {
       checkin: { lat: 31.2304, lng: 121.4737, at: `${checkinAt.value}` },
     })
     router.replace(`/rep/diagnosis/${res.diagnosis.id}`)
+    haptics.success() // 诊断完成：成功节奏（不支持设备静默降级）
   } catch {
     overlayVisible.value = false
     diagnosing.value = false
+    haptics.error()
     toast.error('AI 分析失败，请重试')
   } finally {
     resolveSkip = null
@@ -344,10 +436,17 @@ function goBack(): void {
         <span v-if="hasPhoto" class="p3-photo__caption">{{ heroPhoto.caption }}</span>
       </div>
 
-      <!-- 主入口：拍照 / 相册（实心地 + 描边）；「换一张」降为次级文字按钮 -->
+      <!-- 主入口：拍照 / 相册（实心地 + 描边）；「换一张」降为次级文字按钮。
+           拍照钮优先真机取景器，桌面/旧机/非 HTTPS 自动回退模拟拍照演示 -->
       <div class="p3-entry">
-        <button type="button" class="p3-entry__btn p3-entry__btn--primary mot-tap" :disabled="shooting" @click="takePhoto">
-          <AppIcon name="camera" :size="15" color="#fff" /> 拍照
+        <button
+          type="button"
+          class="p3-entry__btn p3-entry__btn--primary mot-tap"
+          :disabled="shooting || cameraProbing || cameraVisible"
+          @click="onPhotoPress"
+        >
+          <AppIcon name="camera" :size="15" color="#fff" />
+          {{ cameraProbing ? '检测相机…' : '拍照' }}
         </button>
         <button type="button" class="p3-entry__btn mot-tap" @click="pickFromAlbum">
           <AppIcon name="layers" :size="15" /> 从相册上传
@@ -429,6 +528,16 @@ function goBack(): void {
         </button>
         <p v-if="!hasPhoto" class="p3-bar__tip">至少 1 张照片</p>
       </div>
+
+      <!-- 真机全屏取景器：必须放在 footer 插槽——absolute 相对 .mot-route-host
+           定位且不被 .ml-body 的 overflow 裁切，桌面手机壳内不穿出视口。
+           拒绝/无设备/被占用均在组件内给人话分支，相册兜底回本页既有流程 -->
+      <CameraCapture
+        :visible="cameraVisible"
+        @close="onCameraClose"
+        @captured="onCameraCaptured"
+        @fallback-album="onCameraFallbackAlbum"
+      />
     </template>
   </MobileLayout>
 </template>
