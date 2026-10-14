@@ -21,7 +21,26 @@ import { onRealtime } from '@/realtime/client'
 import { useSessionStore } from '@/stores/session'
 import { useDemoStore } from '@/stores/demo'
 import { DEMO_TODAY, DEMO_WEEKDAY, DEMO_WEATHER, levelOf } from '@/domain/constants'
-import type { RouteStore, TodayRoute, Task, Ticket } from '@/types'
+import { haversineKm, fmtKm } from '@/domain/geo'
+import type { RouteStore, TodayRoute, Task, TaskType, Ticket } from '@/types'
+
+/** 警报分级（认知负荷：红/橙/灰三级，不再一片红） */
+type AlertTone = 'severe' | 'medium' | 'low'
+const TONE_COLOR: Record<AlertTone, string> = {
+  severe: 'var(--danger-fg)',
+  medium: 'var(--warning-fg)',
+  low: 'var(--text-3)',
+}
+/** 经理待办按任务类型映射警报级别：缺货=严重 / 排面·价签=中度 / 堆头=轻度 */
+const TASK_TONE: Record<TaskType, AlertTone> = {
+  OOS: 'severe',
+  FACING: 'medium',
+  PRICETAG: 'medium',
+  STACK: 'low',
+}
+function taskTone(t: Task): AlertTone {
+  return TASK_TONE[t.taskType] ?? 'medium'
+}
 
 const router = useRouter()
 const session = useSessionStore()
@@ -77,6 +96,8 @@ const markingTaskId = ref<string>('')
  */
 async function markTaskDone(task: Task): Promise<void> {
   if (markingTaskId.value) return
+  // 不可逆落库操作：真正发请求之前二次确认，用户取消则不产生任何调用
+  if (!window.confirm('标记后该任务将从未办列表移除，确认完成？')) return
   markingTaskId.value = task.id
   try {
     await updateTaskStatus(task.id, 'done')
@@ -182,6 +203,11 @@ const routeOrigin = computed<{ lat: number; lng: number } | undefined>(() => {
 
 /** 待办任务 */
 const todoTasks = computed(() => route.value.todoTasks ?? [])
+
+/** 时限展示文案：优先原始中文文案，其次归一化时间，缺失时给兜底（不渲染出「请在前完成」） */
+function taskDueText(t: Task): string {
+  return t.dueAtLabel || t.dueAt || ''
+}
 /** 概览 */
 const summary = computed(() => route.value.summary ?? EMPTY.summary)
 /** 是否显示骨架屏 */
@@ -191,6 +217,20 @@ const isEmpty = computed<boolean>(() => !loading.value && routeStores.value.leng
 
 /** 待办区是否折叠 */
 const todoCollapsed = ref<boolean>(false)
+
+/** 地图是否展开：默认收成「路线概览条」，把首屏垂直空间让给第①家未巡店的「去巡店」 */
+const mapExpanded = ref<boolean>(false)
+
+/** 下一站：第一家未巡门店；全部巡完则取线路第一站 */
+const nextStore = computed<RouteStore | undefined>(
+  () => routeStores.value.find((r) => r.status !== 'done') ?? routeStores.value[0],
+)
+/** 下一站距起点的球面距离（与门店卡口径一致，按坐标现算） */
+const nextKm = computed<string>(() => {
+  const s = nextStore.value?.store
+  if (!s || !routeOrigin.value || s.lat == null || s.lng == null) return '—'
+  return fmtKm(haversineKm(routeOrigin.value, { lat: Number(s.lat), lng: Number(s.lng) }))
+})
 
 /** 刚刚完成巡店的门店 id（绿色闪光反馈） */
 const justDone = ref<string[]>([])
@@ -209,14 +249,16 @@ function viewHistory(item: RouteStore): void {
 }
 
 /** 待办「查看」→ 高亮滚到对应门店卡 */
-function gotoTodoTask(storeId: string): void {
+function gotoTodoTask(storeId: string, storeName?: string): void {
   const el = document.getElementById(`store-card-${storeId}`)
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     el.classList.add('u-flash-success')
     setTimeout(() => el.classList.remove('u-flash-success'), 2400)
   } else {
-    toast.info(`任务门店：${storeId}`)
+    // 经理可对片区任意门店下派，其中不在「今日线路」的店本页没有门店卡——
+    // 给人话提示，不向业代暴露裸 storeId（任务仍可在「标记完成」中闭环）。
+    toast.info(`「${storeName || '该门店'}」不在今日线路，已加入到店计划，请按经理安排前往`)
   }
 }
 
@@ -236,7 +278,7 @@ function switchAccount(): Promise<void> {
 </script>
 
 <template>
-  <MobileLayout :show-tab-bar="true" :content-padding-bottom="60">
+  <MobileLayout gradient :show-tab-bar="true" :content-padding-bottom="60">
     <template #nav>
       <!-- 渐变顶栏：问候语 + 日期天气 + 角色头像 -->
       <div class="p2-head">
@@ -245,14 +287,31 @@ function switchAccount(): Promise<void> {
           <p class="p2-head__date">{{ route.date }} · {{ route.weather }}</p>
         </div>
         <div class="p2-head__right">
-          <button class="p2-head__icon" @click="todoCollapsed = !todoCollapsed">
+          <button
+            class="p2-head__icon u-tap"
+            type="button"
+            :aria-label="`待办提醒，${todoTasks.length} 条，${todoCollapsed ? '已折叠' : '已展开'}`"
+            :aria-expanded="!todoCollapsed"
+            @click="todoCollapsed = !todoCollapsed"
+          >
             <AppIcon name="bell" :size="19" color="#fff" />
             <em v-if="todoTasks.length" class="p2-head__dot">{{ todoTasks.length }}</em>
           </button>
-          <button class="p2-head__avatar" title="切换账号" @click="switchAccount">{{ session.avatarText }}</button>
+          <button
+            class="p2-head__avatar u-tap"
+            type="button"
+            title="切换账号"
+            aria-label="切换账号"
+            @click="switchAccount"
+          >
+            {{ session.avatarText }}
+          </button>
         </div>
       </div>
     </template>
+
+    <!-- 读屏地标：本页用 #nav 插槽自绘渐变顶栏，MobileLayout 不会渲染 h1（视觉不可见） -->
+    <h1 class="u-sr-only">今日巡店</h1>
 
     <!-- 三格数据概览 -->
     <div class="p2-summary">
@@ -284,23 +343,37 @@ function switchAccount(): Promise<void> {
 
     <!-- 待办提醒条（★经理下派 → 业代可见） -->
     <div v-if="todoTasks.length" class="p2-todo">
-      <div class="p2-todo__bar" @click="todoCollapsed = !todoCollapsed">
-        <AppIcon name="alert-triangle" :size="14" color="var(--level-warning)" />
+      <button
+        type="button"
+        class="p2-todo__bar"
+        :aria-expanded="!todoCollapsed"
+        @click="todoCollapsed = !todoCollapsed"
+      >
+        <AppIcon name="alert-triangle" :size="14" color="var(--warning-fg)" />
         <span>待办提醒（{{ todoTasks.length }}）来自{{ todoTasks[0].creatorName }}经理</span>
         <em>{{ todoCollapsed ? '展开' : '收起' }}</em>
-      </div>
+      </button>
       <div v-if="!todoCollapsed" class="p2-todo__list">
-        <div v-for="t in todoTasks" :key="t.id" class="p2-todo__card">
+        <div
+          v-for="t in todoTasks"
+          :key="t.id"
+          class="p2-todo__card"
+          :class="`p2-todo__card--${taskTone(t)}`"
+        >
           <p class="p2-todo__name">
-            <AppIcon name="map-pin" :size="13" color="var(--level-risk)" />
+            <AppIcon name="map-pin" :size="13" :color="TONE_COLOR[taskTone(t)]" />
             {{ t.storeName }}
-            <span class="p2-todo__tag">{{ t.taskTypeLabel }}</span>
+            <span class="p2-todo__tag" :class="`p2-todo__tag--${taskTone(t)}`">{{ t.taskTypeLabel }}</span>
           </p>
-          <p class="p2-todo__note">请在{{ t.dueAt }}前完成整改 · {{ t.note }}</p>
+          <p v-if="taskDueText(t)" class="p2-todo__note">
+            请在{{ taskDueText(t) }}前完成整改<template v-if="t.note"> · {{ t.note }}</template>
+          </p>
+          <p v-else class="p2-todo__note">{{ t.note || '请尽快完成整改并回传照片' }}</p>
           <div class="p2-todo__ops">
-            <button class="p2-todo__btn" @click="gotoTodoTask(t.storeId)">查看</button>
+            <button type="button" class="p2-todo__btn u-tap" @click="gotoTodoTask(t.storeId, t.storeName)">查看</button>
             <button
-              class="p2-todo__btn p2-todo__btn--done"
+              type="button"
+              class="p2-todo__btn p2-todo__btn--done u-tap"
               :disabled="markingTaskId === t.id"
               @click="markTaskDone(t)"
             >
@@ -324,17 +397,34 @@ function switchAccount(): Promise<void> {
             <span class="p2-order__id">{{ t.id }}</span>
           </p>
           <p class="p2-order__meta">{{ t.totalBottles }} 瓶 · ¥{{ t.totalAmount }} · {{ t.createdAt }}</p>
-          <button class="p2-order__btn" :disabled="acceptingId === t.id" @click="acceptTicket(t)">
+          <button type="button" class="p2-order__btn u-tap" :disabled="acceptingId === t.id" @click="acceptTicket(t)">
             {{ acceptingId === t.id ? '接单中…' : '一键确认接单' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 巡店地图（真实门店坐标 · 健康分着色） -->
+    <!-- 巡店地图（默认 110px 路线概览条：下一站 + 距离 + 展开入口；展开后 240px） -->
     <div v-if="!showSkeleton && mapMarkers.length" class="p2-map">
-      <p class="p2-map__title"><AppIcon name="map-pin" :size="13" color="var(--mn-green)" /> 巡店地图</p>
-      <MapView :markers="mapMarkers" :height="240" />
+      <button
+        v-if="!mapExpanded"
+        type="button"
+        class="p2-map__bar mot-tap"
+        :aria-expanded="false"
+        @click="mapExpanded = true"
+      >
+        <AppIcon name="map-pin" :size="16" color="var(--mn-green)" />
+        <span class="p2-map__next">
+          下一站<b>{{ nextStore?.store?.name ?? '—' }}</b>
+          <em>{{ nextKm }}km</em>
+        </span>
+        <span class="p2-map__go">展开地图 <AppIcon name="chevron-right" :size="13" color="var(--mn-green)" /></span>
+      </button>
+
+      <template v-else>
+        <MapView :markers="mapMarkers" :height="240" />
+        <button type="button" class="p2-map__collapse u-tap" @click="mapExpanded = false">收起地图</button>
+      </template>
     </div>
 
     <!-- 巡店线路 -->
@@ -394,6 +484,10 @@ function switchAccount(): Promise<void> {
 .p2-head__icon {
   position: relative;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
   background: none;
@@ -491,12 +585,22 @@ function switchAccount(): Promise<void> {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: none;
   border-radius: 10px;
-  background: #fff7e8;
-  color: #b06e00;
+  background: var(--warning-bg);
+  color: var(--warning-fg);
   font-size: 12px;
   font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.p2-todo__bar:hover {
+  background: color-mix(in srgb, var(--warning-bg) 82%, var(--color-warning));
 }
 
 .p2-todo__bar span {
@@ -515,13 +619,26 @@ function switchAccount(): Promise<void> {
   gap: 8px;
 }
 
+/* 警报分级：左竖条按严重度取 danger / warning / text-3（警报疲劳治理） */
 .p2-todo__card {
   position: relative;
   padding: 10px 12px;
   border-radius: 10px;
-  border-left: 4px solid var(--level-risk);
+  border-left: 4px solid var(--text-3);
   background: #fff;
   box-shadow: var(--shadow-card);
+}
+
+.p2-todo__card--severe {
+  border-left-color: var(--danger-fg);
+}
+
+.p2-todo__card--medium {
+  border-left-color: var(--warning-fg);
+}
+
+.p2-todo__card--low {
+  border-left-color: var(--text-3);
 }
 
 .p2-todo__name {
@@ -533,11 +650,26 @@ function switchAccount(): Promise<void> {
 }
 
 .p2-todo__tag {
-  padding: 1px 6px;
+  padding: 2px 8px;
   border-radius: 4px;
-  background: var(--level-risk);
-  color: #fff;
+  background: var(--bg-page);
+  color: var(--text-3);
   font-size: 10px;
+}
+
+.p2-todo__tag--severe {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+}
+
+.p2-todo__tag--medium {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+
+.p2-todo__tag--low {
+  background: var(--bg-page);
+  color: var(--text-3);
 }
 
 .p2-todo__note {
@@ -555,10 +687,10 @@ function switchAccount(): Promise<void> {
 
 .p2-todo__btn {
   padding: 4px 12px;
-  border: 1px solid var(--level-warning);
+  border: 1px solid var(--warning-fg);
   border-radius: 999px;
   background: #fff;
-  color: var(--level-warning);
+  color: var(--warning-fg);
   font-size: 11px;
   font-weight: 600;
 }
@@ -642,20 +774,82 @@ function switchAccount(): Promise<void> {
   opacity: 0.6;
 }
 
-/* 线路 */
-/* 巡店地图 */
+/* 线路：地图默认收成 110px 内的「路线概览条」，首屏把空间留给去巡店主 CTA */
 .p2-map {
-  margin: 0 14px 12px;
+  margin: 12px 14px 0;
 }
 
-.p2-map__title {
+.p2-map__bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 8px;
-  font-size: 13px;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  font-size: 12.5px;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+
+.p2-map__bar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.p2-map__next {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.p2-map__next b {
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-1);
+}
+
+.p2-map__next em {
+  flex: none;
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.p2-map__go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  color: var(--mn-green);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.p2-map__collapse {
+  display: block;
+  margin: 8px auto 0;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn);
+  background: var(--bg-card);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .p2-route {

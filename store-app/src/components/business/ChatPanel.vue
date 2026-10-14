@@ -5,12 +5,12 @@
  * 6 组预设问答全文 + 快捷问题 chips + 输入框 + 打字机效果（400ms/句）。
  * 命中带 highlightSection 的答案时向上抛出，由 P4 滚动到行动方案并高亮。
  */
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import AiBadge from '@/components/common/AiBadge.vue'
 import { useTypewriter } from '@/composables/useTypewriter'
 import { postChat, getChatSuggestions, streamChat } from '@/api'
-import { aiBadgeOf, type AiSource } from '@/domain/constants'
+import { aiBadgeOf } from '@/domain/constants'
 import type { ChatMessage, Diagnosis } from '@/types'
 
 interface Props {
@@ -24,13 +24,6 @@ const emit = defineEmits<{ (e: 'highlight', section: 'plan' | 'risk'): void }>()
 
 /** 对话历史 */
 const messages = ref<ChatMessage[]>([])
-/**
- * ★ A2：最近一条 AI 回复的来源（llm / fallback / null）。
- * 决定气泡角标措辞 —— 降级时不标「AI」，避免答辩被戳穿。
- */
-const replySource = ref<AiSource | null>(null)
-/** 角标配置（computed 统一取文案，三处页面口径一致） */
-const replyBadge = computed(() => aiBadgeOf(replySource.value))
 /** 快捷问题 chips */
 const chips = ref<string[]>([])
 /** 输入框内容 */
@@ -46,6 +39,12 @@ const { display, typing, play, finish } = useTypewriter({ charInterval: 26, sent
 
 /** 当前正在打字输出的完整文本（用于「跳过」时一次性补全） */
 const resText = ref<string>('')
+
+/**
+ * 读屏专用「完成稿」：仅在每条 AI 回复结束时写入全文。
+ * 流式逐字气泡对读屏 aria-hidden，避免 26ms 一次的增量把播报轰炸成乱码。
+ */
+const spokenText = ref<string>('')
 
 /** 消息列表容器引用（用于自动滚动到底） */
 const listRef = ref<HTMLElement | null>(null)
@@ -127,39 +126,52 @@ async function send(text: string): Promise<void> {
     history: messages.value,
   }
 
-  // 真流式（SSE）：逐段追加 + 保留光标，流结束才移除
+  // 真流式（SSE）：每个 delta 都即时上屏（含第一帧，修复早先 count>1 才追加导致的丢字），
+  // 光标保留到 done；done 帧的 source 盖到「本条气泡」上（不再用全局 source）。
   streamingId.value = id
   let fullText = ''
-  let count = 0
+  /** 只更新本条气泡的指定字段，不动其它消息 */
+  const patchBubble = (patch: Partial<ChatMessage>) => {
+    messages.value = messages.value.map((m) => (m.id === id ? { ...m, ...patch } : m))
+  }
   try {
     const res = await streamChat(payload, (delta) => {
       fullText += delta
-      count += 1
-      if (count > 1) {
-        messages.value = messages.value.map((m) => (m.id === id ? { ...m, content: m.content + delta } : m))
-        scrollToBottom()
-      }
+      patchBubble({ content: fullText })
+      scrollToBottom()
     })
-    // ★ A2：如实记录本条回复的来源，供气泡角标显示（llm 才标「AI」）
-    replySource.value = res.source
+    streamingId.value = ''
 
-    if (count <= 1) {
-      // 降级（后端不可达 / 无 key）：单帧整段返回，用打字机逐字播放，保留「可跳过」
-      const text = fullText || '这块我会结合你店里近 4 周的动销数据一起看，建议你现场先跟区域经理王敏确认一下。'
-      streamingId.value = ''
+    if (fullText) {
+      // 正常路径：真模型流式 或 后端逐帧兜底，内容已全部上屏，只补来源角标
+      patchBubble({ source: res.source })
+      // 读屏：回复结束才一次性播报全文
+      spokenText.value = fullText
+    } else {
+      // 网络层失败（后端不可达 / 非流式响应）：本地兜底文案走打字机，保留「可跳过」
+      const fb = '这块我会结合你店里近 4 周的动销数据一起看，建议你现场先跟区域经理王敏确认一下。'
       typingId.value = id
-      resText.value = text
-      await play(text)
-      messages.value = messages.value.map((m) => (m.id === id ? { ...m, content: text } : m))
+      resText.value = fb
+      await play(fb)
+      patchBubble({ content: fb, source: null })
+      spokenText.value = fb
       typingId.value = ''
       await scrollToBottom()
     }
   } catch {
     streamingId.value = ''
-    // 网络异常：来源未知（角标不宣称 AI）
-    replySource.value = null
-    const fb = '这块我会结合你店里近 4 周的动销数据一起看，建议你现场先跟区域经理王敏确认一下。'
-    messages.value = messages.value.map((m) => (m.id === id ? { ...m, content: fb } : m))
+    // 异常中断：已有真内容则认其已上屏（source 缺省按 null 保守处理）；无内容走兜底打字机
+    if (!fullText) {
+      const fb = '这块我会结合你店里近 4 周的动销数据一起看，建议你现场先跟区域经理王敏确认一下。'
+      typingId.value = id
+      resText.value = fb
+      await play(fb).catch(() => {})
+      patchBubble({ content: fb, source: null })
+      spokenText.value = fb
+      typingId.value = ''
+    } else {
+      spokenText.value = fullText
+    }
     await scrollToBottom()
   } finally {
     streamingId.value = ''
@@ -182,6 +194,8 @@ function skip(): void {
   const full = resText.value
   finish(full)
   messages.value = messages.value.map((m) => (m.id === id ? { ...m, content: full } : m))
+  // 手动跳过后回复同样视为结束：读屏一次性拿到完整稿
+  spokenText.value = full
   typingId.value = ''
   pending.value = false
 }
@@ -200,16 +214,28 @@ function skip(): void {
       >
         <span v-if="m.role === 'ai'" class="chat__avatar"><AppIcon name="sparkles" :size="13" color="#fff" /></span>
         <div class="chat__bubble">
-          <!-- ★ A2：角标按真实来源措辞（fallback 不标「AI」） -->
+          <!--
+            ★ A2：角标按「本条气泡」的真实来源措辞：
+            undefined（预置开场 / 流式输出中）→ 紫色品牌标「AI 巡检助手」
+            llm      → 紫色「AI 生成」
+            fallback → 灰色「基于陈列标准库生成」（不谎称大模型）
+            null     → 灰色「内容生成未完成」（网络失败）
+          -->
           <p v-if="m.role === 'ai'" class="chat__bubble-head">
-            <AiBadge v-if="replySource === 'llm'" text="AI 巡检助手" />
-            <span v-else class="chat__src chat__src--std">{{ replyBadge.text }}</span>
+            <AiBadge v-if="m.source === undefined || m.source === 'llm'" :text="m.source === 'llm' ? 'AI 生成' : 'AI 巡检助手'" />
+            <span v-else class="chat__src chat__src--std">{{ aiBadgeOf(m.source).text }}</span>
           </p>
-          <p class="chat__text">{{ m.id === typingId ? display : m.content }}</p>
-          <span v-if="m.id === typingId && typing" class="chat__caret" />
-          <span v-else-if="m.id === streamingId" class="chat__caret" />
+          <p
+            class="chat__text"
+            :aria-hidden="m.id === typingId || m.id === streamingId"
+          >{{ m.id === typingId ? display : m.content }}</p>
+          <span v-if="m.id === typingId && typing" class="chat__caret" aria-hidden="true" />
+          <span v-else-if="m.id === streamingId" class="chat__caret" aria-hidden="true" />
         </div>
       </div>
+
+      <!-- 读屏完成稿：仅回复结束写入全文（aria-live 一次性播报，不被逐字增量轰炸） -->
+      <div class="u-sr-only" aria-live="polite" aria-atomic="true">{{ spokenText }}</div>
 
       <div v-if="pending && !typing && !streamingId" class="chat__row chat__row--ai">
         <span class="chat__avatar"><AppIcon name="sparkles" :size="13" color="#fff" /></span>
@@ -226,7 +252,8 @@ function skip(): void {
         <button
           v-for="q in openerPrompts"
           :key="q"
-          class="chat__opener-btn"
+          type="button"
+          class="chat__opener-btn u-tap"
           :disabled="pending"
           @click="askSuggested(q)"
         >
@@ -236,14 +263,15 @@ function skip(): void {
     </div>
 
     <!-- 跳过动画 -->
-    <button v-if="typing" class="chat__skip" @click="skip">跳过打字机 →</button>
+    <button v-if="typing" type="button" class="chat__skip u-tap" @click="skip">跳过打字机 →</button>
 
     <!-- 快捷问题 chips -->
     <div v-if="!readonly && chips.length" class="chat__chips">
       <button
         v-for="c in chips"
         :key="c"
-        class="chat__chip"
+        type="button"
+        class="chat__chip u-tap"
         :disabled="pending"
         @click="send(c)"
       >
@@ -256,11 +284,18 @@ function skip(): void {
       <input
         v-model="draft"
         class="chat__field"
+        type="text"
         placeholder="问点别的…"
+        aria-label="输入要追问 AI 的问题"
         :disabled="pending"
         @keydown.enter="send(draft)"
       />
-      <button class="chat__send" :disabled="pending || !draft.trim()" @click="send(draft)">
+      <button
+        type="button"
+        class="chat__send u-tap"
+        :disabled="pending || !draft.trim()"
+        @click="send(draft)"
+      >
         发送
         <AppIcon name="sparkles" :size="12" color="#fff" />
       </button>
@@ -322,7 +357,8 @@ function skip(): void {
 }
 
 .chat__row--user .chat__bubble {
-  background: var(--mn-green);
+  /* #007a30：AA 深绿（白字≈5.5:1），与全局主按钮同色，原 --mn-green 仅 3.9:1 */
+  background: #007a30;
   color: #fff;
   border-top-right-radius: 4px;
 }
@@ -343,7 +379,8 @@ function skip(): void {
 
 .chat__src--std {
   background: rgba(0, 0, 0, 0.05);
-  color: var(--text-3);
+  /* 来源说明承载信息（11px），text-3 仅 ≈2.5:1，提到 text-2 */
+  color: var(--text-2);
 }
 
 .chat__caret {
@@ -401,8 +438,9 @@ function skip(): void {
 
 .chat__skip {
   align-self: flex-end;
+  min-height: 36px;
   margin-top: 6px;
-  padding: 0;
+  padding: 0 10px;
   border: none;
   background: none;
   color: var(--ai-purple);
@@ -420,7 +458,8 @@ function skip(): void {
 .chat__opener-tip {
   margin: 0 0 6px;
   font-size: 11.5px;
-  color: var(--text-3, #6b7280);
+  /* 引导提示承载信息，text-3 仅 ≈2.5:1，提到 text-2 */
+  color: var(--text-2, #4b5563);
 }
 
 .chat__opener-row {
@@ -442,7 +481,7 @@ function skip(): void {
 }
 
 .chat__opener-btn:hover {
-  background: var(--mn-green, #009639);
+  background: #007a30;
   color: #fff;
 }
 
@@ -514,5 +553,19 @@ function skip(): void {
 
 .chat__send:disabled {
   opacity: 0.45;
+}
+
+/* WCAG：减弱动态效果时，打字光标静止常显（仍提示输出中），思考中三点静止；
+   仅降级动画，不动逻辑与正常态。 */
+@media (prefers-reduced-motion: reduce) {
+  .chat__caret {
+    animation: none;
+    opacity: 1;
+  }
+
+  .chat__bubble--thinking i {
+    animation: none;
+    opacity: 1;
+  }
 }
 </style>

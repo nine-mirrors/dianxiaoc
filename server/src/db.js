@@ -6,7 +6,7 @@
  *   - 可写集合（tasks/tickets/新增 visits/诊断快照）落 SQLite，重启不丢 → 跨角色闭环成立。
  */
 import { DatabaseSync } from 'node:sqlite'
-import { readFileSync, existsSync, mkdirSync } from 'node:fs'
+import { readFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -150,13 +150,26 @@ ensureTicketsStatusColumn()
  */
 function ensureTasksDueAtLabelColumn() {
   const cols = db.prepare('PRAGMA table_info(tasks)').all().map((c) => c.name)
-  if (cols.includes('due_at_label')) return
-  db.exec("ALTER TABLE tasks ADD COLUMN due_at_label TEXT DEFAULT ''")
-  // 老数据是中文串，顺手迁移成可比较格式；展示文案沿用原中文
-  const rows = db.prepare('SELECT id, due_at FROM tasks WHERE due_at != ""').all()
+  if (!cols.includes('due_at_label')) db.exec("ALTER TABLE tasks ADD COLUMN due_at_label TEXT DEFAULT ''")
+  /* 归一化存量脏数据（幂等，每次启动都跑）。
+     原实现在函数开头 `if (cols.includes('due_at_label')) return` 直接返回 ——
+     但该列一旦已存在（例如上一版本就已建好），seed 写入的中文串
+     「今日 18:00」就永远不会被迁移，逾期判定恒为 false 且无法自愈。
+     现在把「加列」与「清洗数据」解耦：加列只做一次，清洗每次启动都做。*/
+  /* 用 length() 而非 != '' 比较：避免引号风格改动引发 SQL 字符串字面量歧义
+     （SQLite 里双引号表示标识符，误用会报 no such column）。*/
+  const rows = db.prepare("SELECT id, due_at FROM tasks WHERE due_at IS NOT NULL AND length(due_at) > 0").all()
   for (const r of rows) {
+    // 已是可比较格式（YYYY-MM-DD HH:mm）则跳过，不重复改动
+    if (/^\d{4}-\d{2}-\d{2}\s/.test(r.due_at)) continue
     const n = normalizeDueAt(r.due_at, DEMO_TODAY)
-    db.prepare('UPDATE tasks SET due_at = ?, due_at_label = ? WHERE id = ?').run(n.dueAt, n.dueAtLabel, r.id)
+    /* normalizeDueAt 对「认不出来的格式」按设计原样返回（不臆造日期）。
+       但那意味着 due_at 仍是中文/任意串，会落库并让逾期判定（字符串比较）失效。
+       这里做二次防御：归一化后若仍不是标准日期串，说明这条本就无法解析，
+       清空 due_at（不臆造）—— 无时限的任务显示为「未设置」比显示一个
+       永远不逾期的假时限更诚实。*/
+    const normalized = /^\d{4}-\d{2}-\d{2}\s/.test(n.dueAt) ? n.dueAt : ''
+    db.prepare('UPDATE tasks SET due_at = ?, due_at_label = ? WHERE id = ?').run(normalized, normalized ? n.dueAtLabel : '', r.id)
   }
 }
 ensureTasksDueAtLabelColumn()
@@ -218,7 +231,7 @@ export function findDiagnosisRaw(key) {
 
 /* ═══════════════ 写操作（落 SQLite） ═══════════════ */
 
-const TASK_TYPE_LABEL = { OOS: '缺货补货', FACING: '排面调整', PRICETAG: '价签整改', STACK: '堆头执行' }
+export const TASK_TYPE_LABEL = { OOS: '缺货补货', FACING: '排面调整', PRICETAG: '价签整改', STACK: '堆头执行' }
 
 function uid(prefix) {
   return `${prefix}${Date.now().toString(36).toUpperCase()}${Math.floor(Math.random() * 900 + 100)}`
@@ -254,7 +267,7 @@ function serial(prefix) {
  * @param {string} baseDate 演示基准日（YYYY-MM-DD）
  * @returns {{dueAt: string, dueAtLabel: string}} 归一串 + 展示文案
  */
-function normalizeDueAt(dueAtLabel, baseDate) {
+export function normalizeDueAt(dueAtLabel, baseDate) {
   const label = String(dueAtLabel ?? '').trim()
   if (!label) return { dueAt: '', dueAtLabel: '' }
   // 已是标准日期串（种子数据 / 外部系统写入）则原样保留
@@ -274,7 +287,13 @@ function normalizeDueAt(dueAtLabel, baseDate) {
 /** 新建任务（经理下派）→ 落库，业代端查询即时可见 */
 export function createTask(payload) {
   const store = findStore(payload.storeId)
-  const assignee = findUser(payload.assigneeId)
+  // ⚠ assigneeId 必须有兜底：演示态固定派给李强（U_REP）。
+  //   原实现直接用 payload.assigneeId，前端若漏传就是 undefined，
+  //   node:sqlite 绑定 undefined 会抛
+  //   「Provided value cannot be bound to SQLite parameter 4」→ 整个下派 500，
+  //   而根因只是一个可默认的字段。演示中任何一次请求漏传都会当场翻车。
+  const assigneeId = payload.assigneeId || 'U_REP'
+  const assignee = findUser(assigneeId) ?? findUserByRole('rep')
   const mgr = findUserByRole('manager')
   // ⚠ P0-2：中文时限归一为可比较的日期串（原文案另存 due_at_label 供展示）
   const normalized = normalizeDueAt(payload.dueAt, DEMO_TODAY)
@@ -282,7 +301,7 @@ export function createTask(payload) {
     id: uid('TSK'),
     storeId: payload.storeId,
     storeName: store?.name ?? '',
-    assigneeId: payload.assigneeId,
+    assigneeId,
     assigneeName: assignee?.name ?? '李强',
     creatorId: mgr?.id ?? 'U_MGR',
     creatorName: mgr?.name ?? '王敏',
@@ -643,15 +662,42 @@ export function seedDefaultTasks() {
     note: '该店优益C 断货 3 天以上，已连续 3 周下滑，请在今日 18:00 前完成缺货整改并回传照片。',
     status: 'open',
   }
+  /* ★ seed 必须与 createTask 走同一处归一化（单一出处）。
+     原实现把中文「今日 18:00」直接写进 due_at，而 createTask 调 normalizeDueAt
+     归一成「2026-10-02 18:00」后才能正确比较逾期。后果：
+       · 逾期按字符串比较，'今'(U+4ECA) > '2'(0x32)，字典序恒为false
+         → 默认演示路径下「逾期未完成」永远是 0；
+       · 业代端照 due_at 显示「请在今日 18:00 前完成整改」，经理端同时显示
+         「逾期 0」，两屏在同一时刻对不上。
+     ensureTasksDueAtLabelColumn 迁移只能处理 due_at != '' 的行，seed 行原本
+     label 为空，迁移后仍留中文串，无法自愈。 */
+  const seedDue = normalizeDueAt(task.dueAt, DEMO_TODAY)
   db.prepare(
     `INSERT INTO tasks (id, store_id, store_name, assignee_id, assignee_name, creator_id, creator_name, task_type, task_type_label, due_at, due_at_label, note, status)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-  ).run(task.id, task.storeId, task.storeName, task.assigneeId, task.assigneeName, task.creatorId, task.creatorName, task.taskType, task.taskTypeLabel, task.dueAt, task.dueAtLabel ?? '', task.note, task.status)
+  ).run(
+    task.id, task.storeId, task.storeName, task.assigneeId, task.assigneeName,
+    task.creatorId, task.creatorName, task.taskType, task.taskTypeLabel,
+    seedDue.dueAt, seedDue.dueAtLabel,
+    task.note, task.status,
+  )
 }
 
 /** 重置演示数据 */
 export function resetDemo() {
   db.exec('DELETE FROM tasks; DELETE FROM tickets; DELETE FROM visits; DELETE FROM diagnoses; DELETE FROM rectifications;')
+  /* 同时清空 uploads 目录：原先只清库不清照片文件，反复重置会持续堆积
+     （演示期间每家店每次整改都会落一张图），最终占满磁盘导致写接口失败。*/
+  try {
+    const dir = UPLOADS_DIR
+    if (existsSync(dir)) {
+      for (const f of readdirSync(dir)) {
+        if (/\.(jpe?g|png|webp)$/i.test(f)) rmSync(join(dir, f), { force: true })
+      }
+    }
+  } catch {
+    /* 目录不存在或清理失败不应阻断重置 */
+  }
   seedDefaultTasks()
 }
 

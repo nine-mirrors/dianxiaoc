@@ -1,0 +1,286 @@
+/**
+ * 统一动效体系（路由转场 + 微交互工具类）。
+ *
+ * 设计原则：
+ *  1. 克制、快速：路由转场 ≤ 260ms，不做 3D 翻转 / 大位移 / 炫技；
+ *  2. 方向语义：移动端「前进新页从右轻推、返回向左」，桌面端淡入 + ≤8px 上移；
+ *  3. 性能：仅使用 transform / opacity（合成层属性），不碰 height/width/top/left；
+ *     will-change 仅挂在短暂的路由入场期，类名移除即释放，不大面积常驻；
+ *  4. 无障碍：@media (prefers-reduced-motion: reduce) 下全部非必要动效
+ *     降级为无位移 / ≤0.01ms（含项目既有的 .u-animate-in）；
+ *  5. 与 global.css 的 .u-animate-in / .u-btn:active 等既有动画共存，不覆盖、不重复触发。
+ *
+ * 时长 / 缓动变量：tokens.css 尚无 --dur-* / --ease-* 时作为兜底；
+ * 若 tokens.css 后补同名变量，:root 同特异性下按加载顺序生效，不会报错。
+ */
+:root {
+  --dur-instant: 120ms; /* 按压等即时反馈 */
+  --dur-fast: 160ms; /* 小幅反馈 / 桌面离场 */
+  --dur-base: 220ms; /* 内容入场、桌面入场 */
+  --dur-route: 240ms; /* 移动端路由转场（≤260ms 红线内） */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* 通用加速减速 */
+  --ease-decel: cubic-bezier(0, 0, 0.2, 1); /* 入场：快速起步、柔和停靠 */
+  --ease-accel: cubic-bezier(0.3, 0, 1, 1); /* 离场：柔和起步、快速离开 */
+}
+
+/* ════════════════════════════════════════════════════════════
+ * 1. 路由转场
+ *
+ * 使用方式（App.vue 已接入）：
+ *   <RouterView v-slot="{ Component }">
+ *     <transition :name="移动端 ? mot-route-mob / mot-route-mob-back : mot-route-desk">
+ *       <component :is="Component" />
+ *     </transition>
+ *   </RouterView>
+ *
+ * 移动端转场宿主 .mot-route-host（App.vue 内）：
+ *   position:relative; height:100%; overflow:hidden —— 只负责裁剪与定位上下文，
+ *   不改变 .phone__screen / .mobile-layout / .ml-body 的任何既有盒模型与滚动行为。
+ * 入场页绝对定位覆盖在旧页之上同步滑动（旧页保留在文档流中撑住高度），
+ * 故手机壳高度恒定、不会跳动；各页自带不透明背景，滑动中不露底。
+ * ════════════════════════════════════════════════════════════ */
+
+.mot-route-host {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── 移动端 · 前进（push）：新页从右 100% 推入，旧页向左做 ≤28% 视差轻推 ── */
+.mot-route-mob-enter-active {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transition: transform var(--dur-route) var(--ease-decel);
+  /* 仅入场瞬间提升合成层，enter-active 类移除后自动释放，非常驻 */
+  will-change: transform;
+}
+
+.mot-route-mob-leave-active {
+  transition: transform var(--dur-route) var(--ease-standard);
+}
+
+.mot-route-mob-enter-from {
+  transform: translateX(100%);
+}
+
+.mot-route-mob-leave-to {
+  transform: translateX(-28%);
+}
+
+/* ── 移动端 · 返回（back）：上一页从左 -28% 归位，当前页向右 100% 离场 ── */
+.mot-route-mob-back-enter-active {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: transform var(--dur-route) var(--ease-decel);
+  will-change: transform;
+}
+
+.mot-route-mob-back-leave-active {
+  z-index: 2;
+  transition: transform var(--dur-route) var(--ease-accel);
+}
+
+.mot-route-mob-back-enter-from {
+  transform: translateX(-28%);
+}
+
+.mot-route-mob-back-leave-to {
+  transform: translateX(100%);
+}
+
+/* ── 桌面端（经理看板）：out-in 淡入 + 8px 轻微上移，无横向位移、无绝对定位，
+      不影响窗口滚动；离场 160ms / 入场 220ms，均 ≤260ms ── */
+.mot-route-desk-enter-active {
+  transition:
+    opacity var(--dur-base) var(--ease-decel),
+    transform var(--dur-base) var(--ease-decel);
+}
+
+.mot-route-desk-leave-active {
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+.mot-route-desk-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.mot-route-desk-leave-to {
+  opacity: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+ * 2. 微交互工具类（各页面直接挂 class 使用）
+ * ════════════════════════════════════════════════════════════ */
+
+/* ── .mot-tap：可点元素按下即 scale(0.97)，即时回应指尖（菲茨定律）。
+      与 .u-btn:active 同值不冲突；适用于卡片 / 列表项 / 图标按钮等。 ── */
+.mot-tap {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform var(--dur-instant) var(--ease-standard);
+}
+
+.mot-tap:active {
+  transform: scale(0.97);
+}
+
+/* ── .mot-fade-up：内容块入场（透明度 0→1、translateY(10px)→0）。
+      与 .u-animate-in 习惯一致：可用 style="animation-delay: 80ms" 做级联，
+      两者语义等价，页面择一使用即可，无需改造既有代码。 ── */
+@keyframes mot-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mot-fade-up {
+  animation: mot-fade-up var(--dur-base) var(--ease-decel) both;
+}
+
+/* ── .mot-stagger：容器级联入场。直接子元素自动错峰 60ms（封顶 7 项，
+      长列表不再越等越久）；子元素无需再挂 .mot-fade-up / .u-animate-in，
+      本规则特异性 (0,1,1) 高于单类，遇重复声明以本规则为准，不会重复触发。
+      仍可用 style="animation-delay: …" 内联覆盖单项延迟。 ── */
+.mot-stagger > * {
+  animation: mot-fade-up var(--dur-base) var(--ease-decel) both;
+}
+
+.mot-stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.mot-stagger > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.mot-stagger > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.mot-stagger > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.mot-stagger > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.mot-stagger > *:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+.mot-stagger > *:nth-child(7) {
+  animation-delay: 360ms;
+}
+
+.mot-stagger > *:nth-child(n + 8) {
+  animation-delay: 360ms;
+}
+
+/* ── .mot-skeleton-shimmer：骨架屏微光扫动，缓解加载等待焦虑。
+      扫光层只做 translateX（transform），不驱动 background-position。
+      用法：<div class="mot-skeleton-shimmer" style="height:16px" /> ── */
+.mot-skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: #eef0ef;
+  border-radius: 6px;
+}
+
+.mot-skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.65) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: mot-shimmer 1.3s var(--ease-standard) infinite;
+}
+
+@keyframes mot-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* ── .mot-press-loading：提交中按钮态。
+      前置一枚 currentColor 旋转环（主色按钮=白环、描边按钮=绿环，自适应），
+      配合文案切换（如「提交中…」）；pointer-events:none 防重复提交。
+      旋转只动 transform；按钮尺寸不塌，避免周围布局抖动。 ── */
+.mot-press-loading {
+  pointer-events: none;
+}
+
+.mot-press-loading::before {
+  content: '';
+  flex: none;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: mot-spin 0.7s linear infinite;
+}
+
+@keyframes mot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+ * 3. 无障碍：尊重「减少动态效果」系统设置（前庭敏感用户）。
+ *    路由转场瞬时切换且无任何位移 / 透明度跳变；
+ *    入场类动画延迟清零、时长压到 0.01ms，避免级联等待；
+ *    循环扫光与旋转环直接不渲染；
+ *    一并兜底 global.css 中既有的 .u-animate-in（只降级、不改其定义）。
+ * ════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .mot-tap,
+  .mot-route-mob-enter-active,
+  .mot-route-mob-leave-active,
+  .mot-route-mob-back-enter-active,
+  .mot-route-mob-back-leave-active,
+  .mot-route-desk-enter-active,
+  .mot-route-desk-leave-active {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+
+  /* 起止帧全部归零：无横向滑动、无上移、无淡变 */
+  .mot-tap:active,
+  .mot-route-mob-enter-from,
+  .mot-route-mob-leave-to,
+  .mot-route-mob-back-enter-from,
+  .mot-route-mob-back-leave-to,
+  .mot-route-desk-enter-from,
+  .mot-route-desk-leave-to {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  .mot-fade-up,
+  .mot-stagger > *,
+  .u-animate-in {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+  }
+
+  /* 循环动效直接不渲染（按钮保留「提交中…」文案本身作为状态反馈） */
+  .mot-skeleton-shimmer::after,
+  .mot-press-loading::before {
+    display: none;
+  }
+}

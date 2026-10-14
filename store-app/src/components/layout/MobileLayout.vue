@@ -42,7 +42,13 @@ const emit = defineEmits<{ (e: 'back'): void }>()
     <!-- 顶栏 -->
     <header class="ml-head" :class="{ 'ml-head--gradient': gradient }">
       <slot name="nav">
-        <button v-if="back" class="ml-head__back" aria-label="返回" @click="emit('back')">
+        <button
+          v-if="back"
+          type="button"
+          class="ml-head__back u-tap"
+          aria-label="返回"
+          @click="emit('back')"
+        >
           ‹
         </button>
         <h1 v-if="title" class="ml-head__title">{{ title }}</h1>
@@ -87,11 +93,16 @@ const emit = defineEmits<{ (e: 'back'): void }>()
 }
 
 .ml-head--gradient {
-  background: linear-gradient(135deg, var(--mn-green) 0%, var(--mn-green-dark) 100%);
+  /* 起点由 --mn-green(#009639) 换成 AA 加深绿 #007a30（白字 ≈5.5:1）；
+     终点仍是 --mn-green-dark(#00662a)，渐变全程对比度均 ≥ AA */
+  background: linear-gradient(135deg, #007a30 0%, var(--mn-green-dark) 100%);
   border-bottom: none;
   color: #fff;
 }
 
+/* 视觉盒子保持 26px（标题居中位置不受影响）；
+   触控热区由模板上的全局 .u-tap 伪元素外扩到 ≥44px（--touch-target-min），
+   父级 .ml-head 无 overflow:hidden，热区不会被裁切。 */
 .ml-head__back {
   flex: none;
   width: 26px;

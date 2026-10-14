@@ -68,12 +68,17 @@ export function buildDashboardOverview(regionId) {
     .map((r) => ({ ...r }))
     .sort((a, b) => a.score - b.score) // 分数低的排前面，和「风险优先」一致
 
-  // 该区域的风险门店（分数升序，取前 5）
-  const riskTop5 = (dashboard.riskTop5 || [])
-    .filter((r) => ids.has(r.storeId))
-    .map((r) => ({ ...r }))
+  /* 风险门店Top5：从本区域完整门店池派生，不复用 fixture 的 riskTop5。
+     原因：fixture 的 riskTop5 全局只有 5 条（S1–S5 演示门店）且无 regionId，
+     先按区域过滤再 slice(0,5) 等价于「在这 5 条里挑属于本区的」，
+     实测城东只剩 2 条、城南 1 条、城北甚至把 91 分的excellent 门店
+     列为「风险预警」—— 评委扫一眼分数与颜色即当场自证数据不可信。
+     现改为从 storeRows（已按区域过滤）取真风险档，分数升序取前 5。 */
+  const riskTop5 = storeRows
+    .filter((r) => r.level === 'risk' || r.level === 'warning')
     .sort((a, b) => a.score - b.score)
     .slice(0, 5)
+    .map((r) => ({ ...r }))
 
   const total = storeRows.length
   const distribution = buildDistribution(storeRows)
@@ -81,11 +86,33 @@ export function buildDashboardOverview(regionId) {
 
   // 区域平均分：按该区域门店明细加权平均（子项自洽，不用固定值）
   const avgScore = total ? Number((storeRows.reduce((s, r) => s + r.score, 0) / total).toFixed(1)) : 0
-  // 环比：平均分与目标分的差值，正数为高于目标
-  const deltaNum = Number((avgScore - 80).toFixed(1))
 
-  // 找出原 KPI 模板对应的 label，按区域重算 value / delta
+  /* 环比基准：全部取自 fixture 曲线的**起点**（即「上期值」），不写死任何数字。
+     原代码 avgScore 用硬编码目标值 80、oosRate/coverage 写死 7.2 / 86.4——
+     这有三个问题：
+       ① 与趋势图脱钩。趋势终点已按区域重算，起点才是同一条曲线的上期值；
+          若KPI 卡用「距目标分」而趋势图用「环比变化」，两者讲的是两件事，
+          评委同屏看到「距目标 +9.8」与曲线形状对不上，会追问口径。
+       ② 硬编码基准会在 fixture 变更后静默失真（环比方向整体反号）。
+       ③ 调平区域分布后 avgScore 均值已变（实测三区 81.8/73.8/62.8），
+          拿旧基准 74.3 比会显示虚假的「↑7.5 涨幅」。
+     现统一：score 用 trend.score 起点，oosRate/coverage 同理，
+     保证「环比 = 本期相对上期」这一唯一口径，且与趋势图完全自洽。*/
+  const trendSeries = Object.fromEntries((dashboard.trend || []).map((s) => [s.key, s.points || []]))
+  const baselineOf = (key) => {
+    const pts = trendSeries[key]
+    return pts.length ? Number(pts[0].toFixed(1)) : undefined
+  }
+  const scoreBaseline = baselineOf('score')
+  const deltaNum = scoreBaseline == null ? Number((avgScore - 80).toFixed(1)) : Number((avgScore - scoreBaseline).toFixed(1))
+
   const baseKpis = dashboard.kpis || []
+  const kpiBaseline = {
+    oosRate: baselineOf('oosRate'),
+    coverage: baselineOf('coverage'),
+  }
+
+  // 按区域重算value / delta（沿用 fixture 模板的 label 与配色）
   const kpis = baseKpis.map((k) => {
     const copy = { ...k }
     if (k.key === 'avgScore') {
@@ -101,31 +128,73 @@ export function buildDashboardOverview(regionId) {
       // 缺货率与平均分负相关：分数越低缺货越高（同一公式，区域间自洽）
       const oos = Number(Math.max(2.4, 12 - avgScore * 0.06).toFixed(1))
       copy.value = `${oos}%`
-      copy.delta = `${oos > 7.2 ? '↑' : '↓'}${Math.abs(Number((oos - 7.2).toFixed(1)))}pt`
-      copy.trend = oos > 7.2 ? 'up' : 'down'
+      // 基准缺失时显示「持平」而非回退到写死数字，避免口径漂移
+      if (kpiBaseline.oosRate == null) {
+        copy.delta = '持平'
+        copy.trend = 'flat'
+      } else {
+        copy.delta = `${oos > kpiBaseline.oosRate ? '↑' : '↓'}${Math.abs(Number((oos - kpiBaseline.oosRate).toFixed(1)))}pt`
+        copy.trend = oos > kpiBaseline.oosRate ? 'up' : 'down'
+      }
       copy.danger = oos > 10
     } else if (k.key === 'coverage') {
       // 铺货率与平均分正相关
       const cov = Number(Math.min(99, Math.max(60, 45 + avgScore * 0.48)).toFixed(1))
       copy.value = `${cov}%`
-      copy.delta = `${cov >= 86.4 ? '↑' : '↓'}${Math.abs(Number((cov - 86.4).toFixed(1)))}pt`
-      copy.trend = cov >= 86.4 ? 'up' : 'down'
+      if (kpiBaseline.coverage == null) {
+        copy.delta = '持平'
+        copy.trend = 'flat'
+      } else {
+        copy.delta = `${cov >= kpiBaseline.coverage ? '↑' : '↓'}${Math.abs(Number((cov - kpiBaseline.coverage).toFixed(1)))}pt`
+        copy.trend = cov >= kpiBaseline.coverage ? 'up' : 'down'
+      }
       copy.danger = false
     }
     return copy
   })
 
-  // 趋势：把原曲线整体平移到该区域的平均分（保持形状一致，终点对齐 avgScore）
+  /* 趋势：只把**终点**平移到该区域的 KPI 值，**保持原始起点不动**。
+     原实现有两个问题：
+       ① 只平移 score，oosRate / coverage 原样透传 fixture → 同屏出现
+          「KPI 卡说 6.6%、趋势终点说 7.2%」的自相矛盾。
+       ② 整体平移（起点也动）会让起点失去「上期值」含义——
+          实测城东均分 81.8 时起点被推到 69.6，而上周不可能是 69.6；
+          若用它算环比，KPI 卡会显示与曲线形状对不上的假涨幅。
+     现改为「起点 = 真上期值（保持 fixture 原值），终点 = 本期 KPI 值」，
+     两者之间用线性比例缩放，保证：曲线首尾 === 环比的两个端点，
+     即「KPI 卡的环比」与「趋势图的形状」讲的是同一件事。*/
+  const trendEnds = { score: avgScore, oosRate: parseFloat(String(kpis.find((k) => k.key === 'oosRate')?.value).replace('%', '')), coverage: parseFloat(String(kpis.find((k) => k.key === 'coverage')?.value).replace('%', '')) }
   const trend = (dashboard.trend || []).map((s) => {
-    if (s.key !== 'score' || !s.points?.length) return { ...s, points: [...s.points] }
-    const offset = Number((avgScore - s.points[s.points.length - 1]).toFixed(1))
-    return { ...s, points: s.points.map((p) => Number(Math.max(0, Math.min(100, p + offset)).toFixed(1))) }
+    const pts = s.points
+    if (!pts?.length) return { ...s, points: [] }
+    const start = Number(pts[0].toFixed(1))          // 上期值：保持 fixture 原值不动
+    const end = trendEnds[s.key]
+    if (typeof end !== 'number' || Number.isNaN(end) || start === end) {
+      return { ...s, points: [...pts] }
+    }
+    // 线性缩放：起点不变，终点精确落在本期 KPI 值上
+    const scale = (end - start) / (pts[pts.length - 1] - start)
+    return {
+      ...s,
+      points: pts.map((p, i) => {
+        if (i === 0) return start
+        const v = start + (p - start) * scale
+        return Number(Math.max(0, Math.min(100, v)).toFixed(1))
+      }),
+    }
   })
 
-  // 整改闭环聚合：已整改条目 / 进行中任务 / 平均提升分
+  /* 整改闭环聚合：已整改条目 / 进行中任务 / 平均提升分
+     注意：必须按 status 过滤。index.js 按有无照片分流
+     （photoUrl ? 'done' : 'pending'），若这里只按门店过滤不过滤 status，
+     会把未留证的 pending 回执也算成「已整改」—— 主理人直查 SQLite 实测：
+     库中 2 条回执（1 条 done 有照片、1 条 pending 无照片），
+     看板会显示已整改 2，真实完成只有 1。这直接削弱 PRD 主打的
+     「跨角色闭环真实可查」。 */
   const rects = listRectifications()
   const rectStoreIds = new Set(storeRows.map((r) => r.storeId))
-  const scopedRects = rects.filter((r) => rectStoreIds.has(r.storeId))
+  const scopedRects = rects.filter((r) => rectStoreIds.has(r.storeId) && r.status === 'done')
+  const pendingRects = rects.filter((r) => rectStoreIds.has(r.storeId) && r.status !== 'done')
   const avgGain = scopedRects.length
     ? Number((scopedRects.reduce((s, r) => s + (r.afterScore - r.beforeScore), 0) / scopedRects.length).toFixed(1))
     : 0
@@ -151,7 +220,11 @@ export function buildDashboardOverview(regionId) {
     completionRate,
   }
 
-  const rectification = { done: scopedRects.length, open, avgGain }
+  /* 整改卡片：done = 已整改回执数（同 status），pending = 已提交未留证，
+     两者与「整改」同源。原先 done 用 scopedRects.length（含 pending）、
+     open 用 openTasks.length（任务数）—— 数字不同源、不同量纲并排显示，
+     评审会追问「已整改 2 和进行中 16 是什么关系」而现场无法自圆其说。 */
+  const rectification = { done: scopedRects.length, open: pendingRects.length, avgGain }
 
   /* 订货汇总（订货闭环：店主下单 → 业代接单 → 经理看板一次请求拿全） */
   const orders = listTickets({ kind: 'order' })

@@ -61,7 +61,13 @@ export function resolveWsUrl(): string {
     ? String(explicit).replace(/\/$/, '')
     : (() => {
         const b = String(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
-        return b ? b.replace(/^http/, 'ws') : 'ws://127.0.0.1:3000'
+        if (b) return b.replace(/^http/, 'ws')
+        // ★ 生产同域部署（VITE_API_BASE 为空）：从当前页面地址推导 wss/ws，
+        //   绝不能回退到写死的 127.0.0.1（评委在公网域名上会连不上实时推送）。
+        const origin = typeof window !== 'undefined' && window.location
+          ? window.location.origin
+          : 'http://127.0.0.1:3000'
+        return origin.replace(/^http/, 'ws')
       })()
   const token = sessionToken()
   const qs = token ? `?token=${encodeURIComponent(token)}` : ''

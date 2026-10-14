@@ -1,0 +1,78 @@
+# ═══════════════════════════════════════════════════════════════
+# 店小C · Nginx 站点配置（同域：静态前端 + /api + /ws 反代到 Node）
+#
+# 用法（Ubuntu + nginx）：
+#   1. 把本文件复制到 /etc/nginx/sites-available/dianxiaoc
+#   2. 把下面两处 your-domain.com 改成你的域名（没有域名先写服务器公网 IP，
+#      但 HTTPS 证书必须有域名，IP 阶段可先用 80 端口裸跑）
+#   3. sudo ln -s /etc/nginx/sites-available/dianxiaoc /etc/nginx/sites-enabled/
+#   4. sudo nginx -t && sudo systemctl reload nginx
+#   5. HTTPS： sudo certbot --nginx -d your-domain.com
+#      certbot 会自动把下面的 80 段改写为跳转到 443。
+# ═══════════════════════════════════════════════════════════════
+
+# 后端只监听本机 3000，3000 端口不要对防火墙/安全组开放。
+upstream dianxiaoc_backend {
+    server 127.0.0.1:3000;
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.com;   # ← 改成你的域名或公网 IP
+
+    # 前端构建产物（store-app/dist 上传到这个目录）
+    root /var/www/dianxiaoc;
+    index index.html;
+
+    # 单张上传图片体积放宽到与后端一致（base64 20mb，文件本身小）
+    client_max_body_size 22m;
+
+    # 健康检查（顺便给监控/自己快速确认用）
+    location = /health {
+        proxy_pass http://dianxiaoc_backend/health;
+        proxy_set_header Host $host;
+    }
+
+    # REST API
+    location /api/ {
+        proxy_pass http://dianxiaoc_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;   # AI 诊断可能耗时十几秒
+    }
+
+    # WebSocket 实时推送（必须带 Upgrade 头）
+    location /ws {
+        proxy_pass http://dianxiaoc_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 3600s;   # 长连接保持
+    }
+
+    # 上传图片静态资源（后端 /uploads）
+    location /uploads/ {
+        proxy_pass http://dianxiaoc_backend;
+        proxy_set_header Host $host;
+    }
+
+    # 前端静态资源带 hash，可强缓存
+    location /assets/ {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800, immutable";
+        try_files $uri =404;
+    }
+
+    # 其余一律交给前端（hash 路由不强依赖，做 SPA 兜底更稳）
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

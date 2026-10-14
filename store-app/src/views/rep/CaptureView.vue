@@ -15,6 +15,7 @@ import SmartImage from '@/components/common/SmartImage.vue'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useLoadingSteps } from '@/composables/useLoadingSteps'
+import { useDialogFocus } from '@/composables/useDialogFocus'
 import { getStores, createDiagnosis, createVisit, uploadPhoto } from '@/api'
 import { useDemoStore } from '@/stores/demo'
 import { SHOOT_TYPES } from '@/domain/constants'
@@ -36,6 +37,13 @@ const store = computed<Store | undefined>(() => stores.value.find((s) => s.id ==
 
 /** 切换门店弹层 */
 const pickerOpen = ref<boolean>(false)
+/** 切换门店弹层焦点管理：Esc 关闭、Tab 锁在面板内、关闭后焦点回归「切换门店」按钮 */
+const { panelRef: pickerPanelRef } = useDialogFocus({
+  visible: pickerOpen,
+  onClose: () => {
+    pickerOpen.value = false
+  },
+})
 /** 拍摄部位（单选，默认冷藏柜） */
 const shootType = ref<ShootType>('cold')
 
@@ -75,7 +83,6 @@ watch(
   () => [storeId.value, shootType.value],
   () => {
     photoIndex.value = 0
-    picked.value = []
   },
 )
 
@@ -88,24 +95,27 @@ const hasPhoto = computed<boolean>(() => !!heroPhoto.value.url)
 /* ═══════════════ AI 分析动画 ═══════════════ */
 
 const overlayVisible = ref<boolean>(false)
-/** 5 步默认文案（与 mock 返回的 steps 一致；请求返回后以服务端 steps 为准） */
+/**
+ * 5 步默认文案（与 mock 返回的 steps 一致；请求返回后以服务端 steps 为准）。
+ * 注意：过程文案不得写死具体识别数量——真实视觉返回数量经常不一致，写死即「穿帮」；
+ * 进度百分比仍由 useLoadingSteps 按步数实时计算。
+ */
 const localSteps = ref([
   { text: '正在上传货架照片…', delayMs: 480 },
-  { text: '已识别 14 个目标：SKU 8 / 空位 1 / 竞品 2 / 价签 3', delayMs: 480 },
-  { text: '正在比对「C 类便利店陈列标准」…', delayMs: 480 },
-  { text: '正在结合近 4 周动销数据推理…', delayMs: 480 },
+  { text: '正在识别货架排面…', delayMs: 480 },
+  { text: '正在比对陈列标准…', delayMs: 480 },
+  { text: '正在结合进销存与动销推理…', delayMs: 480 },
   { text: '诊断完成', delayMs: 480 },
 ])
 const { current, done, percent, play, reset } = useLoadingSteps(localSteps.value)
 
 /* ═══════════════ 照片操作 ═══════════════ */
 
-/** 模拟拍照：快门动画 0.6s 后直接取预置照片 */
+/** 模拟拍照：0.15s 快门白闪即时反馈，动画结束后把照片加入已选（单条 toast） */
 const shooting = ref<boolean>(false)
 async function takePhoto(): Promise<void> {
   if (shooting.value) return
   shooting.value = true
-  toast.info('快门：模拟拍摄成功（演示态不调用真实摄像头）')
   await new Promise((r) => setTimeout(r, 600))
   shooting.value = false
   addCurrentPhoto()
@@ -193,15 +203,25 @@ function onFileChange(e: Event): void {
 
 /** 是否已在处理中（防重复点击） */
 const diagnosing = ref<boolean>(false)
+/** 诊断结果是否已就绪（就绪后「跳过动画 ›」才可点） */
+const resultReady = ref<boolean>(false)
+/** 跳过等待动画的 resolve 句柄 */
+let resolveSkip: (() => void) | null = null
 
 async function startDiagnosis(): Promise<void> {
   if (!hasPhoto.value || diagnosing.value) return
   diagnosing.value = true
   overlayVisible.value = true
+  resultReady.value = false
   reset()
 
+  // 动画与结果竞速：结果就绪后用户可跳过剩余动画；未就绪前跳过入口不可点
+  const skipPromise = new Promise<void>((resolve) => {
+    resolveSkip = resolve
+  })
+
   try {
-    // 请求与动画并行；两者都完成再跳转（保证 2.4s 的智能感表演完整）
+    // 请求与动画并行；两者都完成（或动画被跳过且结果已就绪）再跳转
     const photos = picked.value.length
       ? picked.value
       : [{ ...heroPhoto.value }]
@@ -210,9 +230,12 @@ async function startDiagnosis(): Promise<void> {
       photoIds: photos.map((p) => p.id).filter(Boolean),
       shootTypes: [shootType.value],
       unknownPhoto: hasUnknown.value,
+    }).then((res) => {
+      resultReady.value = true
+      return res
     })
 
-    const [res] = await Promise.all([promise, play(demo.speed)])
+    const [res] = await Promise.all([promise, Promise.race([play(demo.speed), skipPromise])])
     overlayVisible.value = false
 
     // 回写一次巡店记录（完成态），再进 P4
@@ -227,12 +250,36 @@ async function startDiagnosis(): Promise<void> {
     overlayVisible.value = false
     diagnosing.value = false
     toast.error('AI 分析失败，请重试')
+  } finally {
+    resolveSkip = null
   }
+}
+
+/** 跳过等待动画（结果就绪后生效）：直接放行到后续跳转流程 */
+function skipOverlay(): void {
+  if (!resultReady.value) return
+  resolveSkip?.()
+}
+
+/**
+ * 切换拍摄类型：已有已选照片时先确认，避免误清空。
+ */
+function chooseShootType(key: ShootType): void {
+  if (key === shootType.value) return
+  if (picked.value.length && !window.confirm('切换拍摄类型会清空已选照片，确定继续吗？')) return
+  shootType.value = key
+  picked.value = []
 }
 
 /** 切换门店 */
 function pickStore(id: string): void {
+  if (id === storeId.value) {
+    pickerOpen.value = false
+    return
+  }
+  if (picked.value.length && !window.confirm('切换门店会清空已选照片，确定继续吗？')) return
   storeId.value = id
+  picked.value = []
   pickerOpen.value = false
   router.replace(`/rep/capture/${id}`)
 }
@@ -244,7 +291,7 @@ function goBack(): void {
 </script>
 
 <template>
-  <MobileLayout title="巡店拍照" :back="true" :content-padding-bottom="20" @back="goBack">
+  <MobileLayout title="巡店拍照" :back="true" :content-padding-bottom="108" @back="goBack">
     <!-- 门店确认卡 -->
     <div class="p3-store">
       <SkeletonBlock v-if="loading" height="92px" radius="12px" />
@@ -254,7 +301,7 @@ function goBack(): void {
             <AppIcon name="map-pin" :size="14" color="var(--mn-green)" />
             {{ store.name }}
           </p>
-          <button class="p3-store__switch" @click="pickerOpen = true">切换门店</button>
+          <button type="button" class="p3-store__switch u-tap" @click="pickerOpen = true">切换门店</button>
         </div>
         <p class="p3-store__meta">{{ store.typeLabel }} · 负责人：{{ store.ownerName }}</p>
         <p class="p3-store__meta">
@@ -262,7 +309,6 @@ function goBack(): void {
           <template v-if="store.prevScore != null && store.lastScore - store.prevScore > 5">
             （{{ store.prevScore }} → {{ store.lastScore }}，+{{ store.lastScore - store.prevScore }}）
           </template>
-          · 第 {{ (store.photos?.length ?? 0) + 3 }} 次巡店
         </p>
       </div>
     </div>
@@ -274,9 +320,10 @@ function goBack(): void {
         <button
           v-for="s in SHOOT_TYPES"
           :key="s.key"
-          class="p3-seg__item"
+          type="button"
+          class="p3-seg__item u-tap"
           :class="{ 'p3-seg__item--on': shootType === s.key }"
-          @click="shootType = s.key"
+          @click="chooseShootType(s.key)"
         >
           {{ s.label }}
         </button>
@@ -287,35 +334,40 @@ function goBack(): void {
     <div class="p3-sec">
       <div class="p3-photo" :class="{ 'p3-photo--empty': !hasPhoto }">
         <SmartImage v-if="hasPhoto" class="p3-photo__img" :src="heroPhoto.url" :alt="heroPhoto.caption" />
+        <!-- 快门白闪：0.15s opacity 反馈（仅 opacity 动效，不位移） -->
+        <div v-if="shooting" class="p3-flash" aria-hidden="true" />
         <div v-else class="p3-photo__empty">
-          <AppIcon name="camera" :size="28" color="#B9C4BC" />
+          <AppIcon name="camera" :size="28" color="var(--text-4)" />
           <p>请拍摄或上传货架照片</p>
         </div>
         <span v-if="hasPhoto" class="p3-photo__ready">✓ 已就绪</span>
         <span v-if="hasPhoto" class="p3-photo__caption">{{ heroPhoto.caption }}</span>
       </div>
 
+      <!-- 主入口：拍照 / 相册（实心地 + 描边）；「换一张」降为次级文字按钮 -->
       <div class="p3-entry">
-        <button class="p3-entry__btn" :disabled="shooting" @click="takePhoto">
-          <AppIcon name="camera" :size="15" /> 拍照
+        <button type="button" class="p3-entry__btn p3-entry__btn--primary mot-tap" :disabled="shooting" @click="takePhoto">
+          <AppIcon name="camera" :size="15" color="#fff" /> 拍照
         </button>
-        <button class="p3-entry__btn" @click="pickFromAlbum">
+        <button type="button" class="p3-entry__btn mot-tap" @click="pickFromAlbum">
           <AppIcon name="layers" :size="15" /> 从相册上传
         </button>
-        <button class="p3-entry__btn" @click="rotatePhoto">
-          <AppIcon name="refresh" :size="15" /> 换一张
-        </button>
       </div>
+      <button type="button" class="p3-rotate u-tap" :disabled="!candidates.length" @click="rotatePhoto">
+        <AppIcon name="refresh" :size="13" /> 换一张预置图
+      </button>
       <input ref="fileInput" class="p3-hidden-file" type="file" accept="image/*" @change="onFileChange" />
 
       <!-- 缩略图 -->
       <div class="p3-thumbs">
-        <div v-for="p in picked" :key="p.id" class="p3-thumb">
-          <!-- 上传的 blob: URL 由 assetUrl 原样透传，预置图走相对路径 -->
-          <SmartImage :src="p.url" :alt="p.caption" />
-          <button class="p3-thumb__del" @click="removePhoto(p.id)">✕</button>
+        <div v-for="p in picked" :key="p.id" class="p3-thumb-wrap">
+          <div class="p3-thumb">
+            <!-- 上传的 blob: URL 由 assetUrl 原样透传，预置图走相对路径 -->
+            <SmartImage :src="p.url" :alt="p.caption" />
+          </div>
+          <button type="button" class="p3-thumb__del u-tap" aria-label="移除该照片" @click="removePhoto(p.id)">✕</button>
         </div>
-        <button class="p3-thumb p3-thumb--add" @click="addCurrentPhoto">＋</button>
+        <button type="button" class="p3-thumb p3-thumb--add mot-tap" aria-label="添加当前照片" @click="addCurrentPhoto">＋</button>
         <span class="p3-thumbs__tip">已选 {{ picked.length }} 张 · 最多 6 张</span>
       </div>
     </div>
@@ -326,22 +378,20 @@ function goBack(): void {
       <span>已打卡 · GPS 定位成功 · {{ checkinAt }}</span>
     </div>
 
-    <!-- 主按钮 -->
-    <div class="p3-submit">
-      <button class="p3-submit__btn" :disabled="!hasPhoto || diagnosing" @click="startDiagnosis">
-        <AppIcon name="sparkles" :size="17" color="#fff" />
-        开始 AI 诊断
-      </button>
-      <p v-if="!hasPhoto" class="p3-submit__tip">至少 1 张照片</p>
-    </div>
-
-    <!-- 切换门店弹层 -->
+    <!-- 切换门店弹层（action sheet：Esc / 点遮罩关闭，焦点陷阱与关闭后回归由 useDialogFocus 处理） -->
     <div v-if="pickerOpen" class="p3-mask" @click.self="pickerOpen = false">
-      <div class="p3-sheet">
-        <p class="p3-sheet__title">选择门店</p>
+      <div
+        ref="pickerPanelRef"
+        class="p3-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="p3-picker-title"
+      >
+        <p id="p3-picker-title" class="p3-sheet__title">选择门店</p>
         <button
           v-for="s in stores"
           :key="s.id"
+          type="button"
           class="p3-sheet__item"
           :class="{ 'p3-sheet__item--on': s.id === storeId }"
           @click="pickStore(s.id)"
@@ -352,8 +402,34 @@ function goBack(): void {
       </div>
     </div>
 
+    <!-- 结果就绪后可跳过剩余等待动画 -->
+    <button
+      v-if="overlayVisible && resultReady"
+      type="button"
+      class="p3-skip-wait"
+      @click="skipOverlay"
+    >
+      跳过动画 ›
+    </button>
+
     <!-- AI 分步加载遮罩 -->
     <AiLoadingOverlay :visible="overlayVisible" :steps="localSteps" :current="current" :done="done" :percent="percent" />
+
+    <!-- 主 CTA：底部固定在安全区（内容区预留 88px+ 底部留白） -->
+    <template #footer>
+      <div v-if="!overlayVisible" class="p3-bar u-safe-bottom">
+        <button
+          type="button"
+          class="p3-submit__btn mot-tap"
+          :disabled="!hasPhoto || diagnosing"
+          @click="startDiagnosis"
+        >
+          <AppIcon name="sparkles" :size="17" color="#fff" />
+          开始 AI 诊断
+        </button>
+        <p v-if="!hasPhoto" class="p3-bar__tip">至少 1 张照片</p>
+      </div>
+    </template>
   </MobileLayout>
 </template>
 
@@ -422,19 +498,21 @@ function goBack(): void {
   gap: 6px;
   padding: 3px;
   border-radius: 12px;
-  background: #eaf0ec;
+  background: var(--bg-page);
 }
 
 .p3-seg__item {
   flex: 1;
-  height: 34px;
+  min-height: 40px;
   border: none;
   border-radius: 10px;
   background: transparent;
   color: var(--text-2);
   font-size: 13px;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
 .p3-seg__item--on {
@@ -449,12 +527,12 @@ function goBack(): void {
   height: 208px;
   border-radius: 10px;
   overflow: hidden;
-  background: #eef0ef;
+  background: var(--bg-page);
 }
 
 .p3-photo--empty {
-  border: 1.5px dashed #c9d1cd;
-  background: #fafbfb;
+  border: 1.5px dashed var(--text-4);
+  background: var(--bg-page);
 }
 
 .p3-photo__img {
@@ -484,6 +562,36 @@ function goBack(): void {
   font-size: 13px;
 }
 
+/* 快门白闪：仅 opacity 0.15s 收起，给指尖即时回应 */
+.p3-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #fff;
+  pointer-events: none;
+  animation: p3-shutter 0.15s ease-out forwards;
+}
+
+@keyframes p3-shutter {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p3-flash {
+    animation-duration: 0.01ms;
+  }
+
+  /* 主按钮流光为纯装饰性无限动画：系统要求减弱动态效果时直接关闭 */
+  .p3-submit__btn::after {
+    animation: none;
+  }
+}
+
 .p3-photo__ready {
   position: absolute;
   top: 8px;
@@ -509,27 +617,60 @@ function goBack(): void {
 
 .p3-entry {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   margin-top: 10px;
 }
 
+/* 主入口：44px 高，拍照实心、相册描边（希克定律：主选择唯一且靠前） */
 .p3-entry__btn {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 36px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--mn-green);
+  border-radius: 12px;
   background: #fff;
-  color: var(--text-2);
-  font-size: 12.5px;
+  color: var(--mn-green-dark);
+  font-size: 13px;
   font-weight: 600;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
-.p3-entry__btn:active {
-  border-color: var(--mn-green);
+.p3-entry__btn--primary {
+  border-color: #007a30;
+  background: #007a30;
+  color: #fff;
+}
+
+.p3-entry__btn--primary:hover {
+  background: #00752e;
+}
+
+.p3-entry__btn:disabled {
+  opacity: 0.55;
+}
+
+/* 「换一张」降权：单行次级文字/图标按钮（.u-tap 把命中盒外扩到 44px） */
+.p3-rotate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 6px;
+  border: none;
+  background: none;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.p3-rotate:active {
   color: var(--mn-green);
 }
 
@@ -544,13 +685,27 @@ function goBack(): void {
   margin-top: 10px;
 }
 
-.p3-thumb {
+.p3-thumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* 外层不裁切：删除小钮的 .u-tap 44px 热区可以溢出到缩略图之外 */
+.p3-thumb-wrap {
   position: relative;
+  flex: none;
+  width: 52px;
+  height: 52px;
+}
+
+.p3-thumb {
   width: 52px;
   height: 52px;
   border-radius: 8px;
   overflow: hidden;
-  background: #eef0ef;
+  background: var(--bg-page);
   border: none;
   padding: 0;
 }
@@ -561,25 +716,32 @@ function goBack(): void {
   object-fit: cover;
 }
 
+/* 视觉 18px 小钮，命中盒由 .u-tap 外扩到 44px */
 .p3-thumb__del {
   position: absolute;
-  right: 2px;
-  top: 2px;
-  width: 16px;
-  height: 16px;
+  top: -7px;
+  right: -7px;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--text-1);
   color: #fff;
   font-size: 10px;
-  line-height: 16px;
+  line-height: 20px;
+  padding: 0;
 }
 
 .p3-thumb--add {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px dashed #c9d1cd;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  border: 1.5px dashed var(--text-4);
   background: #fff;
   color: var(--text-3);
   font-size: 18px;
@@ -604,8 +766,17 @@ function goBack(): void {
   font-weight: 600;
 }
 
-.p3-submit {
-  padding: 16px 12px 4px;
+/* 主 CTA：底部固定在安全区（iPhone home 指示条不遮挡） */
+.p3-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  padding-top: 14px;
+  padding-right: 12px;
+  padding-left: 12px;
+  background: linear-gradient(180deg, rgba(245, 247, 245, 0) 0%, var(--bg-page) 42%);
 }
 
 .p3-submit__btn {
@@ -648,7 +819,7 @@ function goBack(): void {
 }
 
 .p3-submit__btn:disabled {
-  background: #cfd6d2;
+  background: var(--text-4);
   box-shadow: none;
   opacity: 0.85;
 }
@@ -657,11 +828,37 @@ function goBack(): void {
   display: none;
 }
 
-.p3-submit__tip {
+.p3-bar__tip {
   margin-top: 6px;
   text-align: center;
   font-size: 11px;
   color: var(--text-3);
+}
+
+/* 跳过等待动画：浮在遮罩之上，结果就绪才渲染 */
+.p3-skip-wait {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
+  z-index: 1501;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(26, 31, 28, 0.55);
+  color: #fff;
+  font-size: 13px;
+  transform: translateX(-50%);
+  animation: p3-skip-in var(--dur-base) var(--ease-decel) both;
+}
+
+@keyframes p3-skip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* 切换门店弹层 */
@@ -692,7 +889,8 @@ function goBack(): void {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 11px 10px;
+  min-height: 44px;
+  padding: 10px;
   border: none;
   border-bottom: 1px dashed var(--border-color);
   background: none;

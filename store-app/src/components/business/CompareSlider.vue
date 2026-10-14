@@ -26,13 +26,20 @@ const props = withDefaults(defineProps<Props>(), {
   aspect: 2 / 3,
 })
 
-/** 透传内层标注图 hover（标注→问题 双向高亮反向链路） */
-const emit = defineEmits<{ (e: 'hover', ids: string[]): void }>()
+/** 透传内层标注图 hover / select（标注→问题 双向高亮 + 触屏锁定） */
+const emit = defineEmits<{
+  (e: 'hover', ids: string[]): void
+  (e: 'select', ids: string[]): void
+}>()
 
 /** 分割位置百分比（0–100） */
 const pos = ref<number>(52)
 /** 是否正在拖动 */
 const dragging = ref<boolean>(false)
+/** 按下时的 X（区分「拖拽」与「点按标注」：位移 ≤6px 视为点按） */
+let downX = 0
+/** 拖拽后吞掉一次 click，避免松手时误触标注锁定 */
+let suppressClick = false
 /** 舞台元素引用 */
 const stageRef = ref<HTMLElement | null>(null)
 
@@ -55,7 +62,9 @@ function moveTo(clientX: number): void {
 /** 指针按下 */
 function onDown(e: MouseEvent | TouchEvent): void {
   dragging.value = true
+  suppressClick = false
   const x = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
+  downX = x
   moveTo(x)
   window.addEventListener('mousemove', onMove)
   window.addEventListener('touchmove', onMove)
@@ -63,11 +72,20 @@ function onDown(e: MouseEvent | TouchEvent): void {
   window.addEventListener('touchend', onUp)
 }
 
-/** 指针移动 */
+/** 指针移动（触屏滚动锁定由舞台上的 @touchmove.prevent 负责） */
 function onMove(e: MouseEvent | TouchEvent): void {
   if (!dragging.value) return
   const x = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
+  if (Math.abs(x - downX) > 6) suppressClick = true
   moveTo(x)
+}
+
+/** 拖拽过程中的 click（含落在标注框上的）一律拦掉，纯点按放行给标注 */
+function onStageClick(e: MouseEvent): void {
+  if (!suppressClick) return
+  e.stopPropagation()
+  e.preventDefault()
+  suppressClick = false
 }
 
 /** 指针抬起 */
@@ -77,6 +95,10 @@ function onUp(): void {
   window.removeEventListener('touchmove', onMove)
   window.removeEventListener('mouseup', onUp)
   window.removeEventListener('touchend', onUp)
+  // click 在 mouseup 之后派发：下一帧再复位，未触发 click 时也不会卡住
+  window.setTimeout(() => {
+    suppressClick = false
+  }, 0)
 }
 
 onUnmounted(onUp)
@@ -84,7 +106,15 @@ onUnmounted(onUp)
 
 <template>
   <div class="cmp">
-    <div ref="stageRef" class="cmp__stage" :style="{ paddingTop: padTop }" @mousedown.prevent="onDown" @touchstart.prevent="onDown">
+    <div
+      ref="stageRef"
+      class="cmp__stage"
+      :style="{ paddingTop: padTop }"
+      @mousedown.prevent="onDown"
+      @touchstart="onDown"
+      @touchmove.prevent="onMove"
+      @click.capture="onStageClick"
+    >
       <!-- 右半：原图（底层，铺满） -->
       <div class="cmp__layer cmp__layer--base">
         <SmartImage :src="src" alt="货架原图" />
@@ -101,6 +131,7 @@ onUnmounted(onUp)
           :show-legend="false"
           :aspect="aspect"
           @hover="emit('hover', $event)"
+          @select="emit('select', $event)"
         />
         <span class="cmp__corner cmp__corner--left">✦ AI 标注</span>
       </div>

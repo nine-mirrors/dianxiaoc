@@ -13,6 +13,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import AiBadge from '@/components/common/AiBadge.vue'
 import AiLoadingOverlay from '@/components/business/AiLoadingOverlay.vue'
 import AnnotatedImage from '@/components/business/AnnotatedImage.vue'
+import OrderConfirmDialog from '@/components/business/OrderConfirmDialog.vue'
 import SmartImage from '@/components/common/SmartImage.vue'
 import { getDiagnosis, createDiagnosis, createTicket, uploadPhoto, streamGenerate, getTickets } from '@/api'
 import { useToast } from '@/composables/useToast'
@@ -241,6 +242,33 @@ async function order(): Promise<void> {
   }
 }
 
+/* ═══════════════ 下单确认（O-1 容错：高影响动作不可逆，先给一次「再想想」） ═══════════════ */
+
+const confirmVisible = ref<boolean>(false)
+
+/** 点开底部确认单（只打开本地弹层，不碰任何接口） */
+function openConfirm(): void {
+  if (ordering.value || !diagnosis.value) return
+  confirmVisible.value = true
+}
+
+function closeConfirm(): void {
+  confirmVisible.value = false
+}
+
+/** 只有用户在确认单里点「确认下单」后，才执行既有的 order()；
+ *  下单接口、入参、成功跳转与失败提示全部沿用原逻辑，本函数不加任何新接口行为 */
+async function confirmOrder(): Promise<void> {
+  confirmVisible.value = false
+  await order()
+}
+
+/**
+ * O-4 菲茨定律：拍照页 / 结果页主 CTA 固定在手机壳底部，
+ * 内容滚动区（ml-body）底部相应留白，避免最后一张卡片贴着主按钮。
+ */
+const bodyPad = computed<number>(() => (stage.value === 'capture' || stage.value === 'result' ? 88 : 20))
+
 /** 重来一次 */
 function restart(): void {
   if (typeTimer !== null) {
@@ -267,19 +295,47 @@ function backToRole(): void {
 
 const myOrders = ref<Ticket[]>([])
 const ordersLoading = ref<boolean>(false)
+/** O-3：拉取失败不再伪装成空列表，与「真空态」分开呈现并提供重试 */
+const ordersError = ref<boolean>(false)
 
 /** 拉取本店订单（后端 GET /tickets 已支持按门店过滤） */
-async function openOrders(): Promise<void> {
-  stage.value = 'orders'
+async function loadOrders(): Promise<void> {
   ordersLoading.value = true
+  ordersError.value = false
   try {
     const res = await getTickets({ storeId: 'S2' })
     myOrders.value = (res.tickets ?? []).slice(0, 10)
   } catch {
-    myOrders.value = []
+    ordersError.value = true
   } finally {
     ordersLoading.value = false
   }
+}
+
+/** 进入我的订单页并拉取 */
+async function openOrders(): Promise<void> {
+  stage.value = 'orders'
+  await loadOrders()
+}
+
+/** O-6（选择：onMounted 预拉一次）：引导页「我的订单(N)」角标依赖真实数据，
+ *  进页先静默拉一次——复用既有 GET /tickets，不新增接口；失败保持角标隐藏，
+ *  不打扰店主（进入订单列表时还会显式拉取并看到重试入口） */
+async function preloadOrders(): Promise<void> {
+  try {
+    const res = await getTickets({ storeId: 'S2' })
+    myOrders.value = (res.tickets ?? []).slice(0, 10)
+  } catch {
+    /* 静默：角标非关键信息，预拉失败等同无角标 */
+  }
+}
+
+/** O-5 状态语义色：待接单=中性 info（不再用警告橙制造焦虑）；
+ *  已接单=成功绿；后端若返回 timeout（当前类型未含）才用警告橙 */
+function orderState(t: Ticket): { text: string; cls: string } {
+  if (t.status === 'accepted') return { text: '业代已接单', cls: 'p6-orders__state--ok' }
+  if ((t.status as string) === 'timeout') return { text: '已超时', cls: 'p6-orders__state--warn' }
+  return { text: '待接单', cls: 'p6-orders__state--info' }
 }
 
 /* ═══════════════ 接单回执（三端闭环的最后一跳） ═══════════════ */
@@ -298,8 +354,11 @@ function onTicketStatus(payload: { id?: string; status?: string }): void {
 }
 
 onMounted(() => {
-  offRealtime<{ id?: string; status?: string }>('ticket:status', onTicketStatus)
+  // O-6：ticket:status 只注册一次（此前重复注册/防御性 off-on 已删除），
+  // 卸载时在 onUnmounted 里退订，不依赖挂载前的清理
   onRealtime<{ id?: string; status?: string }>('ticket:status', onTicketStatus)
+  // 角标数据预拉（见 preloadOrders 注释）
+  void preloadOrders()
 })
 
 onUnmounted(() => {
@@ -309,7 +368,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <MobileLayout :title="stage === 'guide' ? '店主自助服务' : '货架小助手'" :back="true" @back="stage === 'guide' ? backToRole() : stage = 'guide'">
+  <MobileLayout
+    :title="stage === 'guide' ? '店主自助服务' : '货架小助手'"
+    :back="true"
+    :content-padding-bottom="bodyPad"
+    @back="stage === 'guide' ? backToRole() : stage = 'guide'"
+  >
     <!-- ══ AI 分步加载遮罩（拍照后播放，体现真·AI 在干活） ══ -->
     <AiLoadingOverlay
       :visible="overlayVisible"
@@ -319,14 +383,14 @@ onUnmounted(() => {
       :percent="percent"
     />
 
-    <!-- ══ ① 三步引导 ══ -->
+    <!-- ══ ① 三步引导（克制的错峰入场：3 步 + 3 个信息块，不加内容） ══ -->
     <div v-if="stage === 'guide'" class="p6">
-      <div class="p6__hero">
+      <div class="p6__hero mot-fade-up">
         <p class="p6__hero-title">3 步看好你的货架</p>
         <p class="p6__hero-sub">张大姐 · 好邻居地铁口店</p>
       </div>
 
-      <div class="p6__steps">
+      <div class="p6__steps mot-stagger">
         <div v-for="s in steps" :key="s.no" class="p6__step">
           <span class="p6__step-no">{{ s.no }}</span>
           <span class="p6__step-icon"><AppIcon :name="s.icon" :size="18" /></span>
@@ -337,12 +401,12 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="p6__cta">
-        <button class="p6__btn" @click="stage = 'capture'">
+      <div class="p6__cta mot-fade-up" style="animation-delay: 180ms">
+        <button type="button" class="p6__btn mot-tap" @click="stage = 'capture'">
           <AppIcon name="sparkles" :size="17" color="#fff" />
           开始自助诊断
         </button>
-        <button class="p6__btn p6__btn--ghost" @click="openOrders">
+        <button type="button" class="p6__btn p6__btn--ghost mot-tap" @click="openOrders">
           <AppIcon name="clipboard" :size="16" />
           我的订单<span v-if="myOrders.length">（{{ myOrders.length }}）</span>
         </button>
@@ -353,25 +417,43 @@ onUnmounted(() => {
     <!-- ══ 我的订单（店主最关心：订了什么、接了没） ══ -->
     <div v-else-if="stage === 'orders'" class="p6-orders">
       <p class="p6-orders__title">我的订单</p>
-      <p v-if="ordersLoading" class="p6-orders__empty">正在加载…</p>
+      <p v-if="ordersLoading" class="p6-orders__empty" aria-live="polite">正在加载…</p>
+
+      <!-- O-3：拉取失败 = 明确的错误态 + 重试，不再伪装成「还没有订单」 -->
+      <div v-else-if="ordersError" class="p6-orders__error" role="alert">
+        <p class="p6-orders__error-title">订单没拉到</p>
+        <p class="p6-orders__error-sub">可能网络开了个小差，点下面再试一次</p>
+        <button
+          type="button"
+          class="u-btn u-btn--primary p6-orders__retry u-tap mot-tap"
+          @click="loadOrders"
+        >
+          订单没拉到，点我重试
+        </button>
+      </div>
+
       <p v-else-if="!myOrders.length" class="p6-orders__empty">
         还没有订单。点「开始自助诊断」，看完货架就能一键下单。
       </p>
-      <div v-for="t in myOrders" :key="t.id" class="p6-orders__item">
-        <div class="p6-orders__head">
-          <span class="p6-orders__id">{{ t.id }}</span>
-          <span class="p6-orders__state" :class="{ 'is-ok': t.status === 'accepted' }">
-            {{ t.status === 'accepted' ? '业代已接单' : '待接单' }}
-          </span>
+      <template v-else>
+        <div v-for="t in myOrders" :key="t.id" class="p6-orders__item">
+          <div class="p6-orders__head">
+            <span class="p6-orders__id">{{ t.id }}</span>
+            <span class="p6-orders__state" :class="orderState(t).cls">
+              {{ orderState(t).text }}
+            </span>
+          </div>
+          <p class="p6-orders__items">
+            {{ (t.items ?? []).map((i) => i.skuName).join('、') }}
+          </p>
+          <p class="p6-orders__meta">
+            共 <b>{{ t.totalBottles }}</b> 瓶 · ¥{{ t.totalAmount }} · {{ t.createdAt }}
+          </p>
         </div>
-        <p class="p6-orders__items">
-          {{ (t.items ?? []).map((i) => i.skuName).join('、') }}
-        </p>
-        <p class="p6-orders__meta">
-          共 <b>{{ t.totalBottles }}</b> 瓶 · ¥{{ t.totalAmount }} · {{ t.createdAt }}
-        </p>
-      </div>
-      <button class="p6__btn p6__btn--ghost" @click="stage = 'guide'">返回</button>
+      </template>
+      <button type="button" class="p6__btn p6__btn--ghost mot-tap" @click="stage = 'guide'">
+        返回
+      </button>
     </div>
 
     <!-- ══ ② 轻量拍照 ══ -->
@@ -383,26 +465,32 @@ onUnmounted(() => {
       </div>
 
       <div class="p6-cap__ops">
-        <button class="p6-cap__op" @click="pickFile">
+        <button type="button" class="p6-cap__op u-tap" @click="pickFile">
           <AppIcon name="camera" :size="16" /> {{ uploadedUrl ? '换一张' : '上传照片' }}
         </button>
-        <button v-if="uploadedUrl" class="p6-cap__op" @click="resetPhoto">
+        <button v-if="uploadedUrl" type="button" class="p6-cap__op u-tap" @click="resetPhoto">
           <AppIcon name="refresh" :size="15" /> 用示例照
         </button>
       </div>
       <input ref="fileInput" type="file" accept="image/*" class="p6-cap__file" @change="onFileChange" />
-
-      <button class="p6__btn" :disabled="analyzing" @click="startAnalyze">
-        <span v-if="analyzing" class="p6__spinner" />
-        <template v-else><AppIcon name="sparkles" :size="17" color="#fff" /></template>
-        {{ analyzing ? 'AI 正在看…' : '开始 AI 看' }}
-      </button>
     </div>
 
     <!-- ══ ③ 轻量结果 ══ -->
     <div v-else-if="stage === 'result' && diagnosis" class="p6-result">
       <div class="p6-res__img">
-        <AnnotatedImage :src="diagnosis.photoUrl" :annotations="diagnosis.annotations" :aspect="2 / 3" />
+        <!-- O-2：对店主关闭术语图例；框上的内部标签在本页 :deep 隐藏，
+             只保留下方两句口语说明（不改 AnnotatedImage 组件本身） -->
+        <AnnotatedImage
+          :src="diagnosis.photoUrl"
+          :annotations="diagnosis.annotations"
+          :aspect="2 / 3"
+          :show-legend="false"
+        />
+      </div>
+      <!-- 口语图例：颜色本身不说话，配两句大白话（红=空位该补货，黄=摆得不对） -->
+      <div class="p6-res__legend" aria-label="图中颜色说明">
+        <span class="p6-res__lg-item"><i class="p6-res__lg-dot p6-res__lg-dot--red" />红圈＝空位该补货</span>
+        <span class="p6-res__lg-item"><i class="p6-res__lg-dot p6-res__lg-dot--yellow" />黄圈＝摆得不对</span>
       </div>
 
       <section class="p6-res__card">
@@ -420,12 +508,18 @@ onUnmounted(() => {
         <p class="p6-res__title">
           <AppIcon name="sparkles" :size="16" :color="aiReal ? 'var(--ai-purple)' : 'var(--mn-green)'" />
           <!-- ★ A2：AI 措辞只给真大模型；fallback 用统一常量里的诚实文案 -->
-          <span v-if="aiReal">AI 帮你看了</span>
+          <!-- 逐字输出中 / 来源未定时用中性文案，避免生成中闪现「内容生成未完成」；
+               source=null 时本页展示的是 buildOwnerDegrade() 的完整兜底话术（非异常分支），同样归入中性文案 -->
+          <span v-if="aiReal || ownerTyping || ownerSource === null">AI 帮你看了</span>
+          <span v-else-if="ownerSource === 'fallback'">{{ aiBadgeOf('fallback').text }}</span>
           <span v-else>{{ aiBadgeOf(ownerSource).text }}</span>
         </p>
-        <p class="p6-res__owner">
+        <!-- O-5：逐字输出对读屏器隐藏，避免每个字符都打断播报 -->
+        <p class="p6-res__owner" aria-hidden="true">
           {{ ownerText }}<span v-if="ownerTyping" class="p6-res__caret">▌</span>
         </p>
+        <!-- 完成稿一次性写入 polite 直播区，打字结束才朗读全文 -->
+        <p class="u-sr-only" aria-live="polite">{{ ownerTyping ? '' : ownerText }}</p>
       </section>
 
       <section class="p6-res__card">
@@ -444,10 +538,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <button class="p6__btn" :disabled="ordering" @click="order">
-        {{ ordering ? '下单中…' : `一键订货 · ${totalBottles} 瓶` }}
-      </button>
-      <p class="p6__foot">
+      <p class="p6-res__foot">
         <AiBadge v-if="aiReal" text="AI 识别与建议，下单后由业代联系确认" />
         <span v-else class="p6__foot-plain">识别建议，下单后由业代联系确认</span>
       </p>
@@ -482,10 +573,37 @@ onUnmounted(() => {
       </p>
 
       <div class="p6-ok__btns">
-        <button class="u-btn u-btn--ghost" @click="restart">再诊断一次</button>
-        <button class="u-btn u-btn--primary" @click="backToRole">完成</button>
+        <button type="button" class="u-btn u-btn--ghost" @click="restart">再诊断一次</button>
+        <button type="button" class="u-btn u-btn--primary" @click="backToRole">完成</button>
       </div>
     </div>
+
+    <!-- ══ O-4：主 CTA 固定底部（菲茨定律：拇指热区，52px + 安全区 + 按压反馈） ══ -->
+    <template #footer>
+      <div v-if="stage === 'capture'" class="p6-cta-bar">
+        <button type="button" class="p6__btn p6__bar-btn mot-tap" :disabled="analyzing" @click="startAnalyze">
+          <span v-if="analyzing" class="p6__spinner" />
+          <template v-else><AppIcon name="sparkles" :size="17" color="#fff" /></template>
+          {{ analyzing ? 'AI 正在看…' : '开始 AI 看' }}
+        </button>
+      </div>
+      <div v-else-if="stage === 'result' && diagnosis" class="p6-cta-bar">
+        <!-- O-1：先弹轻确认单，不再一点就直接下单 -->
+        <button type="button" class="p6__btn p6__bar-btn mot-tap" :disabled="ordering" @click="openConfirm">
+          {{ ordering ? '下单中…' : `一键订货 · ${totalBottles} 瓶` }}
+        </button>
+      </div>
+    </template>
+
+    <!-- ══ O-1：下单轻确认弹层（明细/合计/业代 2 小时联系 + 明显取消） ══ -->
+    <OrderConfirmDialog
+      :visible="confirmVisible"
+      :items="restock"
+      :total-bottles="totalBottles"
+      :total-amount="totalAmount"
+      @close="closeConfirm"
+      @confirm="confirmOrder"
+    />
   </MobileLayout>
 </template>
 
@@ -587,6 +705,37 @@ onUnmounted(() => {
 
 .p6__btn:disabled {
   opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* 按压即时反馈（触摸端） */
+.p6__btn:active {
+  transform: scale(0.98);
+}
+
+/* 桌面鼠标：悬停轻微上浮，仅在能 hover 的设备生效，避免触屏残留态 */
+@media (hover: hover) {
+  .p6__btn:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+
+  .p6__btn--ghost:not(:disabled):hover {
+    background: var(--mn-green-light);
+  }
+}
+
+/* ── O-4 底部固定主 CTA 栏（在手机壳 flex 流内，不遮挡滚动内容） ── */
+.p6-cta-bar {
+  flex: none;
+  padding: 10px 16px;
+  /* 内容视觉留白 12px + 全面屏手势安全区 */
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-card, #fff);
+  border-top: 1px solid var(--border-color);
+}
+
+.p6__bar-btn {
+  flex: none;
 }
 
 .p6__trust {
@@ -599,7 +748,7 @@ onUnmounted(() => {
   color: var(--mn-green);
 }
 
-.p6__foot {
+.p6-res__foot {
   margin-top: 14px;
   text-align: center;
 }
@@ -684,8 +833,56 @@ onUnmounted(() => {
 .p6-res__img {
   border-radius: 14px;
   overflow: hidden;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   box-shadow: var(--shadow-card);
+}
+
+/* O-2：店主页不出现「空位 / 竞品 / 价签问题」等内部术语标签。
+   AnnotatedImage 未提供关闭框上 label 的 prop，又不允许改该组件，
+   故仅在本页用 :deep 隐去标签文字（价签角标收成一个小黄点），
+   含义由下方两句口语图例承担。 */
+.p6-res__img :deep(.anno__label) {
+  display: none;
+}
+
+.p6-res__img :deep(.anno__tag) {
+  min-width: 10px;
+  min-height: 10px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0;
+}
+
+/* ── 口语图例（替代 AnnotatedImage 的术语图例） ── */
+.p6-res__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.p6-res__lg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.p6-res__lg-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.p6-res__lg-dot--red {
+  background: var(--color-danger);
+}
+
+.p6-res__lg-dot--yellow {
+  background: var(--color-warning);
 }
 
 .p6-res__card {
@@ -749,6 +946,14 @@ onUnmounted(() => {
 
   50% {
     opacity: 0;
+  }
+}
+
+/* 尊重系统「减少动态效果」：光标不闪、旋转环停转（等待态仍有「AI 正在看…」文案承载） */
+@media (prefers-reduced-motion: reduce) {
+  .p6-res__caret,
+  .p6__spinner {
+    animation: none;
   }
 }
 
@@ -847,15 +1052,49 @@ onUnmounted(() => {
 .p6-orders__state {
   padding: 2px 8px;
   border-radius: 999px;
-  background: #fff4e5;
-  color: #b26a00;
+  /* O-6：待接单默认中性 info 蓝（不再用警告橙制造焦虑） */
+  background: var(--info-bg);
+  color: var(--info-fg);
   font-size: 11px;
   font-weight: 700;
 }
 
-.p6-orders__state.is-ok {
-  background: #e8f6ee;
-  color: var(--mn-green-dark, #0a7d43);
+/* 已接单 = 成功绿 */
+.p6-orders__state--ok {
+  background: var(--success-bg);
+  color: var(--success-fg);
+}
+
+/* 超时才用警告橙（后端当前未返回该状态，预留语义位） */
+.p6-orders__state--warn {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+
+/* O-3：错误态卡片（与空态区分，给重试一个明确落点） */
+.p6-orders__error {
+  margin: 24px 0;
+  padding: 22px 16px;
+  border-radius: var(--radius-card);
+  background: var(--bg-card, #fff);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.p6-orders__error-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-1, #1f2937);
+}
+
+.p6-orders__error-sub {
+  margin: 6px 0 14px;
+  font-size: 12.5px;
+  color: var(--text-3, #6b7280);
+}
+
+.p6-orders__retry {
+  min-width: 168px;
 }
 
 .p6-orders__items {

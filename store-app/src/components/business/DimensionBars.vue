@@ -4,7 +4,18 @@
  * 条色 = 该维度自己的分档色。
  */
 import { colorOf } from '@/domain/constants'
-import type { DimensionScore } from '@/types'
+import type { DimensionScore, HealthLevelKey } from '@/types'
+
+/**
+ * 维度分数文字的深色档（白底 ≥4.5:1）；条色仍用 colorOf() 亮色（装饰填充，不承载文字）。
+ * 良好档 #558b2f 白底对比 ≈5.1:1。
+ */
+const LEVEL_FG: Record<HealthLevelKey, string> = {
+  excellent: 'var(--mn-green-dark)',
+  good: '#558b2f',
+  warning: 'var(--warning-fg)',
+  risk: 'var(--danger-fg)',
+}
 
 interface Props {
   dimensions: DimensionScore[]
@@ -22,7 +33,7 @@ const props = withDefaults(defineProps<Props>(), { dimensions: () => [] })
           :style="{ width: `${Math.max(0, Math.min(100, d.score))}%`, background: colorOf(d.level) }"
         />
       </div>
-      <span class="dim-bar__score" :style="{ color: colorOf(d.level) }">{{ d.score }}</span>
+      <span class="dim-bar__score" :style="{ color: LEVEL_FG[d.level] }">{{ d.score }}</span>
     </div>
   </div>
 </template>

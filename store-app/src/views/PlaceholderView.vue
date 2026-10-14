@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /**
- * 占位页：Tab4「我的」与未匹配路由共用。
- * 保持最小可用性：给出返回主线入口，避免评委点到死胡同。
+ * 「我的」页（Tab4）/ 未匹配路由共用。
+ *
+ * 刻意保持极简：只回答两件事——「我是谁（姓名/角色，来自 session store）」
+ * 与「换账号/退出」。不再放重复跳转的占位入口，避免把人带进死胡同。
  */
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -13,70 +15,34 @@ const router = useRouter()
 const session = useSessionStore()
 const toast = useToast()
 
-/** 退出登录：清 token 回登录页（换账号演示用） */
+/** 退出登录：复用 session store 的登出（清 token + 断实时推送），再回登录页 */
 function logout(): void {
   session.logout()
   toast.info('已退出登录，请重新登录')
-  router.replace('/login')
+  void router.replace('/login')
 }
-
-/** 「我的」页的功能入口 */
-const entries = [
-  { icon: 'history', label: '我的巡店记录', path: '/rep/history' },
-  { icon: 'clipboard', label: '整改单 / 订货记录', path: '/rep/history' },
-  { icon: 'store', label: '负责门店（128 家）', path: '/rep/today' },
-]
 </script>
 
 <template>
-  <MobileLayout title="我的" :show-tab-bar="true" :content-padding-bottom="60">
+  <MobileLayout title="我的" :show-tab-bar="true" :content-padding-bottom="24">
     <div class="me">
       <div class="me__card">
         <span class="me__avatar">{{ session.avatarText }}</span>
-        <div>
-          <p class="me__name">{{ session.user.name }}</p>
-          <p class="me__sub">{{ session.roleLabel }} · {{ session.user.sub }}</p>
+        <div class="me__id">
+          <p class="me__name">{{ session.user?.name ?? '未登录' }}</p>
+          <p class="me__sub">{{ session.roleLabel }}<template v-if="session.user?.sub"> · {{ session.user.sub }}</template></p>
         </div>
       </div>
 
-      <div class="me__entries">
-        <button v-for="e in entries" :key="e.label" class="me__entry" @click="router.push(e.path)">
-          <AppIcon :name="e.icon" :size="16" />
-          <span>{{ e.label }}</span>
-          <AppIcon name="chevron-right" :size="15" color="var(--text-3)" />
-        </button>
-      </div>
-
-      <button class="me__logout" @click="logout">
-        <AppIcon name="refresh" :size="15" /> 退出登录（换账号）
+      <button type="button" class="me__logout u-tap mot-tap" @click="logout">
+        <AppIcon name="refresh" :size="15" />
+        切换账号 / 退出登录
       </button>
-
-      <p class="me__foot">✦ 个人中心 · 业绩看板与任务中心将在正式版开放</p>
     </div>
   </MobileLayout>
 </template>
 
 <style scoped>
-.me__logout {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: 14px;
-  padding: 10px 0;
-  border: 1px solid var(--border-1, #e8eaec);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--text-2, #4b5563);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.me__logout:active {
-  transform: scale(0.98);
-}
-
 .me {
   padding: 14px 12px;
 }
@@ -92,6 +58,7 @@ const entries = [
 }
 
 .me__avatar {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -101,6 +68,10 @@ const entries = [
   background: rgba(255, 255, 255, 0.22);
   font-size: 18px;
   font-weight: 700;
+}
+
+.me__id {
+  min-width: 0;
 }
 
 .me__name {
@@ -114,36 +85,20 @@ const entries = [
   opacity: 0.85;
 }
 
-.me__entries {
-  margin-top: 12px;
-  border-radius: var(--radius-card);
-  background: #fff;
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-
-.me__entry {
+/* 唯一主动作：命中盒 ≥44px，与手机壳内其它页面的按钮体系一致 */
+.me__logout {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
-  padding: 13px 14px;
-  border: none;
-  border-bottom: 1px dashed var(--border-color);
-  background: none;
-  color: var(--text-1);
-  font-size: 13.5px;
-  text-align: left;
-}
-
-.me__entry span {
-  flex: 1;
-}
-
-.me__foot {
+  min-height: 44px;
   margin-top: 14px;
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-3);
+  padding: 10px 0;
+  border: 1px solid var(--border-color, #e8eaec);
+  border-radius: 10px;
+  background: var(--bg-card, #fff);
+  color: var(--text-2, #4b5563);
+  font-size: 14px;
 }
 </style>

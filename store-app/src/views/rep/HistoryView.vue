@@ -60,24 +60,30 @@ function openVisit(v: Visit): void {
       />
 
       <div v-else class="hist__list">
-        <div v-for="v in visits" :key="v.id" class="hist__item" @click="openVisit(v)">
-          <div class="hist__thumb">
+        <button
+          v-for="v in visits"
+          :key="v.id"
+          type="button"
+          class="hist__item mot-tap"
+          @click="openVisit(v)"
+        >
+          <span class="hist__thumb">
             <img v-if="thumbOf(v.storeId)" :src="thumbOf(v.storeId)" :alt="v.storeName" />
-            <AppIcon v-else name="package" :size="18" color="#B9C4BC" />
-          </div>
+            <AppIcon v-else name="package" :size="18" color="var(--text-4)" />
+          </span>
 
-          <div class="hist__main">
-            <p class="hist__store u-ellipsis">{{ v.storeName }}</p>
-            <p class="hist__meta">{{ formatShortTime(v.visitedAt) }} · 第 {{ v.visitNo }} 次</p>
-          </div>
+          <span class="hist__main">
+            <span class="hist__store u-ellipsis">{{ v.storeName }}</span>
+            <span class="hist__meta">{{ formatShortTime(v.visitedAt) }} · 第 {{ v.visitNo }} 次</span>
+          </span>
 
-          <div class="hist__score">
+          <span class="hist__score">
             <b :style="{ color: `var(--level-${levelOf(v.score)})` }">{{ v.score }}</b>
             <HealthBadge :level="levelOf(v.score)" />
-          </div>
+          </span>
 
           <AppIcon name="chevron-right" :size="16" color="var(--text-3)" />
-        </div>
+        </button>
       </div>
 
       <p class="hist__foot">✦ 历史诊断进入只读态，可留证对比整改前后</p>
@@ -100,10 +106,25 @@ function openVisit(v: Visit): void {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 10px;
+  border: none;
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+
+.hist__item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
 }
 
 .hist__thumb {
@@ -130,11 +151,13 @@ function openVisit(v: Visit): void {
 }
 
 .hist__store {
+  display: block;
   font-size: 13.5px;
   font-weight: 700;
 }
 
 .hist__meta {
+  display: block;
   margin-top: 2px;
   font-size: 11px;
   color: var(--text-3);
@@ -142,6 +165,7 @@ function openVisit(v: Visit): void {
 
 .hist__score {
   flex: none;
+  display: block;
   text-align: right;
 }
 

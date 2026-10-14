@@ -11,9 +11,20 @@
 ```
 03_产品Demo/
 ├── store-app/          # 前端（Vue3 + Vite + TS + Pinia）
-├── server/             # 真后端（Express + SQLite，提供 30 个 REST + SSE + WebSocket）
-└── README.md
+├── server/             # 真后端（Express + SQLite，29 个 /api/v1 REST 契约 + SSE + WebSocket）
+├── docs/
+│   ├── architecture/   # ★ 现行架构设计文档（七份，已通过合规校验并冻结）
+│   ├── class-diagram.mermaid / sequence-diagram.mermaid
+│   ├── 产品复查_功能缺口与新增功能清单.md
+│   └── 测评报告.md
+├── PRD.md              # 产品需求文档 v1.1（含冲突裁决记录 §0.2）
+├── ARCHITECTURE.md     # ⚠️ v1.0 早期规划稿，已部分过期，勿作现行架构依据
+├── 产品定义书.md / 最小需求清单.md
+├── 启动说明.md / README.md
+└── ...
 ```
+
+> **架构设计文档在 `docs/architecture/`**：高层架构设计、系统设计、部署设计、安全设计、UserStory（五份冻结文档）+ 行业调研报告 + 资料摘要。入口见该目录的 `README.md`。
 
 - `store-app/` 是演示主程序，**单独即可完整演示全部功能**。
 - **`server/` 必须启动**（`cd server && npm start`，3000 端口）。本项目**无 mock 层**，后端未起时页面会显示「后端未连接」且没有数据。详见《启动说明.md》。
@@ -52,7 +63,7 @@ npm run typecheck   # 类型检查（vue-tsc）
 
 ## 三种角色演示路径
 
-开场页 `/role`（P1）选择角色，3 秒切入任意一端：
+登录页 `/login` 是唯一入口，**用账号密码登录，身份与落地页由后端裁定**（无角色选择卡、无验证码、无跳过登录）。登录后按角色进入对应一端：
 
 ### ① 业代端 · 李强（移动端，主线 P2→P4）
 - **P2 今日巡店**：今日路线 + 5 家门店卡片 + 经理下派的待办提醒。点击门店进入拍照。
@@ -113,7 +124,7 @@ curl http://localhost:3000/api/v1/stores -H 'Authorization: Bearer <token>'
 - token 格式 `username.ts.exp.hmac`：HMAC-SHA256 签名，**8 小时过期**，验签用 `timingSafeEqual` 防时序攻击。
 - 兼容回退 `?token=`（SSE 的 `EventSource` 与 `<img src>` 无法自定义请求头，这是浏览器限制；token 本身仍需验签，不是绕过）。
 - 角色校验：下派任务限 `manager`，任务回执限 `rep`，不匹配返回 403。
-- 白名单（免鉴权）：`POST /api/v1/auth/login`、`GET /api/v1/auth/demo-accounts`、`GET /api/v1/meta/roles`、`GET /health`。
+- 白名单（免鉴权）：`POST /api/v1/auth/login`、`GET /api/v1/auth/demo-accounts`（仅本地开发，生产模式关闭）、`GET /api/v1/meta/roles`、`GET /health`。
 
 ---
 
@@ -144,7 +155,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 `.gitignore` 已覆盖 `**/.env` 与 `server/data/`（SQLite 库、上传照片、演示账号），打包或分享仓库不会带出密钥与运行时数据。**换机器/重新 clone 后必须重新 `cp .env.example .env`。**
 
-> ⚠ 演示环境为方便评委自助登录，`GET /api/v1/auth/demo-accounts` 会连同密码一起下发演示账号清单 —— 这是**校园演示专用**的设计，真实系统绝不会回传密码。
+> ⚠ `GET /api/v1/auth/demo-accounts` 仅在本地开发（回环、非 production）时连同密码一起返回，方便调试；**公网生产模式（NODE_ENV=production）直接返回 404**，登录页也不再调用它，账号密码只印在提交 PDF 上。
 
 ---
 
@@ -161,12 +172,12 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 - 前端：Vue 3 (`<script setup>`) + TypeScript + Vite 5 + Pinia 2 + vue-router 4（hash 模式）
 - 图表：ECharts 5（看板环形图 / 折线）
-- 地图：Leaflet 4 + 高德瓦片（免 key 直连，P2 支持全屏与缩放）
+- 地图：Leaflet 1.9.4 + 高德瓦片（免 key 直连，P2 支持全屏与缩放）
 - 后端：Node + Express + SQLite + DashScope 千问（qwen-plus 文本 / qwen-vl-ocr 视觉（VL-Plus 未开通时自动降级））
 - **AI 流式**：SSE（`/api/v1/ai/chat/stream`、`/api/v1/ai/generate/stream`），逐 token 出字
 - **MCP 进销存**：`server/mcp/inventory-server.mjs`（零依赖 stdio JSON-RPC），暴露 `get_batch_expiry` / `get_price_book` / `get_store_inventory` 三个工具 —— **效期与价签数据来自进销存，不靠看图猜**
 - **补货算法**：`server/src/forecast.js`，Holt 指数平滑 → 单列日均 → 动态安全库存 `z·σ·√L`（90% 服务水平）→ 目标库存 → 建议补货量，逐步可溯源；`GET /api/v1/forecast/:diagnosisId` 可查看完整算式
-- **缓存**：双模 —— 配置 `REDIS_URL` 走 Redis，否则自动退化为内存 LRU + TTL（`server/src/cache.js`），AI 文案二次调用秒回
+- **缓存**：三级 —— 配置 `REDIS_URL` 走真 Redis，否则退到内置 RESP 兼容服务（`redisLite.js`），再否则内存 LRU + TTL（`server/src/cache.js`）；未配置 Redis 也能完整演示
 
 ## 演示账号（评委可自己登录不同角色查看）
 
@@ -176,15 +187,40 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 | `wangmin` | `123456` | 区域经理 · 王敏 | `#/manager/dashboard` | 区域看板、风险预警、下派任务 |
 | `zhangdajie` | `123456` | 店员/店主 · 张大姐 | `#/owner` | 自助诊断、一键补货 |
 
-- 登录页点任一「演示账号」按钮可一键填入，**不必手打**；
+- **在登录页手动输入账号密码登录**（登录页不再展示账号清单、不自动填密码）；
 - **账号决定角色、角色决定能看哪些页面**：用 `wangmin` 登录后手动访问 `#/rep/diagnosis/D_S3` 会被守卫送回经理首页；
-- 安全阀：未登录 / 跳过登录 / 直接点链接时**不做拦截**，保证评委点任何直达链接都能打开；
-- 另有手机号 + 验证码登录路径（演示态任意 6 位数字）。
+- 未登录访问任意业务页会被路由守卫送到 `/login`；登录态写 localStorage，刷新自动恢复（token 8 小时有效）。
 
 ## 演示注意事项
 
+### 演示前 10 分钟检查清单（⚠️ 逐项确认，漏一项都可能现场翻车）
+
+| # | 检查项 | 怎么确认 | 漏了会怎样 |
+|---|---|---|---|
+| 1 | **`HOST` 未被设为 `0.0.0.0`** | 启动日志若出现「非回环」告警即为误设 | 后端监听全部网卡，会场公共 WiFi 下同网段任意设备可读走 `demo-accounts` 的**明文口令** |
+| 2 | **`AUTH_SECRET` 已配置** | `server/.env` 里该行非空、非模板占位值 | 缺省会用进程级随机密钥，**每次重启后端所有 token 立即失效** → 中途重启会让三个端集体掉线 |
+| 3 | 端口绑定正确 | `netstat -ano \| findstr :3000` 显示 `127.0.0.1:3000` 而非 `0.0.0.0:3000` | 同第 1 条 |
+| 4 | 后端已启动且健康 | `curl http://127.0.0.1:3000/health` 返回 `ok:true` | 页面显示「后端未连接」，无法演示 |
+| 5 | 未反复点「重置演示数据」 | — | 该操作会清库**并清空 uploads 目录**，进行中的照片与整改记录会丢 |
+| 6 | 三个端都已登录 | 页头显示当前角色 | 现场切账号要重新登录，耗时 |
+
+> **为什么第2 条最容易翻车**：`AUTH_SECRET` 缺省时进程级随机生成，**没有持久化**。
+> 演示中途若需重启后端（如端口占用），所有已登录端会立即掉线，评委面前会看到集体登出。
+
+### 其他注意
+
 - **必须先起后端**：`cd server && npm start`（3000 端口），否则页面顶部提示「后端未连接」。
 - 单文件产物：`npm run build:single` → `dist/index.html` 双击即开（仍需后端运行）。
-- 演示速度倍率 / 骨架屏开关在桌面端手机壳外的设置齿轮里（不影响移动端）。
-- 登录态（token + 身份）写入 `localStorage`，刷新自动恢复；后端重启需重新登录（token 8小时有效）。
+- 登录态（token + 身份）写入 `localStorage`，刷新自动恢复；token 有效期 8 小时。
+
+## 部署到公网服务器（生成评委可访问的网址）
+
+完整操作见 [deploy/服务器部署操作手册.md](file:///deploy/服务器部署操作手册.md)。要点：
+
+- 架构：Nginx（HTTPS）同域提供前端静态文件 + 反代 `/api`、`/ws` 到本机 `127.0.0.1:3000`，PM2 守护；云安全组只开 22/80/443。
+- 生产构建用 `store-app/.env.production`（`VITE_API_BASE` 置空走同域，WS 自动用 `wss://当前域名/ws`）。
+- `NODE_ENV=production` 时：`GET /api/v1/auth/demo-accounts` 关闭（返回业务码 404，不再下发任何口令）；登录接口按 IP 限流（10 次/分），AI/视觉诊断接口按用户限流（12 次/分），见 [server/src/rateLimit.js](file:///server/src/rateLimit.js)。
+- 服务器每日 03:30 自动重置演示数据（`deploy/scripts/reset-data.mjs`），保证任意评委进入都是干净初始态。
+- 一键脚本：服务器上 `cd deploy && ./deploy.sh`。
 - 评委追问「数字怎么来的」：P4 风险预判卡可展开**推导依据**；补货量口径见 `server/src/forecast.js`（动态安全库存）；效期/价签来自 MCP 进销存工具。
+- **看板数字口径**（会被追问）：风险 Top5 只列 `risk`/`warning` 档、红灯门店与分布图 `risk` 档严格同源、KPI 卡与趋势图终点对齐、环比基准取趋势曲线起点。评审记录见 `docs/architecture/`。

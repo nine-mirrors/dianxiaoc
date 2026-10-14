@@ -146,10 +146,7 @@ export const TREND_NAMES: Record<TrendKey, string> = {
 /** 图片底部裁切比例：AI 生成图右下角有「AI生成」水印（y > 96%），统一裁掉底部 5% */
 export const IMAGE_BOTTOM_CROP = 0.95
 
-/** 演示友好文案：所有可能的空态/异常提示集中在此，页面不得自造报错文案 */
-export const FRIENDLY_ERROR = '网络或服务异常，已为你加载本地演示数据'
-
-/** 演示基准日期（PRD P2/P3/P4 截图口径：2026-10-02 周五 · 晴 22℃） */
+/** 数据基准日期（P2/P3/P4 口径：2026-10-02 周五 · 晴 22℃） */
 export const DEMO_TODAY = '2026-10-02'
 export const DEMO_WEEKDAY = '周五'
 export const DEMO_WEATHER = '晴 22℃'

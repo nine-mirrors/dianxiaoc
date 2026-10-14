@@ -5,7 +5,7 @@
  * ECharts 按需引入：PieChart + CanvasRenderer + Tooltip/Legend，
  * 全本地打包，零 CDN。中心显示门店总数，外圈四档占比。
  */
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import * as echarts from 'echarts/core'
 import { PieChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent, TitleComponent } from 'echarts/components'
@@ -28,6 +28,12 @@ let chart: echarts.ECharts | null = null
 function totalCount(): number {
   return props.data.reduce((s, d) => s + d.count, 0)
 }
+
+/** 读屏替代文本：用现有 props 拼人类可读摘要（如「健康分四档：优秀 42 家，良好 53 家…」） */
+const ariaLabel = computed<string>(() => {
+  const parts = props.data.map((d) => `${d.label} ${d.count} 家`).join('，')
+  return `健康分四档分布，共 ${totalCount()} 家：${parts}`
+})
 
 /** 渲染 / 更新图表 */
 function render(): void {
@@ -60,7 +66,7 @@ function render(): void {
       top: '38%',
       textAlign: 'center',
       textStyle: { fontSize: 26, fontWeight: 700, color: '#1a1f1c' },
-      subtextStyle: { fontSize: 12, color: '#9ca3af' },
+      subtextStyle: { fontSize: 12, color: '#6b7280' },
     },
     series: [
       {
@@ -97,7 +103,7 @@ watch(() => props.data, render, { deep: true })
 </script>
 
 <template>
-  <div ref="el" class="donut" />
+  <div ref="el" class="donut" role="img" :aria-label="ariaLabel" />
 </template>
 
 <style scoped>

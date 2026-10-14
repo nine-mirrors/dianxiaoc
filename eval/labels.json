@@ -1,0 +1,10 @@
+{
+  "_comment": "视觉识别小样本自测集（P0-3）人工标注真值。expected 为逐图人工数出的数量；verified=true 表示已人工核对。当前预填值来自系统陈列基线(fixture)，团队必须逐张看图复核后改为 true，评测结果才允许写进 PDF。",
+  "labels": [
+    { "image": "/stores/S1/cold.jpg", "storeName": "家家悦·学府路店", "verified": false, "expected": { "skuCount": 3, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 1 } },
+    { "image": "/stores/S2/cold.jpg", "storeName": "好邻居·地铁口店", "verified": false, "expected": { "skuCount": 4, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 1 } },
+    { "image": "/stores/S3/cold.jpg", "storeName": "美宜佳·城建学院店", "verified": false, "expected": { "skuCount": 8, "emptyCount": 1, "competitorCount": 2, "priceTagMissing": 3 } },
+    { "image": "/stores/S4/cold.jpg", "storeName": "华联超市·万达店", "verified": false, "expected": { "skuCount": 3, "emptyCount": 1, "competitorCount": 1, "priceTagMissing": 1 } },
+    { "image": "/stores/S5/cold.jpg", "storeName": "永辉生活·中央公园店", "verified": false, "expected": { "skuCount": 3, "emptyCount": 2, "competitorCount": 2, "priceTagMissing": 2 } }
+  ]
+}

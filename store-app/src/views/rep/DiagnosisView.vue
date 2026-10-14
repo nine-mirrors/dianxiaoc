@@ -5,7 +5,7 @@
  * A 顶部摘要 ｜ B 健康分 ｜ C AI 识别标注图（含拖拽对比）｜ D 问题清单
  * E 风险预判 ｜ F AI 追问 ｜ G 千店千面行动方案 ｜ H 底部行动栏
  */
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MobileLayout from '@/components/layout/MobileLayout.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -16,6 +16,7 @@ import SectionCard from '@/components/common/SectionCard.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import DimensionBars from '@/components/business/DimensionBars.vue'
+import AgentChain from '@/components/business/AgentChain.vue'
 import AnnotatedImage from '@/components/business/AnnotatedImage.vue'
 import CompareSlider from '@/components/business/CompareSlider.vue'
 import IssueList from '@/components/business/IssueList.vue'
@@ -26,6 +27,7 @@ import RectificationDialog from '@/components/business/RectificationDialog.vue'
 import RectificationCompare from '@/components/business/RectificationCompare.vue'
 import { getDiagnosis, getVisit, createTicket, streamGenerate, fetchForecast, getRectifications, type Forecast } from '@/api'
 import { useToast } from '@/composables/useToast'
+import { useDialogFocus } from '@/composables/useDialogFocus'
 import { LAYER_FILTERS, levelLabel, levelOf, ANNOTATION_STYLES, aiBadgeOf, type AiSource } from '@/domain/constants'
 import { countBySeverity } from '@/domain/issueBuilder'
 import type { AnnotationLayer, Diagnosis, Issue, Rectification, RestockItem, Ticket } from '@/types'
@@ -54,9 +56,18 @@ const pitchLoading = ref<boolean>(false)
  * ★ A2：每张卡的真实内容来源（后端 SSE done 帧给出）。
  * fallback 时角标不标「AI」，改标「基于陈列标准库生成」—— 降级不谎称大模型。
  */
-const summarySource = ref<AiSource | null>(null)
-const orderReasonSource = ref<AiSource | null>(null)
-const pitchSource = ref<AiSource | null>(null)
+// undefined = 从未生成（不显示任何来源角标）；完成后由 streamGenerate 赋值为 'llm' | 'fallback' | null
+const summarySource = ref<AiSource | null | undefined>(undefined)
+const orderReasonSource = ref<AiSource | null | undefined>(undefined)
+const pitchSource = ref<AiSource | null | undefined>(undefined)
+
+/**
+ * 进入诊断页自动触发「巡店小结」的一次性守卫。
+ * 与 loadAiSummary 内部的（aiSummary 非空 / summaryLoading 中）判断构成双重防重入：
+ * 本守卫保证整个组件生命周期只自动触发一次（路由 id 变化重新 load、watch 重跑都不会重复触发/轮询）；
+ * 已有 aiSummary 内容时 loadAiSummary 自身也会直接返回。
+ */
+const summaryAutoTried = ref<boolean>(false)
 
 async function loadAiSummary(): Promise<void> {
   if (aiSummary.value || summaryLoading.value || !diagnosis.value) return
@@ -155,8 +166,15 @@ async function load(): Promise<void> {
       diagnosis.value = res.diagnosis
     }
     if (!diagnosis.value) loadError.value = true
-    // 整改回执一并拉取（刷新后仍能看到历史留证，服务端持久化）
-    if (diagnosis.value) void loadRectifications()
+    if (diagnosis.value) {
+      // 整改回执一并拉取（刷新后仍能看到历史留证，服务端持久化）
+      void loadRectifications()
+      // 非只读态进入诊断页：自动流式生成一次「AI 巡店小结」（只读历史态不触发任何生成请求）
+      if (!readonly.value && !summaryAutoTried.value) {
+        summaryAutoTried.value = true
+        void loadAiSummary()
+      }
+    }
   } catch {
     loadError.value = true
     toast.error('未检测到蒙牛陈列区域，请重拍')
@@ -167,16 +185,30 @@ async function load(): Promise<void> {
 onMounted(load)
 watch(() => route.params.id, load)
 
-/* ═══════════════ C 标注图状态 ═══════════════ */
+/* ═══════════════ C 标注图状态（hover 高亮 + 触屏锁定） ═══════════════ */
 
 /** 图层筛选 */
 const layerFilter = ref<'all' | AnnotationLayer>('all')
 /** 是否显示拖拽对比滑块 */
 const compare = ref<boolean>(true)
-/** 高亮的标注框（问题清单 hover 联动） */
-const highlightIds = ref<string[]>([])
-/** 高亮的问题 id（标注图 hover 反向联动，构成双向高亮） */
-const highlightIssueIds = ref<string[]>([])
+/** hover 联动：当前悬停标注框（鼠标离开即清空） */
+const hoverAnnoIds = ref<string[]>([])
+/** hover 联动：当前悬停问题 */
+const hoverIssueIds = ref<string[]>([])
+/** 触屏点选锁定的问题 / 标注（再点一次取消） */
+const lockedIssueId = ref<string | null>(null)
+const lockedAnnoIds = ref<string[]>([])
+
+/** 实际下发给标注图的高亮 id = hover 临时态 ∪ 锁定态 */
+const highlightIds = computed<string[]>(() =>
+  Array.from(new Set([...hoverAnnoIds.value, ...lockedAnnoIds.value])),
+)
+/** 实际下发给问题清单的高亮 issue id */
+const highlightIssueIds = computed<string[]>(() => {
+  const set = new Set(hoverIssueIds.value)
+  if (lockedIssueId.value) set.add(lockedIssueId.value)
+  return [...set]
+})
 
 /** 图例项（按本图出现过的图层生成，样式唯一出处 ANNOTATION_STYLES） */
 const legendItems = computed(() => {
@@ -218,9 +250,9 @@ function onHighlight(section: 'plan' | 'risk'): void {
   scrollToSection(section)
 }
 
-/** 问题清单 hover → 高亮标注框 */
+/** 问题清单 hover → 高亮标注框（仅临时态，不影响触屏锁定） */
 function onIssueHover(ids: string[]): void {
-  highlightIds.value = ids
+  hoverAnnoIds.value = ids
 }
 
 /**
@@ -232,17 +264,48 @@ function onIssueHover(ids: string[]): void {
 function onAnnoHover(ids: string[]): void {
   const d = diagnosis.value
   if (!d || !ids.length) {
-    highlightIssueIds.value = []
-    highlightIds.value = []
+    hoverIssueIds.value = []
+    hoverAnnoIds.value = []
     return
   }
   const linked = (d.issues ?? []).filter((i) =>
     (i.relatedAnnotationIds ?? []).some((aid) => ids.includes(aid)),
   )
-  highlightIssueIds.value = linked.map((i) => i.id)
+  hoverIssueIds.value = linked.map((i) => i.id)
   const cluster = new Set<string>()
   linked.forEach((i) => (i.relatedAnnotationIds ?? []).forEach((aid) => cluster.add(aid)))
-  highlightIds.value = [...cluster]
+  hoverAnnoIds.value = [...cluster]
+}
+
+/** 问题卡点按（触屏 / 单击）：切换该问题的锁定高亮 */
+function onIssueSelect(issue: Issue): void {
+  if (lockedIssueId.value === issue.id) {
+    lockedIssueId.value = null
+    lockedAnnoIds.value = []
+    return
+  }
+  lockedIssueId.value = issue.id
+  lockedAnnoIds.value = issue.relatedAnnotationIds ?? []
+}
+
+/** 标注框点按：反查关联问题并锁定（再点同一簇取消） */
+function onAnnoSelect(ids: string[]): void {
+  const d = diagnosis.value
+  if (!d || !ids.length) return
+  const linked = (d.issues ?? []).filter((i) =>
+    (i.relatedAnnotationIds ?? []).some((aid) => ids.includes(aid)),
+  )
+  if (!linked.length) return
+  const first = linked[0]
+  if (lockedIssueId.value === first.id) {
+    lockedIssueId.value = null
+    lockedAnnoIds.value = []
+    return
+  }
+  lockedIssueId.value = first.id
+  const cluster = new Set<string>()
+  linked.forEach((i) => (i.relatedAnnotationIds ?? []).forEach((aid) => cluster.add(aid)))
+  lockedAnnoIds.value = [...cluster]
 }
 
 /* ═══════════════ D 问题清单动作 ═══════════════ */
@@ -274,6 +337,29 @@ const rectifiedIssueIds = computed<Set<string>>(
   () => new Set(rectifications.value.map((r) => r.issueId).filter(Boolean)),
 )
 
+/**
+ * 「查看竞争话术」：真复制到剪贴板。
+ * 优先用已生成的给店主话术（aiPitch）；未生成时用问题本身拼一段可直接发的口语稿。
+ * 剪贴板 API 不可用 / 被拒时降级 window.prompt 长按复制；只有成功才 toast「已复制」。
+ */
+async function copyIssuePitch(issue: Issue): Promise<void> {
+  const fallback = `老板，跟您说个事：${issue.location}这边，${issue.title}。${
+    issue.impact ? `${issue.impact}。` : ''
+  }按这位置现在的动销，一周下来损失不小；咱们把蒙牛产品补回黄金列位，我帮您一起摆好，卖不动您找我。`
+  const text = aiPitch.value?.trim() || fallback
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      toast.success('竞争话术已复制，可直接粘贴发给店主')
+      return
+    }
+    throw new Error('clipboard-api-unavailable')
+  } catch {
+    window.prompt('自动复制未成功，请长按全选下方话术手动复制：', text)
+    toast.info('请在弹窗中长按选择并复制话术')
+  }
+}
+
 /** 问题快捷动作 */
 function onIssueAction(payload: { issue: Issue; action: string }): void {
   const { issue, action } = payload
@@ -284,7 +370,7 @@ function onIssueAction(payload: { issue: Issue; action: string }): void {
     toast.info(`已加入行动方案：${issue.title}`)
     scrollToSection('plan')
   } else if (action.includes('话术')) {
-    toast.info('竞争话术已复制到剪贴板（演示）')
+    void copyIssuePitch(issue)
   } else {
     toast.success(`已记录：${action}`)
   }
@@ -306,13 +392,76 @@ const ticket = ref<Ticket | null>(null)
 /** 提交中 */
 const submitting = ref<boolean>(false)
 
+/** 预览弹层显隐（供 useDialogFocus 监听；成功层为停留式覆盖层而非自动消失 toast，同样按对话框处理） */
+const previewVisible = computed<boolean>(() => ticketState.value === 'preview')
+const successVisible = computed<boolean>(() => ticketState.value === 'success')
+/** 单据预览弹层：Esc / 焦点陷阱 / 关闭后焦点回归触发按钮 */
+const { panelRef: previewPanelRef } = useDialogFocus({
+  visible: previewVisible,
+  onClose: () => {
+    ticketState.value = 'none'
+  },
+})
+/** 提交成功覆盖层：Esc 等同「查看方案」回到页面 */
+const { panelRef: successPanelRef } = useDialogFocus({
+  visible: successVisible,
+  onClose: () => {
+    ticketState.value = 'none'
+  },
+})
+
 /** 是否已在历史路线中标记该店完成（返回 P2 时带上闪光参数） */
 const storeIdList = computed<string>(() => diagnosis.value?.storeId ?? '')
 
-/** 生成单据（点击底部按钮 → 打开预览） */
+/** 生成单据（点击底部按钮 → 打开预览；订货单初始化可编辑数量） */
 function openTicket(kind: 'rectification' | 'order'): void {
   ticketKind.value = kind
   ticketState.value = 'preview'
+  if (kind === 'order' && diagnosis.value) {
+    const draft: Record<string, number> = {}
+    diagnosis.value.plan.restock.forEach((r) => {
+      draft[r.skuId] = r.bottles
+    })
+    qtyDraft.value = draft
+  }
+}
+
+/** 订货预览里的临时数量（真 stepper，可 −/+） */
+const qtyDraft = ref<Record<string, number>>({})
+
+/** 各 SKU 单价（由建议明细反推，调整数量后金额同步） */
+const unitPrice = computed<Record<string, number>>(() => {
+  const map: Record<string, number> = {}
+  diagnosis.value?.plan.restock.forEach((r) => {
+    map[r.skuId] = r.bottles > 0 ? Math.round((r.amount / r.bottles) * 100) / 100 : r.amount
+  })
+  return map
+})
+
+/** 预览明细：订货单取 stepper 数量，整改单沿用方案（只读） */
+const previewItems = computed<RestockItem[]>(() => {
+  const d = diagnosis.value
+  if (!d) return []
+  if (ticketKind.value !== 'order') return d.plan.restock.map((r) => ({ ...r }))
+  return d.plan.restock.map((r) => {
+    const bottles = qtyDraft.value[r.skuId] ?? r.bottles
+    const price = unitPrice.value[r.skuId] ?? 0
+    return {
+      skuId: r.skuId,
+      skuName: r.skuName,
+      bottles,
+      amount: Math.round(bottles * price * 100) / 100,
+    }
+  })
+})
+
+const previewTotalBottles = computed<number>(() => previewItems.value.reduce((s, r) => s + r.bottles, 0))
+const previewTotalAmount = computed<number>(() => previewItems.value.reduce((s, r) => s + r.amount, 0))
+
+/** stepper 调整数量（0–99 瓶） */
+function stepQty(skuId: string, delta: number): void {
+  const cur = qtyDraft.value[skuId] ?? 0
+  qtyDraft.value = { ...qtyDraft.value, [skuId]: Math.max(0, Math.min(99, cur + delta)) }
 }
 
 /** 提交单据 */
@@ -321,8 +470,11 @@ async function submitTicket(): Promise<void> {
   submitting.value = true
   try {
     const plan = diagnosis.value.plan
-    const items: RestockItem[] = plan.restock.map((r) => ({ ...r }))
+    const items: RestockItem[] = previewItems.value
     const placements = plan.placement.map((p) => ({ ...p }))
+    // 合计：订货单跟随 stepper 实时数量；整改单沿用行动方案权威值
+    const totalBottles = ticketKind.value === 'order' ? previewTotalBottles.value : plan.totalBottles
+    const totalAmount = ticketKind.value === 'order' ? previewTotalAmount.value : plan.totalAmount
     const note =
       ticketKind.value === 'order'
         ? `按 AI 行动方案生成订货建议，覆盖 ${plan.coverDays} 天动销。`
@@ -334,9 +486,8 @@ async function submitTicket(): Promise<void> {
       items,
       placements,
       note,
-      // 合计沿用行动方案的权威值，保证 P4 与整改单 / 订货建议上的数字一字不差
-      totalBottles: plan.totalBottles,
-      totalAmount: plan.totalAmount,
+      totalBottles,
+      totalAmount,
     })
     ticket.value = res.ticket
     ticketState.value = 'success'
@@ -370,6 +521,69 @@ const expectedDelta = computed<number>(() => {
 })
 /** 是否已加载完成（逐块淡入） */
 const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
+
+/* ═══════════════ 米勒分块：sticky 四段锚点 ═══════════════ */
+
+const anchorItems = computed(() => [
+  { key: 'overview', label: '概览' },
+  { key: 'issue', label: `问题(${issues.value.length})` },
+  { key: 'plan', label: '方案' },
+  { key: 'chat', label: '追问' },
+])
+const activeAnchor = ref<string>('overview')
+
+/** 点击锚点：平滑滚动定位（scroll-margin-top 避开 sticky 条） */
+function scrollAnchor(key: string): void {
+  activeAnchor.value = key
+  document.getElementById(`sec-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+/** 滚动时自动高亮当前分区（IntersectionObserver，root 取手机壳内滚动容器） */
+let anchorObserver: IntersectionObserver | null = null
+function setupAnchorObserver(): void {
+  anchorObserver?.disconnect()
+  const root = document.getElementById('sec-overview')?.closest('.ml-body')
+  if (!root || typeof IntersectionObserver === 'undefined') return
+  anchorObserver = new IntersectionObserver(
+    (entries) => {
+      const visible = entries
+        .filter((e) => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+      if (visible[0]) activeAnchor.value = visible[0].target.id.replace('sec-', '')
+    },
+    { root: root as Element, rootMargin: '-56px 0px -68% 0px', threshold: 0 },
+  )
+  anchorItems.value.forEach((a) => {
+    const el = document.getElementById(`sec-${a.key}`)
+    if (el) anchorObserver?.observe(el)
+  })
+}
+watch(
+  ready,
+  async (v) => {
+    if (!v) return
+    await nextTick()
+    setupAnchorObserver()
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(() => anchorObserver?.disconnect())
+
+/* ═══════════════ B 健康分：六维默认只露最弱 2 维 ═══════════════ */
+
+const dimsExpanded = ref<boolean>(false)
+/** 按分数升序取最弱 2 维（米勒 7±2：先给最该关注的） */
+const visibleDims = computed(() => {
+  const dims = diagnosis.value?.dimensions ?? []
+  if (dimsExpanded.value) return dims
+  return [...dims].sort((a, b) => a.score - b.score).slice(0, 2)
+})
+
+/* ═══════════════ H 底部双 CTA：1 主 1 次（健康分 <70 整改优先） ═══════════════ */
+
+/** 健康分 <70：生成整改单为主；否则生成订货建议为主 */
+const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.score ?? 100) < 70)
 </script>
 
 <template>
@@ -401,6 +615,21 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
     />
 
     <div v-else class="p4">
+      <!-- 米勒分块：sticky 四段锚点（概览 / 问题(n) / 方案 / 追问），点击平滑定位 -->
+      <nav class="p4-anchors" aria-label="诊断页分区导航">
+        <button
+          v-for="a in anchorItems"
+          :key="a.key"
+          type="button"
+          class="p4-anchor u-tap"
+          :class="{ 'p4-anchor--on': activeAnchor === a.key }"
+          :aria-current="activeAnchor === a.key ? 'true' : undefined"
+          @click="scrollAnchor(a.key)"
+        >
+          {{ a.label }}
+        </button>
+      </nav>
+
       <!-- ══ A 顶部摘要条 ══ -->
       <div class="p4-summary u-animate-in">
         <div class="p4-summary__left">
@@ -410,8 +639,8 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
         <AiBadge text="AI 诊断" size="md" />
       </div>
 
-      <!-- ══ B 健康分区块 ══ -->
-      <SectionCard class="p4-card u-animate-in" style="animation-delay: 80ms">
+      <!-- ══ B 健康分区块（锚点：概览） ══ -->
+      <SectionCard id="sec-overview" class="p4-card u-animate-in" style="animation-delay: 80ms">
         <div class="p4-score">
           <ScoreRing :score="health?.score ?? 0" :color="health?.color" :size="106">
             <template #label>AI 健康分</template>
@@ -427,7 +656,11 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
             <p class="p4-score__advice">{{ diagnosis.health.expectedScore }} 分目标 · {{ levelLabel(levelOf(diagnosis.health.expectedScore)) }}</p>
 
             <div class="p4-score__dims">
-              <DimensionBars :dimensions="diagnosis.dimensions" />
+              <!-- 米勒分块：默认只展示最弱 2 维，需要时再展开全部 -->
+              <DimensionBars :dimensions="visibleDims" />
+              <button type="button" class="p4-dims-more u-tap" @click="dimsExpanded = !dimsExpanded">
+                {{ dimsExpanded ? '收起维度' : `展开全部 ${diagnosis.dimensions.length} 维` }}
+              </button>
             </div>
           </div>
         </div>
@@ -450,8 +683,8 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
       >
         <template #action>
           <div class="p4-toggle">
-            <button :class="{ 'p4-toggle__on': compare }" @click="compare = true">对比拖拽</button>
-            <button :class="{ 'p4-toggle__on': !compare }" @click="compare = false">标注图</button>
+            <button type="button" class="u-tap" :class="{ 'p4-toggle__on': compare }" @click="compare = true">对比拖拽</button>
+            <button type="button" class="u-tap" :class="{ 'p4-toggle__on': !compare }" @click="compare = false">标注图</button>
           </div>
         </template>
 
@@ -462,6 +695,7 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
           :filter="layerFilter"
           :highlight-ids="highlightIds"
           @hover="onAnnoHover"
+          @select="onAnnoSelect"
         />
         <AnnotatedImage
           v-else
@@ -471,6 +705,7 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
           :highlight-ids="highlightIds"
           :show-legend="false"
           @hover="onAnnoHover"
+          @select="onAnnoSelect"
         />
 
         <!-- 常驻图例：无论对比模式还是标注图模式都可见（PRD 4.4-C） -->
@@ -486,7 +721,8 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
           <button
             v-for="f in LAYER_FILTERS"
             :key="f.key"
-            class="p4-chip"
+            type="button"
+            class="p4-chip u-tap"
             :class="{ 'p4-chip--on': layerFilter === f.key }"
             @click="layerFilter = f.key"
           >
@@ -514,8 +750,10 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
           :issues="issues"
           :show-actions="!readonly"
           :highlight-issue-ids="highlightIssueIds"
+          :locked-issue-id="lockedIssueId"
           :rectified-issue-ids="[...rectifiedIssueIds]"
           @hover="onIssueHover"
+          @select="onIssueSelect"
           @action="onIssueAction"
         />
       </SectionCard>
@@ -539,61 +777,17 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
         />
       </SectionCard>
 
-      <!-- ══ ⑳ 补货算法推导（数字溯源，点开看算式） ══ -->
-      <SectionCard
-        class="p4-card u-animate-in"
-        style="animation-delay: 360ms"
-        title="补货算法推导"
-      >
-        <template #action>
-          <span class="p4-card__hint">动态安全库存 z·σ·√L</span>
-        </template>
-
-        <button class="p4-ai-btn p4-ai-btn--block" @click="toggleForecast">
-          <AppIcon name="clipboard" :size="14" />
-          {{ forecastOpen ? '收起推导过程' : '这 12 瓶是怎么算出来的？' }}
-        </button>
-
-        <div v-if="forecastOpen" class="p4-fc">
-          <p v-if="forecastLoading" class="p4-ai-loading">正在按动销与安全库存测算…</p>
-          <p v-else-if="forecastError" class="p4-fc__error">推导加载失败：{{ forecastError }}</p>
-          <template v-else-if="forecast">
-            <p class="p4-fc__params">
-              服务水平 {{ (forecast.params.serviceZ ?? 0) === 1.28 ? '90%' : '—' }}（z={{ forecast.params.serviceZ }}）
-              · 变异系数 σ={{ forecast.params.cvSigma }} · 补货周期 {{ forecast.params.leadTimeDays }} 天
-              · 铺货 {{ forecast.params.coverDays }} 天
-            </p>
-            <div v-for="l in forecast.lines" :key="l.skuName" class="p4-fc__item">
-              <p class="p4-fc__title">
-                {{ l.skuName }}
-                <span class="p4-fc__num">建议 {{ l.suggestBottles }} 瓶</span>
-              </p>
-              <ol class="p4-fc__steps">
-                <li v-for="(st, i) in l.steps" :key="i">{{ st }}</li>
-              </ol>
-            </div>
-            <p class="p4-fc__summary">{{ forecast.summary }}</p>
-            <p class="p4-fc__note">{{ forecast.coverage.note }}</p>
-          </template>
-        </div>
-      </SectionCard>
-
       <!-- ══ E 风险预判 ══ -->
       <div id="sec-risk" class="u-animate-in" :class="{ 'is-flash': flashKey === 'risk' }" style="animation-delay: 320ms">
         <RiskCard :risk="diagnosis.risk" />
       </div>
 
-      <!-- ══ F AI 追问对话 ══ -->
-      <SectionCard id="sec-chat" class="p4-card u-animate-in" style="animation-delay: 400ms" title="继续追问 AI" ai>
-        <ChatPanel :diagnosis="diagnosis" :readonly="readonly" @highlight="onHighlight" />
-      </SectionCard>
-
-      <!-- ══ G 千店千面行动方案 ══ -->
+      <!-- ══ G 千店千面行动方案（锚点：方案） ══ -->
       <SectionCard
         id="sec-plan"
         class="p4-card u-animate-in"
         :class="{ 'is-flash': flashKey === 'plan' }"
-        style="animation-delay: 480ms"
+        style="animation-delay: 400ms"
         title="千店千面行动方案"
         ai
       >
@@ -603,44 +797,96 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
         <ActionPlan :plan="diagnosis.plan" :show-actions="!readonly" @adjust="openTicket('order')" @order="openTicket('order')" />
       </SectionCard>
 
-      <!-- ══ 订货建议理由（A2：角标按真实来源，fallback 不标 AI） ══ -->
-      <SectionCard
-        class="p4-card u-animate-in"
-        style="animation-delay: 520ms"
-        title="为什么这样订货"
-        :ai="orderReasonSource === 'llm'"
-        :ai-text="aiBadgeOf(orderReasonSource).text"
-      >
-        <p v-if="orderReasonLoading" class="p4-ai-loading">AI 正在生成订货理由…</p>
-        <p v-else-if="aiOrderReason" class="p4-ai-text">{{ aiOrderReason }}</p>
-        <button v-else class="p4-ai-btn" @click="loadOrderReason"><AppIcon name="sparkles" :size="14" /> 生成订货建议理由</button>
+      <!-- ══ F AI 追问对话（锚点：追问；放在方案之后，追问回答引用方案时上下文连贯） ══ -->
+      <SectionCard id="sec-chat" class="p4-card u-animate-in" style="animation-delay: 480ms" title="继续追问 AI" ai>
+        <ChatPanel :diagnosis="diagnosis" :readonly="readonly" @highlight="onHighlight" />
       </SectionCard>
 
-      <!-- ══ AI 巡店小结（A2：角标按真实来源） ══ -->
-      <SectionCard
-        class="p4-card u-animate-in"
-        style="animation-delay: 560ms"
-        title="AI 巡店小结"
-        :ai="summarySource === 'llm'"
-        :ai-text="aiBadgeOf(summarySource).text"
-      >
-        <p v-if="summaryLoading" class="p4-ai-loading">AI 正在生成巡店小结…</p>
-        <p v-else-if="aiSummary" class="p4-ai-text">{{ aiSummary }}</p>
-        <button v-else class="p4-ai-btn" @click="loadAiSummary"><AppIcon name="sparkles" :size="14" /> 生成巡店小结</button>
-      </SectionCard>
+      <!-- ══ 米勒分块：次级 AI 分析默认折叠（工作链 / 算法推导 / 三张 AI 文案卡） ══ -->
+      <details class="p4-more">
+        <summary class="p4-more__sum">
+          <span>更多 AI 分析</span>
+          <span class="p4-more__hint">工作链 · 算法推导 · 小结与话术</span>
+        </summary>
+        <div class="p4-more__body">
+          <!-- B+ AI 工作链：视觉→MCP→六维→预测→LLM（真实执行轨迹） -->
+          <AgentChain v-if="diagnosis.agentTrace?.length" :steps="diagnosis.agentTrace" />
 
-      <!-- ══ 给店主的话术（A2：角标按真实来源） ══ -->
-      <SectionCard
-        class="p4-card u-animate-in"
-        style="animation-delay: 600ms"
-        title="给店主的话术"
-        :ai="pitchSource === 'llm'"
-        :ai-text="aiBadgeOf(pitchSource).text"
-      >
-        <p v-if="pitchLoading" class="p4-ai-loading">AI 正在生成话术…</p>
-        <p v-else-if="aiPitch" class="p4-ai-text">{{ aiPitch }}</p>
-        <button v-else class="p4-ai-btn" @click="loadPitch"><AppIcon name="sparkles" :size="14" /> 生成给店主的话术</button>
-      </SectionCard>
+          <!-- ⑳ 补货算法推导（数字溯源，点开看算式） -->
+          <SectionCard class="p4-card" title="补货算法推导">
+            <template #action>
+              <span class="p4-card__hint">动态安全库存 z·σ·√L</span>
+            </template>
+
+            <button type="button" class="p4-ai-btn p4-ai-btn--block u-tap" @click="toggleForecast">
+              <AppIcon name="clipboard" :size="14" />
+              {{ forecastOpen ? '收起推导过程' : '这 12 瓶是怎么算出来的？' }}
+            </button>
+
+            <div v-if="forecastOpen" class="p4-fc">
+              <p v-if="forecastLoading" class="p4-ai-loading">正在按动销与安全库存测算…</p>
+              <p v-else-if="forecastError" class="p4-fc__error">推导加载失败：{{ forecastError }}</p>
+              <template v-else-if="forecast">
+                <p class="p4-fc__params">
+                  服务水平 {{ (forecast.params.serviceZ ?? 0) === 1.28 ? '90%' : '—' }}（z={{ forecast.params.serviceZ }}）
+                  · 变异系数 σ={{ forecast.params.cvSigma }} · 补货周期 {{ forecast.params.leadTimeDays }} 天
+                  · 铺货 {{ forecast.params.coverDays }} 天
+                </p>
+                <div v-for="l in forecast.lines" :key="l.skuName" class="p4-fc__item">
+                  <p class="p4-fc__title">
+                    {{ l.skuName }}
+                    <span class="p4-fc__num">建议 {{ l.suggestBottles }} 瓶</span>
+                  </p>
+                  <ol class="p4-fc__steps">
+                    <li v-for="(st, i) in l.steps" :key="i">{{ st }}</li>
+                  </ol>
+                </div>
+                <p class="p4-fc__summary">{{ forecast.summary }}</p>
+                <p class="p4-fc__note">{{ forecast.coverage.note }}</p>
+              </template>
+            </div>
+          </SectionCard>
+
+          <!-- ══ 订货建议理由（A2：角标按真实来源，fallback 不标 AI；只读态无文案则整块不渲染、不显示生成按钮） ══ -->
+          <SectionCard
+            v-if="!readonly || aiOrderReason"
+            class="p4-card"
+            title="为什么这样订货"
+            :ai="orderReasonSource !== undefined"
+            :ai-text="orderReasonSource === undefined ? '' : aiBadgeOf(orderReasonSource).text"
+          >
+            <p v-if="orderReasonLoading" class="p4-ai-loading">AI 正在生成订货理由…</p>
+            <p v-else-if="aiOrderReason" class="p4-ai-text">{{ aiOrderReason }}</p>
+            <button v-else-if="!readonly" type="button" class="p4-ai-btn u-tap" @click="loadOrderReason"><AppIcon name="sparkles" :size="14" /> 生成订货建议理由</button>
+          </SectionCard>
+
+          <!-- ══ AI 巡店小结（A2：角标按真实来源；非只读态进入页面自动流式生成，只读态仅展示已有文案） ══ -->
+          <SectionCard
+            v-if="!readonly || aiSummary"
+            class="p4-card"
+            title="AI 巡店小结"
+            :ai="summarySource !== undefined"
+            :ai-text="summarySource === undefined ? '' : aiBadgeOf(summarySource).text"
+          >
+            <p v-if="summaryLoading" class="p4-ai-loading">AI 正在生成巡店小结…</p>
+            <p v-else-if="aiSummary" class="p4-ai-text">{{ aiSummary }}</p>
+            <button v-else-if="!readonly" type="button" class="p4-ai-btn u-tap" @click="loadAiSummary"><AppIcon name="sparkles" :size="14" /> 生成巡店小结</button>
+          </SectionCard>
+
+          <!-- ══ 给店主的话术（A2：角标按真实来源；问题卡「查看竞争话术」复制的就是这段；只读态无文案不渲染） ══ -->
+          <SectionCard
+            v-if="!readonly || aiPitch"
+            class="p4-card"
+            title="给店主的话术"
+            :ai="pitchSource !== undefined"
+            :ai-text="pitchSource === undefined ? '' : aiBadgeOf(pitchSource).text"
+          >
+            <p v-if="pitchLoading" class="p4-ai-loading">AI 正在生成话术…</p>
+            <p v-else-if="aiPitch" class="p4-ai-text">{{ aiPitch }}</p>
+            <button v-else-if="!readonly" type="button" class="p4-ai-btn u-tap" @click="loadPitch"><AppIcon name="sparkles" :size="14" /> 生成给店主的话术</button>
+          </SectionCard>
+        </div>
+      </details>
 
       <p class="p4-foot">✦ 本页由 AI 诊断生成：排面/竞品来自拍照识别 · 期效/库存来自进销存批次同步 · 断网可离线复现</p>
     </div>
@@ -655,15 +901,25 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
       @done="onRectified"
     />
 
-    <!-- ══ H 底部悬浮行动栏（只读态隐藏） ══ -->
+    <!-- ══ H 底部悬浮行动栏（只读态隐藏）：健康分 <70 整改为主，否则订货为主 ══ -->
     <template #footer>
       <div v-if="!readonly && ready" class="p4-bar">
-        <button class="p4-bar__btn p4-bar__btn--rect" @click="openTicket('rectification')">
-          <AppIcon name="clipboard" :size="15" />
+        <button
+          type="button"
+          class="p4-bar__btn mot-tap"
+          :class="rectificationPrimary ? 'p4-bar__btn--primary p4-bar__btn--rect' : 'p4-bar__btn--ghost'"
+          @click="openTicket('rectification')"
+        >
+          <AppIcon name="clipboard" :size="15" :color="rectificationPrimary ? '#fff' : 'var(--text-2)'" />
           生成整改单
         </button>
-        <button class="p4-bar__btn p4-bar__btn--order" @click="openTicket('order')">
-          <AppIcon name="cart" :size="15" />
+        <button
+          type="button"
+          class="p4-bar__btn mot-tap"
+          :class="rectificationPrimary ? 'p4-bar__btn--ghost' : 'p4-bar__btn--primary p4-bar__btn--order'"
+          @click="openTicket('order')"
+        >
+          <AppIcon name="cart" :size="15" :color="rectificationPrimary ? 'var(--text-2)' : '#fff'" />
           生成订货建议
         </button>
       </div>
@@ -671,17 +927,44 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
 
     <!-- ══ 单据预览 / 成功 ══ -->
     <div v-if="ticketState === 'preview'" class="p4-mask" @click.self="ticketState = 'none'">
-      <div class="p4-sheet">
-        <p class="p4-sheet__title">
+      <div
+        ref="previewPanelRef"
+        class="p4-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="p4-ticket-preview-title"
+      >
+        <p id="p4-ticket-preview-title" class="p4-sheet__title">
           {{ ticketKind === 'order' ? '订货建议预览' : '整改单预览' }}
         </p>
         <div class="p4-sheet__store">{{ diagnosis?.storeName }}</div>
 
-        <div v-if="diagnosis?.plan.restock.length" class="p4-sheet__sec">
-          <p class="p4-sheet__cap">{{ ticketKind === 'order' ? '订货明细' : '需补齐' }}</p>
-          <div v-for="r in diagnosis.plan.restock" :key="r.skuId" class="p4-sheet__row">
+        <div v-if="previewItems.length" class="p4-sheet__sec">
+          <p class="p4-sheet__cap">
+            {{ ticketKind === 'order' ? '订货明细（数量可 −/+ 调整）' : '需补齐' }}
+          </p>
+          <div v-for="r in previewItems" :key="r.skuId" class="p4-sheet__row">
             <span>{{ r.skuName }}</span>
-            <b>{{ r.bottles }} 瓶</b>
+            <span v-if="ticketKind === 'order'" class="p4-sheet__stepper">
+              <button
+                type="button"
+                class="p4-sheet__step u-tap"
+                aria-label="减少 1 瓶"
+                @click="stepQty(r.skuId, -1)"
+              >
+                −
+              </button>
+              <b>{{ r.bottles }} 瓶</b>
+              <button
+                type="button"
+                class="p4-sheet__step u-tap"
+                aria-label="增加 1 瓶"
+                @click="stepQty(r.skuId, 1)"
+              >
+                +
+              </button>
+            </span>
+            <b v-else>{{ r.bottles }} 瓶</b>
             <em v-if="ticketKind === 'order'">¥{{ r.amount }}</em>
           </div>
         </div>
@@ -692,25 +975,36 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
 
         <div class="p4-sheet__total">
           <span>{{ ticketKind === 'order' ? '合计' : '共需补货' }}</span>
-          <b>{{ diagnosis?.plan.totalBottles }} 瓶<template v-if="ticketKind === 'order'"> · ¥{{ diagnosis?.plan.totalAmount }}</template></b>
+          <b>
+            {{ ticketKind === 'order' ? previewTotalBottles : diagnosis?.plan.totalBottles }} 瓶<template
+              v-if="ticketKind === 'order'"
+            > · ¥{{ previewTotalAmount }}</template>
+          </b>
         </div>
         <p class="p4-sheet__note">
           {{ ticketKind === 'order' ? `预计覆盖 ${diagnosis?.plan.coverDays} 天动销` : `复查预计 ${diagnosis?.health.expectedScore} 分，请于本周五前完成` }}
         </p>
 
         <div class="p4-sheet__btns">
-          <button class="u-btn u-btn--ghost" @click="ticketState = 'none'">返回修改</button>
-          <button class="u-btn u-btn--primary" :disabled="submitting" @click="submitTicket">
+          <button type="button" class="u-btn u-btn--ghost u-tap" @click="ticketState = 'none'">返回修改</button>
+          <button type="button" class="u-btn u-btn--primary u-tap" :disabled="submitting" @click="submitTicket">
             {{ submitting ? '提交中…' : '确认提交' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 提交成功页 -->
-    <div v-if="ticketState === 'success'" class="p4-success">
-      <div class="p4-success__icon"><AppIcon name="check" :size="30" color="#fff" /></div>
-      <p class="p4-success__title">{{ ticketKind === 'order' ? '订货建议已生成' : '整改单已生成' }}</p>
+    <!-- 提交成功页（停留式覆盖层，需用户主动操作，按对话框而非 toast 处理） -->
+    <div
+      v-if="ticketState === 'success'"
+      ref="successPanelRef"
+      class="p4-success"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="p4-ticket-success-title"
+    >
+      <div class="p4-success__icon" aria-hidden="true"><AppIcon name="check" :size="30" color="#fff" /></div>
+      <p id="p4-ticket-success-title" class="p4-success__title">{{ ticketKind === 'order' ? '订货建议已生成' : '整改单已生成' }}</p>
       <p class="p4-success__id">单号 {{ ticket?.id }}</p>
 
       <div class="p4-success__card">
@@ -731,8 +1025,8 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
       </div>
 
       <div class="p4-success__btns">
-        <button class="u-btn u-btn--ghost" @click="ticketState = 'none'">查看方案</button>
-        <button class="u-btn u-btn--primary" @click="backToToday">返回今日巡店</button>
+        <button type="button" class="u-btn u-btn--ghost u-tap" @click="ticketState = 'none'">查看方案</button>
+        <button type="button" class="u-btn u-btn--primary u-tap" @click="backToToday">返回今日巡店</button>
       </div>
     </div>
   </MobileLayout>
@@ -760,6 +1054,110 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* sticky 四段锚点（米勒分块：首屏一屏可数，点击平滑跳转） */
+.p4-anchors {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  /* 负边距出血到屏幕两边，背景遮住下方滚动内容 */
+  margin: 0 -12px;
+  padding: 8px 12px;
+  background: var(--bg-page);
+}
+
+.p4-anchor {
+  flex: 1;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+
+.p4-anchor--on {
+  border-color: var(--mn-green);
+  background: var(--mn-green-light);
+  color: var(--mn-green-dark);
+}
+
+/* 锚点定位时避开 sticky 条 */
+.p4 [id^='sec-'] {
+  scroll-margin-top: 56px;
+}
+
+/* 六维「展开全部」 */
+.p4-dims-more {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ai-purple);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* 「更多 AI 分析」折叠区：默认收起，降低首屏信息密度（7±2） */
+.p4-more {
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.p4-more__sum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: var(--radius-card);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-1);
+  cursor: pointer;
+  list-style: none;
+}
+
+.p4-more__sum::-webkit-details-marker {
+  display: none;
+}
+
+.p4-more__sum::after {
+  content: '▸';
+  flex: none;
+  color: var(--text-3);
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+
+.p4-more[open] .p4-more__sum::after {
+  transform: rotate(90deg);
+}
+
+.p4-more__hint {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-3);
+  text-align: right;
+}
+
+.p4-more__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 12px 12px;
 }
 
 .p4-card {
@@ -1054,23 +1452,39 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
   align-items: center;
   justify-content: center;
   gap: 5px;
-  height: 46px;
-  border: none;
+  min-height: 46px;
+  padding: 0 10px;
   border-radius: 23px;
   font-size: 14px;
   font-weight: 700;
 }
 
-.p4-bar__btn--rect {
-  background: var(--mn-green);
+/* 主按钮约占 60%，实心；次按钮约占 40%，白底描边去阴影（希克定律：唯一主行动） */
+.p4-bar__btn--primary {
+  flex: 1.5;
+  border: none;
   color: #fff;
-  box-shadow: 0 6px 16px rgba(0, 150, 57, 0.26);
+}
+
+.p4-bar__btn--rect {
+  background: #007a30;
+}
+
+.p4-bar__btn--rect:hover {
+  background: #00752e;
 }
 
 .p4-bar__btn--order {
   background: linear-gradient(135deg, var(--ai-purple) 0%, var(--ai-purple-2) 100%);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(109, 59, 245, 0.26);
+}
+
+.p4-bar__btn--ghost {
+  flex: 1;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  box-shadow: none;
+  color: var(--text-2);
+  font-weight: 600;
 }
 
 /* 闪烁联动 */
@@ -1147,6 +1561,32 @@ const ready = computed<boolean>(() => !loading.value && !!diagnosis.value)
   text-align: right;
   font-style: normal;
   font-weight: 700;
+}
+
+/* 真数量 stepper：− 数量 +（视觉 28px，.u-tap 外扩到 44px 命中盒） */
+.p4-sheet__stepper {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.p4-sheet__stepper b {
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.p4-sheet__step {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--mn-green);
+  border-radius: 50%;
+  background: var(--bg-card);
+  color: var(--mn-green-dark);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .p4-sheet__text {

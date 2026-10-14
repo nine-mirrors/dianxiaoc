@@ -1,0 +1,176 @@
+{
+  "generatedAt": "2026-10-12T16:05:55.235Z",
+  "model": "qwen3-vl-plus",
+  "verifiedOnly": {
+    "n": 0,
+    "ok": 0,
+    "fallback": 0,
+    "unavailable": 0,
+    "exactRate": 0,
+    "withinOne": {
+      "skuCount": null,
+      "emptyCount": null,
+      "competitorCount": null,
+      "priceTagMissing": null
+    },
+    "mae": {
+      "skuCount": null,
+      "emptyCount": null,
+      "competitorCount": null,
+      "priceTagMissing": null
+    },
+    "avgLatencyMs": 0
+  },
+  "all": {
+    "n": 5,
+    "ok": 5,
+    "fallback": 0,
+    "unavailable": 0,
+    "exactRate": 0,
+    "withinOne": {
+      "skuCount": 0,
+      "emptyCount": 0.8,
+      "competitorCount": 0.6,
+      "priceTagMissing": 0.6
+    },
+    "mae": {
+      "skuCount": 5.4,
+      "emptyCount": 0.8,
+      "competitorCount": 1.6,
+      "priceTagMissing": 1.2
+    },
+    "avgLatencyMs": 11237
+  },
+  "rows": [
+    {
+      "image": "/stores/S1/cold.jpg",
+      "storeName": "家家悦·学府路店",
+      "verified": false,
+      "expected": {
+        "skuCount": 3,
+        "emptyCount": 0,
+        "competitorCount": 0,
+        "priceTagMissing": 1
+      },
+      "ms": 12048,
+      "status": "ok",
+      "pred": {
+        "skuCount": 6,
+        "emptyCount": 0,
+        "competitorCount": 1,
+        "priceTagMissing": 2
+      },
+      "errors": {
+        "skuCount": 3,
+        "emptyCount": 0,
+        "competitorCount": 1,
+        "priceTagMissing": 1
+      },
+      "exact": false
+    },
+    {
+      "image": "/stores/S2/cold.jpg",
+      "storeName": "好邻居·地铁口店",
+      "verified": false,
+      "expected": {
+        "skuCount": 4,
+        "emptyCount": 0,
+        "competitorCount": 0,
+        "priceTagMissing": 1
+      },
+      "ms": 11023,
+      "status": "ok",
+      "pred": {
+        "skuCount": 12,
+        "emptyCount": 0,
+        "competitorCount": 3,
+        "priceTagMissing": 2
+      },
+      "errors": {
+        "skuCount": 8,
+        "emptyCount": 0,
+        "competitorCount": 3,
+        "priceTagMissing": 1
+      },
+      "exact": false
+    },
+    {
+      "image": "/stores/S3/cold.jpg",
+      "storeName": "美宜佳·城建学院店",
+      "verified": false,
+      "expected": {
+        "skuCount": 8,
+        "emptyCount": 1,
+        "competitorCount": 2,
+        "priceTagMissing": 3
+      },
+      "ms": 11304,
+      "status": "ok",
+      "pred": {
+        "skuCount": 12,
+        "emptyCount": 0,
+        "competitorCount": 4,
+        "priceTagMissing": 3
+      },
+      "errors": {
+        "skuCount": 4,
+        "emptyCount": 1,
+        "competitorCount": 2,
+        "priceTagMissing": 0
+      },
+      "exact": false
+    },
+    {
+      "image": "/stores/S4/cold.jpg",
+      "storeName": "华联超市·万达店",
+      "verified": false,
+      "expected": {
+        "skuCount": 3,
+        "emptyCount": 1,
+        "competitorCount": 1,
+        "priceTagMissing": 1
+      },
+      "ms": 10431,
+      "status": "ok",
+      "pred": {
+        "skuCount": 6,
+        "emptyCount": 0,
+        "competitorCount": 2,
+        "priceTagMissing": 3
+      },
+      "errors": {
+        "skuCount": 3,
+        "emptyCount": 1,
+        "competitorCount": 1,
+        "priceTagMissing": 2
+      },
+      "exact": false
+    },
+    {
+      "image": "/stores/S5/cold.jpg",
+      "storeName": "永辉生活·中央公园店",
+      "verified": false,
+      "expected": {
+        "skuCount": 3,
+        "emptyCount": 2,
+        "competitorCount": 2,
+        "priceTagMissing": 2
+      },
+      "ms": 11377,
+      "status": "ok",
+      "pred": {
+        "skuCount": 12,
+        "emptyCount": 4,
+        "competitorCount": 3,
+        "priceTagMissing": 0
+      },
+      "errors": {
+        "skuCount": 9,
+        "emptyCount": 2,
+        "competitorCount": 1,
+        "priceTagMissing": 2
+      },
+      "exact": false
+    }
+  ]
+}

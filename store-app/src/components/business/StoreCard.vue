@@ -37,15 +37,15 @@ const emit = defineEmits<{ (e: 'patrol', id: string): void; (e: 'view', item: Ro
 /** 序号圆圈（①②③④⑤） */
 const orderCn = computed<string>(() => '①②③④⑤'[props.item.order - 1] ?? String(props.item.order))
 
-/** 上次分颜色 */
+/** 上次分颜色（信息文字用深色档，浅色档色对白底不足 4.5:1；装饰色不在此处用） */
 const lastScoreColor = computed<string>(() => {
   const map: Record<string, string> = {
-    excellent: 'var(--level-excellent)',
-    good: 'var(--level-good)',
-    warning: 'var(--level-warning)',
-    risk: 'var(--level-risk)',
+    excellent: 'var(--mn-green-dark)',
+    good: '#558b2f',
+    warning: 'var(--warning-fg)',
+    risk: 'var(--danger-fg)',
   }
-  return map[levelOf(props.item.store?.lastScore ?? 0)] ?? 'var(--text-3)'
+  return map[levelOf(props.item.store?.lastScore ?? 0)] ?? 'var(--text-2)'
 })
 
 /** 是否已完成 */
@@ -81,9 +81,9 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
           {{ item.store?.typeLabel }} · 距起点 {{ km }}km
         </p>
         <p v-if="showImprove" class="store-card__improve">
-          <b style="color: var(--level-risk)">{{ improve.from }}</b>
+          <b style="color: var(--danger-fg)">{{ improve.from }}</b>
           <span>→</span>
-          <b style="color: var(--mn-green)">{{ improve.to }}</b>
+          <b style="color: var(--mn-green-dark)">{{ improve.to }}</b>
           <em>(+{{ improve.delta }})</em>
         </p>
         <p v-else class="store-card__last">
@@ -94,10 +94,20 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
       </div>
 
       <div class="store-card__cta">
-        <button v-if="isDone" class="u-btn u-btn--ghost store-card__btn" @click="emit('view', item)">
+        <button
+          v-if="isDone"
+          type="button"
+          class="u-btn u-btn--ghost store-card__btn u-tap"
+          @click="emit('view', item)"
+        >
           查看
         </button>
-        <button v-else class="u-btn u-btn--primary store-card__btn" @click="emit('patrol', item.store.id)">
+        <button
+          v-else
+          type="button"
+          class="u-btn u-btn--primary store-card__btn u-tap"
+          @click="emit('patrol', item.store.id)"
+        >
           去巡店
           <AppIcon name="chevron-right" :size="14" color="#fff" />
         </button>
@@ -188,7 +198,8 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
 .store-card__improve {
   margin-top: 3px;
   font-size: 12px;
-  color: var(--text-3);
+  /* 店型/距离/上次分/整改前后均承载信息：text-3 仅 ≈2.5:1，提到 text-2（≈7.5:1） */
+  color: var(--text-2);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -201,7 +212,7 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
 .store-card__improve em {
   font-style: normal;
   font-weight: 700;
-  color: var(--mn-green);
+  color: var(--mn-green-dark);
 }
 
 .store-card__last b {
@@ -226,6 +237,7 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
   padding-top: 8px;
   border-top: 1px dashed var(--border-color);
   font-size: 11px;
-  color: var(--mn-green);
+  /* 完成卡片顶部带浅绿渐变底，--mn-green 在浅绿底仅 ≈3.4:1，文字用深色档 */
+  color: var(--mn-green-dark);
 }
 </style>

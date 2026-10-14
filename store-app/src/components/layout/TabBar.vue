@@ -40,12 +40,13 @@ function go(tab: TabItem): void {
 </script>
 
 <template>
-  <nav class="tabbar">
+  <nav class="tabbar" aria-label="主导航">
     <button
       v-for="t in tabs"
       :key="t.key"
       class="tabbar__item"
       :class="{ 'tabbar__item--on': active === t.key }"
+      :aria-current="active === t.key ? 'page' : undefined"
       @click="go(t)"
     >
       <AppIcon :name="t.icon" :size="21" />

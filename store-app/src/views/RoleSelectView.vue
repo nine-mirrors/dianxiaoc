@@ -1,19 +1,15 @@
 <script setup lang="ts">
 /**
- * P1 登录页（唯一入口）。
+ * 登录页（唯一入口）。
  *
- * ★ 2026-10-09 重做：只保留**账号密码登录**。
- *   - 身份由账号决定：登录成功后跳到哪里、能看到哪些页面，全部由后端裁定，
- *     前端不提供「选择角色」入口；
- *   - 演示账号清单由 `GET /api/v1/auth/demo-accounts` 从后端拉取（含密码，便于评委
- *     自己登录不同身份查看），前端不硬编码任何凭证；
- *   - 不再提供手机号验证码、跳过登录等旁路 —— 演示必须走真鉴权。
+ * 身份由账号决定：登录成功后跳到哪里、能看到哪些页面，全部由后端裁定，
+ * 前端不提供任何角色选择入口；不提供手机号验证码、跳过登录等旁路。
  */
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
-import { fetchDemoAccounts, type DemoAccount } from '@/api'
 import { useToast } from '@/composables/useToast'
+import { fetchDemoAccounts, type DemoAccount } from '@/api'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 const router = useRouter()
@@ -23,39 +19,36 @@ const toast = useToast()
 const username = ref<string>('')
 const password = ref<string>('')
 const submitting = ref<boolean>(false)
-const accounts = ref<DemoAccount[]>([])
-const listLoading = ref<boolean>(true)
-const listError = ref<string>('')
+const errorMsg = ref<string>('')
 
-/** 从后端拉演示账号清单（凭证来源 = 后端） */
-async function loadAccounts(): Promise<void> {
-  listLoading.value = true
-  listError.value = ''
-  try {
-    accounts.value = await fetchDemoAccounts()
-    // 默认填第一个账号，现场可直接点登录
-    if (accounts.value.length && !username.value) {
-      username.value = accounts.value[0].username
-      password.value = accounts.value[0].password
-    }
-  } catch {
-    listError.value = '无法连接后端服务，请先启动后端（cd server && npm start）'
-    accounts.value = []
-  } finally {
-    listLoading.value = false
-  }
-}
+/**
+ * 【安全】演示账号一键填充只在开发构建出现：import.meta.env.DEV 为 false 时
+ * 整个区块不渲染、也不发起请求；账号清单仍由后端 /auth/demo-accounts 下发，
+ * 前端源码不硬编码任何明文口令（生产后端该端点同样 404）。
+ */
+const devMode = import.meta.env.DEV
+const demoAccounts = ref<DemoAccount[]>([])
 
 onMounted(() => {
-  void loadAccounts()
   // 已登录（刷新恢复会话）时直接进工作台
-  if (session.logged) router.replace(session.home)
+  if (session.logged) void router.replace(session.home)
+  // 仅开发环境拉取演示账号；失败（如后端没起）就不显示 chips，不影响登录
+  if (devMode) {
+    void fetchDemoAccounts()
+      .then((accounts) => {
+        demoAccounts.value = accounts
+      })
+      .catch(() => {
+        /* 开发环境后端不可达时静默：登录框本身仍可正常使用 */
+      })
+  }
 })
 
-/** 一键填入某个演示账号 */
-function fill(a: DemoAccount): void {
+/** 点演示账号 chip：一键填好账号密码，仍需用户自己点登录 */
+function fillDemo(a: DemoAccount): void {
   username.value = a.username
   password.value = a.password
+  errorMsg.value = ''
 }
 
 /** 提交登录：成功后由后端裁定落地页 */
@@ -68,14 +61,15 @@ async function submit(): Promise<void> {
     return
   }
   submitting.value = true
+  errorMsg.value = ''
   try {
     const s = await session.login(u, p)
-    toast.success(`欢迎回来，${s.user.name}（${s.user.role === 'rep' ? '业代' : s.user.role === 'manager' ? '区域经理' : '店员/店主'}）`)
-    router.replace(s.home)
+    toast.success(`欢迎回来，${s.user.name}`)
+    await router.replace(s.home)
   } catch (e) {
     const msg = e instanceof Error ? e.message : '登录失败'
-    session.authError = msg
-    toast.error(msg.includes('连接') ? '后端未连接：请先启动服务' : msg)
+    errorMsg.value = msg.includes('连接') ? '服务暂不可用，请稍后重试或联系管理员' : msg
+    toast.error(errorMsg.value)
   } finally {
     submitting.value = false
   }
@@ -84,99 +78,107 @@ async function submit(): Promise<void> {
 
 <template>
   <div class="login-page">
-    <!-- 品牌区 -->
-    <header class="lg-brand">
-      <div class="lg-logo">
-        <svg viewBox="0 0 24 24" class="lg-logo__svg" aria-hidden="true">
-          <path d="M12 3C8.5 7 6 10.4 6 14a6 6 0 0 0 12 0c0-3.6-2.5-7-6-11z" fill="#fff" />
-        </svg>
-        <span class="lg-logo__spark"><AppIcon name="sparkles" :size="9" color="#fff" /></span>
-      </div>
-      <h1 class="lg-title">店小C</h1>
-      <p class="lg-subtitle">蒙牛 AI 巡店助手</p>
-      <p class="lg-slogan">拍一张货架照，AI 告诉你该怎么卖</p>
-    </header>
-
-    <!-- 登录卡 -->
-    <section class="lg-card">
-      <h2 class="lg-card__title">账号登录</h2>
-      <p class="lg-card__desc">身份由账号决定，登录后自动进入对应工作台</p>
-
-      <div class="lg-row">
-        <label class="lg-label" for="lg-user">账号</label>
-        <input
-          id="lg-user"
-          v-model="username"
-          class="lg-input"
-          type="text"
-          autocomplete="off"
-          placeholder="请输入账号"
-          @keyup.enter="submit"
-        />
-      </div>
-
-      <div class="lg-row">
-        <label class="lg-label" for="lg-pwd">密码</label>
-        <input
-          id="lg-pwd"
-          v-model="password"
-          class="lg-input"
-          type="password"
-          autocomplete="off"
-          placeholder="请输入密码"
-          @keyup.enter="submit"
-        />
-      </div>
-
-      <p v-if="listError" class="lg-error">{{ listError }}</p>
-
-      <button class="lg-submit" :disabled="submitting" @click="submit">
-        {{ submitting ? '登录中…' : '登录' }}
-      </button>
-
-      <!-- 演示账号：清单来自后端，点击即可填入 -->
-      <div class="lg-accounts">
-        <p class="lg-accounts__title">演示账号（点击填入；统一密码见 README）</p>
-        <p v-if="listLoading" class="lg-accounts__loading">正在从后端获取账号清单…</p>
-        <div v-else class="lg-accounts__grid">
-          <button v-for="a in accounts" :key="a.username" class="lg-account" type="button" @click="fill(a)">
-            <b>{{ a.roleLabel }} · {{ a.person }}</b>
-            <span class="lg-account__user">{{ a.username }}</span>
-            <span class="lg-account__scope">{{ a.scope.join(' · ') }}</span>
-          </button>
+    <div class="login-inner">
+      <!-- 品牌区 -->
+      <header class="lg-brand">
+        <div class="lg-logo">
+          <svg viewBox="0 0 24 24" class="lg-logo__svg" aria-hidden="true">
+            <path d="M12 3C8.5 7 6 10.4 6 14a6 6 0 0 0 12 0c0-3.6-2.5-7-6-11z" fill="#fff" />
+          </svg>
+          <span class="lg-logo__spark"><AppIcon name="sparkles" :size="9" color="#fff" /></span>
         </div>
-      </div>
+        <h1 class="lg-title">店小C</h1>
+        <p class="lg-subtitle">蒙牛 AI 巡店助手</p>
+        <p class="lg-slogan">拍一张货架照，AI 告诉你该怎么卖</p>
+      </header>
 
-      <!-- 数据说明：主动交代演示数据的性质（评委第一眼就能看到，不等被问） -->
-      <details class="lg-note">
-        <summary>关于演示数据（请先看这里）</summary>
-        <ul>
-          <li><b>门店为样本</b>：5 家门店名称为演示设定，<b>坐标取自成都犀浦片区真实街区</b>，以保证地图底图与点位自洽；区域口径为「预置样本 S1–S5，非全量 128 家」。</li>
-          <li><b>健康分不是黑箱</b>：由六维度加权算出（排面 30% / 缺货 25% / 价签 15% / 竞品 15% / 陈列 10% / 期效 5%），每一项可展开查看构成。</li>
-          <li><b>补货量可溯源</b>：按 Holt 平滑 → 单列日均 → 动态安全库存 z·σ·√L（90% 服务水平）逐项计算，页面可展开完整算式。</li>
-          <li><b>AI 只负责讲人话</b>：打分与补货量由规则/算法给出，AI 负责把依据讲成店主听得懂的话；效期与价签数据通过 MCP 协议取自进销存，不靠看图猜。</li>
-        </ul>
-      </details>
+      <!-- 登录卡 -->
+      <section class="lg-card">
+        <h2 class="lg-card__title">账号登录</h2>
+        <p class="lg-card__desc">身份由账号决定，登录后自动进入对应工作台</p>
 
-      <p class="lg-foot">店小C · 蒙牛 AI 巡店助手 · 演示环境</p>
-    </section>
+        <!-- 演示账号：devMode 是编译期常量，生产构建恒为 false → 不渲染、不请求；
+             口令来自后端运行时下发，源码与包内均无明文账号 -->
+        <div v-if="devMode && demoAccounts.length" class="lg-demo">
+          <p class="lg-demo__cap">演示账号 · 点击自动填入（仅开发环境）</p>
+          <div class="lg-demo__chips">
+            <button
+              v-for="a in demoAccounts"
+              :key="a.username"
+              type="button"
+              class="lg-demo__chip u-tap"
+              @click="fillDemo(a)"
+            >
+              {{ a.person }} · {{ a.roleLabel }}
+            </button>
+          </div>
+        </div>
+
+        <div class="lg-row">
+          <label class="lg-label" for="lg-user">账号</label>
+          <input
+            id="lg-user"
+            v-model="username"
+            class="lg-input"
+            type="text"
+            autocomplete="username"
+            placeholder="请输入账号"
+            @keyup.enter="submit"
+          />
+        </div>
+
+        <div class="lg-row">
+          <label class="lg-label" for="lg-pwd">密码</label>
+          <input
+            id="lg-pwd"
+            v-model="password"
+            class="lg-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="请输入密码"
+            @keyup.enter="submit"
+          />
+        </div>
+
+        <p v-if="errorMsg" class="lg-error" role="alert">{{ errorMsg }}</p>
+
+        <button type="button" class="lg-submit" :disabled="submitting" @click="submit">
+          {{ submitting ? '登录中…' : '登录' }}
+        </button>
+      </section>
+
+      <p class="lg-foot">店小C · 蒙牛 AI 巡店助手</p>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/*
+ * ★ 布局：外层是手机壳内的固定高度视口（PhoneFrame .phone__screen overflow:hidden），
+ *   本页自身承担纵向滚动；内容不足一屏时居中，超高时从顶部开始且可完整滚到底部，
+ *   不再出现底部元素被裁掉的问题。
+ */
 .login-page {
-  min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(180deg, #f2f7f4 0%, #e9f2ec 100%);
+}
+
+.login-inner {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 18px;
-  padding: 32px 16px;
-  background: linear-gradient(180deg, #f2f7f4 0%, #e9f2ec 100%);
+  padding: 24px 16px 20px;
+  box-sizing: border-box;
 }
 
 .lg-brand {
   text-align: center;
+  flex: none;
 }
 
 .lg-logo {
@@ -230,6 +232,8 @@ async function submit(): Promise<void> {
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 8px 28px rgba(15, 39, 27, 0.1);
+  box-sizing: border-box;
+  flex: none;
 }
 
 .lg-card__title {
@@ -252,8 +256,9 @@ async function submit(): Promise<void> {
   margin-bottom: 10px;
 }
 
+/* 列放宽：两字标签 + 间距不再挤字 */
 .lg-label {
-  width: 34px;
+  width: 44px;
   flex: none;
   font-size: 13px;
   color: var(--text-2, #4b5563);
@@ -261,12 +266,13 @@ async function submit(): Promise<void> {
 
 .lg-input {
   flex: 1;
-  height: 42px;
+  min-width: 0;
+  height: 44px;
   padding: 0 12px;
   border: 1px solid #e3e8e5;
   border-radius: 10px;
   font-size: 14px;
-  outline: none;
+  /* 不写 outline:none —— 键盘焦点环由全局 :focus-visible 统一提供 */
   transition: border-color 0.18s ease;
 }
 
@@ -274,10 +280,52 @@ async function submit(): Promise<void> {
   border-color: var(--mn-green, #009639);
 }
 
+/* iOS Safari：输入框字号 <16px 聚焦会自动放大整页；只在小屏真机抬到 16px，
+   桌面手机壳内仍保持 14px 的紧凑观感（640px = 令牌 --bp-sm 口径） */
+@media (max-width: 640px) {
+  .lg-input {
+    font-size: 16px;
+  }
+}
+
 .lg-error {
   margin: 0 0 10px;
   font-size: 12px;
-  color: #e02020;
+  color: var(--color-danger, #e02020);
+}
+
+/* ── 开发环境演示账号 chips ── */
+.lg-demo {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--info-bg, #eaf3fe);
+}
+
+.lg-demo__cap {
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--info-fg, #1d4ed8);
+}
+
+.lg-demo__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lg-demo__chip {
+  /* 视觉高度约 32px，命中盒由 .u-tap 外扩到 ≥44px */
+  padding: 6px 12px;
+  border: 1px solid var(--color-info, #3b82f6);
+  border-radius: 999px;
+  background: var(--bg-card, #fff);
+  color: var(--info-fg, #1d4ed8);
+  font-size: 12px;
+}
+
+.lg-demo__chip:hover {
+  background: var(--info-bg, #eaf3fe);
 }
 
 .lg-submit {
@@ -290,7 +338,13 @@ async function submit(): Promise<void> {
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.18s ease;
+  transition:
+    opacity 0.18s ease,
+    transform 0.12s ease;
+}
+
+.lg-submit:hover {
+  opacity: 0.92;
 }
 
 .lg-submit:disabled {
@@ -302,117 +356,11 @@ async function submit(): Promise<void> {
   transform: scale(0.99);
 }
 
-.lg-accounts {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px dashed #e3e8e5;
-}
-
-.lg-accounts__title {
-  margin: 0 0 8px;
-  font-size: 11.5px;
-  color: var(--text-3, #6b7280);
-}
-
-.lg-accounts__loading {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-3, #6b7280);
-}
-
-.lg-accounts__grid {
-  display: grid;
-  gap: 6px;
-}
-
-.lg-account {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border: 1px solid #e3e8e5;
-  border-radius: 10px;
-  background: #fff;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.lg-account b {
-  font-size: 13px;
-  color: var(--mn-green-dark, #0a7d43);
-}
-
-.lg-account__user {
-  font-size: 11px;
-  color: var(--text-2, #4b5563);
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-}
-
-.lg-account__scope {
-  font-size: 10.5px;
-  color: var(--text-3, #6b7280);
-}
-
-.lg-account:hover {
-  border-color: var(--mn-green, #009639);
-  background: #f4faf6;
-}
-
-.lg-account:active {
-  transform: scale(0.98);
-}
-
-.lg-note {
-  margin: 12px 0 0;
-  padding: 9px 11px;
-  border-radius: 10px;
-  background: #f7faf8;
-  border: 1px solid #e6efe9;
-  font-size: 11.5px;
-  line-height: 1.65;
-  color: var(--text-2, #4b5563);
-}
-
-.lg-note summary {
-  cursor: pointer;
-  font-weight: 700;
-  color: var(--mn-green-dark, #0a7d43);
-  outline: none;
-  list-style: none;
-}
-
-.lg-note summary::-webkit-details-marker {
-  display: none;
-}
-
-.lg-note summary::before {
-  content: '▸ ';
-  display: inline-block;
-  transition: transform 0.18s ease;
-}
-
-.lg-note[open] summary::before {
-  content: '▾ ';
-}
-
-.lg-note ul {
-  margin: 8px 0 0;
-  padding-left: 16px;
-}
-
-.lg-note li {
-  margin-bottom: 5px;
-}
-
-.lg-note b {
-  color: var(--text-1, #1f2937);
-}
-
 .lg-foot {
-  margin: 14px 0 0;
+  margin: 0;
   text-align: center;
   font-size: 11px;
   color: var(--text-3, #6b7280);
+  flex: none;
 }
 </style>

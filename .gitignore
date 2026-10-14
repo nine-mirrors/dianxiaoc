@@ -29,6 +29,11 @@ _smoke/*.png
 # 日志
 *.log
 
+# 改动前的本地备份（调数据/ 改 schema 前的快照，仅供本机回滚，不进仓库）
+*.bak
+*.bak_*
+*.json.bak*
+
 # 编辑器 / 系统
 .vscode
 .idea

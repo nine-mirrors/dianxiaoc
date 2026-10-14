@@ -17,6 +17,18 @@ import type { AuthSession } from '@/api'
 
 const SESSION_KEY = 'store-app:session'
 
+/**
+ * 会话代数（epoch）。
+ *
+ * ★ 每次「手动登录 / 主动登出」+1。启动时的 `restore()` 是异步的（要请求
+ * /auth/me），若它的响应迟到——例如后端重启后旧 token 被判 401——绝不能让
+ * 「上一代会话」的恢复结果冲掉刚刚登录成功的新会话，否则会出现：
+ * 登录接口 200、Toast 已提示欢迎回来，随后迟到的 401 执行 logout()，
+ * 路由守卫立刻把人弹回登录页（实测复现：token 100 字符 → 被清空为 0）。
+ * restore 在落任何结果前先比对代数与当前 token，发现已换代即放弃结果。
+ */
+let sessionEpoch = 0
+
 export const useSessionStore = defineStore('session', () => {
   /** 当前用户（后端返回，未登录时为 null） */
   const user = ref<User | null>(null)
@@ -74,6 +86,8 @@ export const useSessionStore = defineStore('session', () => {
    */
   async function login(username: string, password: string): Promise<AuthSession> {
     const s = await apiLoginWithAccount(username, password)
+    // ★ 登录成功即换代：任何仍在飞行中的旧 restore() 结果就此作废
+    sessionEpoch += 1
     applySession(s)
     return s
   }
@@ -83,6 +97,8 @@ export const useSessionStore = defineStore('session', () => {
    * 后端不认（重启/过期/被清）→ 静默回到未登录态，由路由守卫送去登录页。
    */
   async function restore(): Promise<void> {
+    // 本次恢复所属的会话代数（await 期间若已登录/登出，结果必须作废）
+    const epoch = sessionEpoch
     let savedToken = ''
     let cachedUser: User | null = null
     try {
@@ -107,8 +123,13 @@ export const useSessionStore = defineStore('session', () => {
     if (cachedUser) user.value = cachedUser
     try {
       const s = await authMe(savedToken)
+      // ★ 等待校验期间用户已手动登录（代数+1、token 已换成新的）→ 旧结果作废，
+      //   绝不能 applySession(旧身份) 把新会话覆盖回去
+      if (sessionEpoch !== epoch || token.value !== savedToken) return
       applySession(s)
     } catch (e) {
+      // 同上：迟到的错误（含 401）属于上一代会话，直接丢弃
+      if (sessionEpoch !== epoch || token.value !== savedToken) return
       /**
        * ★ 断网 ≠ 登录失效（实测踩过：后端不可达时一律 logout()，
        *   守卫把用户踢回登录页，现场断网 = 直接演示中断）。
@@ -135,6 +156,8 @@ export const useSessionStore = defineStore('session', () => {
 
   /** 登出：清 token、断实时推送、回到登录页 */
   function logout(): void {
+    // 主动登出即换代：仍在飞行中的 restore() 不得再把旧身份写回
+    sessionEpoch += 1
     disconnectRealtime()
     token.value = ''
     user.value = null

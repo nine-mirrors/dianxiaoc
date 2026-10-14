@@ -10,6 +10,12 @@ import AppIcon from './AppIcon.vue'
 
 const { toasts } = useToast()
 
+/**
+ * confined=true：渲染在手机壳覆盖层内，absolute 相对手机屏定位（桌面演示反馈不漂出机壳）；
+ * 默认 false：桌面看板用，fixed 相对视口。
+ */
+defineProps<{ confined?: boolean }>()
+
 /** 图标名映射 */
 const ICONS: Record<string, string> = {
   success: 'check-circle',
@@ -19,10 +25,18 @@ const ICONS: Record<string, string> = {
 </script>
 
 <template>
-  <div class="toast-host">
+  <!-- 容器保持 polite：新 toast 排队播报，不打断读屏当前内容；
+       错误 toast 自身带 role="alert"（隐式 assertive），需立即播报 -->
+  <div class="toast-host" :class="{ 'toast-host--confined': confined }" role="status" aria-live="polite" aria-atomic="false">
     <TransitionGroup name="toast">
-      <div v-for="t in toasts" :key="t.id" class="toast" :class="`toast--${t.type}`">
-        <AppIcon :name="ICONS[t.type] || 'info'" :size="16" />
+      <div
+        v-for="t in toasts"
+        :key="t.id"
+        class="toast"
+        :class="`toast--${t.type}`"
+        :role="t.type === 'error' ? 'alert' : null"
+      >
+        <AppIcon :name="ICONS[t.type] || 'info'" :size="16" aria-hidden="true" />
         <span class="toast__text">{{ t.text }}</span>
       </div>
     </TransitionGroup>
@@ -41,6 +55,11 @@ const ICONS: Record<string, string> = {
   gap: 8px;
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+/* 手机壳内：相对手机屏定位（覆盖层已给定位上下文与裁剪） */
+.toast-host--confined {
+  position: absolute;
 }
 
 .toast {

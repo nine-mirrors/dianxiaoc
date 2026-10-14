@@ -1,12 +1,17 @@
 <script setup lang="ts">
 /**
- * P5 区域经理看板 —— 本批只做「路由可空转」占位（正式实现在下一批 T05.2）。
+ * P5 区域经理看板（认知心理学 + 企业级交互改造）。
  *
- * 为避免这一批出现打不开的空路由，这里先真实调用 `#17 /dashboard/overview`
- * 渲染 KPI 卡 + 门店明细 + 风险 Top5 三个静态区块，保证出一屏可用的初版；
- * 环形分布图 / 8 周趋势折线 / 下派任务弹层（含跨角色闭环）在下一批补齐。
+ * 信息架构（米勒分块）：顶部分段控件组织「经营概览 / 门店明细 / 任务闭环」三区，
+ * 默认概览，纯前端切换、不改任何接口；
+ * - 概览：KPI、AI 晨报、健康分环图 + 8 周趋势、风险 Top5（行内可下派）；
+ * - 明细：全量门店表，默认只看风险+预警，店名搜索 + 健康档筛选 + 10 条/页；
+ * - 闭环：整改闭环 / 本周订货 / 任务完成率三张卡，口径小字合并为底部一处。
+ *
+ * 下派只有一个入口组件 TaskDispatchDialog：风险卡总入口、风险行内按钮、AI 晨报
+ * 草稿都打开它（行内/草稿带预选门店与草稿预置）。成功全链路仅 1 条 toast。
  */
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import DesktopHeader from '@/components/layout/DesktopHeader.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -15,11 +20,12 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import DonutChart from '@/components/business/charts/DonutChart.vue'
 import TrendLine from '@/components/business/charts/TrendLine.vue'
 import TaskDispatchDialog from '@/components/business/TaskDispatchDialog.vue'
+import ManagerAiBrief from '@/components/business/ManagerAiBrief.vue'
 import { useApi } from '@/composables/useApi'
 import { getDashboardOverview } from '@/api'
 import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
-import type { DashboardOverview, Task } from '@/types'
+import type { DashboardOverview, Kpi, StoreRow, Task, TaskType } from '@/types'
 
 const router = useRouter()
 const session = useSessionStore()
@@ -50,23 +56,154 @@ function switchAccount(): Promise<void> {
   return router.push('/login')
 }
 
+/* ═══════════════ 米勒分块：看板三区（纯前端分段切换，不打接口） ═══════════════ */
+
+type DashboardTab = 'overview' | 'detail' | 'loop'
+
+const TABS: { key: DashboardTab; label: string }[] = [
+  { key: 'overview', label: '经营概览' },
+  { key: 'detail', label: '门店明细' },
+  { key: 'loop', label: '任务闭环' },
+]
+
+const activeTab = ref<DashboardTab>('overview')
+
+function switchTab(key: DashboardTab): void {
+  activeTab.value = key
+  // 图表在 v-show 面板里，切回概览等布局恢复后再触发 resize，防止 ECharts 宽度停在 0
+  void nextTick(() => window.dispatchEvent(new Event('resize')))
+}
+
+/** tablist 左右方向键切换（roving tabindex：仅当前 tab 可 Tab 停靠） */
+function onTabKeydown(event: KeyboardEvent): void {
+  const idx = TABS.findIndex((t) => t.key === activeTab.value)
+  if (idx < 0) return
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+    event.preventDefault()
+    switchTab(TABS[(idx + 1) % TABS.length].key)
+  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    switchTab(TABS[(idx - 1 + TABS.length) % TABS.length].key)
+  }
+}
+
+/* ═══════════════ 下派：全看板唯一弹层实例 ═══════════════ */
+
 /** 下派任务弹层开关 */
 const showDispatch = ref<boolean>(false)
 
-/** 下派成功的门店选项（复用风险 Top5） */
+/** 打开弹层时的预置（风险行内按钮只带 storeId；AI 草稿带全量草稿字段） */
+interface DispatchPreset {
+  storeId?: string
+  taskType?: TaskType
+  dueAt?: string
+  note?: string
+}
+const dispatchPreset = ref<DispatchPreset>({})
+
+/** 风险卡总入口（无预选）与行内入口（带预选 storeId）共用这一个函数 */
+function openDispatch(storeId?: string): void {
+  dispatchPreset.value = storeId ? { storeId } : {}
+  showDispatch.value = true
+}
+
+/** AI 晨报草稿 → 同一个下派弹层（AI 起草、经理在弹层内人工确认） */
+function openDraftDispatch(p: { storeId: string; taskType: TaskType; dueAt: string; note: string }): void {
+  dispatchPreset.value = { ...p }
+  showDispatch.value = true
+}
+
+/** 下派可选门店：从本区域完整门店池派生，并带分数/档位（弹层内按健康分升序）。
+ *  原实现复用 riskTop5（修复前只有 1–2 条），导致跨角色闭环的可选门店过少。
+ *  改为 storeRows 后恢复为该区域全量门店（44/42/42），下派不再被风险清单宽度限制。*/
 const dispatchStores = computed(() =>
-  (overview.value?.riskTop5 ?? []).map((r) => ({ storeId: r.storeId, storeName: r.storeName })),
+  (overview.value?.storeRows ?? []).map((r) => ({
+    storeId: r.storeId,
+    storeName: r.storeName,
+    score: r.score,
+    level: r.level,
+  })),
 )
 
+/** AI 晨报组件实例：下派成功后令其重新生成（已派门店不再重复出草稿） */
+const briefRef = ref<InstanceType<typeof ManagerAiBrief> | null>(null)
+
+/** 预置诊断数据的门店（S1–S5）。
+ *  diagnoses.json 只覆盖这 5 家，其余 123 家点「查看详情」会走到后端 404，
+ *  并弹出与「点错行」无关的报错文案（"未检测到蒙牛陈列区域，请重拍"）。
+ *  演示期间随手点一行就穿帮，因此对无诊断数据的门店隐藏该入口 ——
+ *  不用后端 fallback 兜，因为那等于为 123 家店编造诊断内容，与项目
+ *  「数字可追问、不编造」的核心原则冲突。*/
+const DIAGNOSIS_READY = new Set(['S1', 'S2', 'S3', 'S4', 'S5'])
+function canViewDetail(storeId: string): boolean {
+  return DIAGNOSIS_READY.has(storeId)
+}
+
+/** S1–S5 行点击 / 键盘 Enter 跳转只读诊断（保持既有跳转不变） */
+function goDetail(storeId: string): void {
+  if (canViewDetail(storeId)) {
+    void router.push(`/rep/diagnosis/D_${storeId}?readonly=1`)
+  }
+}
+
 /**
- * 下派成功回调。
+ * 下派成功回调（全链路唯一一条 toast）。
  *
  * 后端已在 `POST /api/v1/tasks` 里 `broadcast('task:new', {toRole:'rep'})`，
- * 业代端开着页面时会**实时**收到并弹 Toast，无需切角色也不用刷新。
+ * 业代端开着页面时会**实时**收到提醒；弹层内不再重复弹 toast。
  */
 function onDispatched(task: Task): void {
-  toast.success(`已实时下派：${task.storeName} · ${task.taskTypeLabel}`)
-  toast.info('业代端开着「今日巡店」时会立刻收到，无需刷新')
+  toast.success(`已实时下派：${task.storeName} · ${task.taskTypeLabel}，业代端开着页面即刻收到`)
+  void run()
+  briefRef.value?.reload()
+}
+
+/* ═══════════════ 警报疲劳：KPI 红点只在「确有恶化」时出现 ═══════════════ */
+
+/** 计数型指标：数值上升才算恶化（红灯门店、缺货率）；其余指标无恶化口径不亮红点 */
+const COUNT_METRICS_WORSE_WHEN_UP = new Set(['redStores', 'oosRate'])
+
+function kpiWorsening(k: Kpi): boolean {
+  if (!k.danger) return false
+  if (COUNT_METRICS_WORSE_WHEN_UP.has(k.key)) return k.trend === 'up'
+  return false
+}
+
+/* ═══════════════ 门店明细：搜索 + 健康档筛选 + 本地分页（明细区专用） ═══════════════ */
+
+const PAGE_SIZE = 10
+const searchTerm = ref<string>('')
+/** 默认只看风险+预警（值班经理的注意力应优先放在这两档） */
+const levelFilter = ref<string>('attention')
+const page = ref<number>(1)
+
+const filteredStoreRows = computed<StoreRow[]>(() => {
+  const kw = searchTerm.value.trim()
+  return (overview.value?.storeRows ?? []).filter((r) => {
+    if (kw && !r.storeName.includes(kw)) return false
+    if (levelFilter.value === 'attention') return r.level === 'risk' || r.level === 'warning'
+    if (levelFilter.value !== 'all' && r.level !== levelFilter.value) return false
+    return true
+  })
+})
+
+const totalPages = computed<number>(() => Math.max(1, Math.ceil(filteredStoreRows.value.length / PAGE_SIZE)))
+
+const pagedStoreRows = computed<StoreRow[]>(() =>
+  filteredStoreRows.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE),
+)
+
+/** 筛选条件变化回第 1 页 */
+watch([searchTerm, levelFilter], () => {
+  page.value = 1
+})
+/** 当前页越界（如筛选后结果变少）时收回最后一页 */
+watch(totalPages, (n) => {
+  if (page.value > n) page.value = n
+})
+
+function goPage(p: number): void {
+  page.value = Math.min(Math.max(1, p), totalPages.value)
 }
 
 /* ═══════════════ 本周订货汇总（订货三端打通 · 经理端） ═══════════════ */
@@ -108,10 +245,12 @@ const taskSummary = computed(() => {
 
 <template>
   <div class="p5">
+    <h1 class="u-sr-only">区域经营看板</h1>
+
     <DesktopHeader
       :region-ids="overview?.regionIds ?? []"
       :region-id="overview?.regionId ?? ''"
-      :user-name="session.user.name"
+      :user-name="session.user?.name ?? ''"
       :role-label="session.roleLabel"
       @change-region="changeRegion"
       @switch-role="switchAccount"
@@ -123,193 +262,301 @@ const taskSummary = computed(() => {
       </div>
 
       <template v-else-if="overview">
-        <!-- KPI -->
-        <div class="p5__kpis">
-          <div v-for="k in overview.kpis" :key="k.key" class="p5__kpi">
-            <p class="p5__kpi-label">
-              {{ k.label }}
-              <span v-if="k.danger" class="p5__kpi-dot" />
-            </p>
-            <p class="p5__kpi-value" :class="{ 'is-danger': k.danger }">
-              {{ k.value }}
-              <em :class="k.trend === 'up' ? 'is-up' : 'is-down'">{{ k.delta }}</em>
-            </p>
-            <p v-if="k.target" class="p5__kpi-target">{{ k.target }}</p>
+        <!-- 米勒分块：三区分段控件（纯前端切换） -->
+        <nav class="p5__tabs" role="tablist" aria-label="看板分区" @keydown="onTabKeydown">
+          <button
+            v-for="t in TABS"
+            :key="t.key"
+            type="button"
+            role="tab"
+            class="p5__tab"
+            :class="{ 'is-active': activeTab === t.key }"
+            :aria-selected="activeTab === t.key"
+            :tabindex="activeTab === t.key ? 0 : -1"
+            @click="switchTab(t.key)"
+          >
+            {{ t.label }}
+          </button>
+        </nav>
+
+        <!-- ══════════ 区一：经营概览 ══════════ -->
+        <div v-show="activeTab === 'overview'" class="p5__panel mot-fade-up" role="tabpanel" aria-label="经营概览">
+          <h2 class="u-sr-only">核心指标与风险概览</h2>
+
+          <!-- KPI -->
+          <div class="p5__kpis">
+            <div v-for="k in overview.kpis" :key="k.key" class="p5__kpi" tabindex="0">
+              <p class="p5__kpi-label">
+                {{ k.label }}
+                <span v-if="kpiWorsening(k)" class="p5__kpi-dot" aria-label="指标恶化" />
+              </p>
+              <p class="p5__kpi-value" :class="{ 'is-danger': k.danger }">
+                {{ k.value }}
+                <em :class="k.trend === 'up' ? 'is-up' : k.trend === 'flat' ? 'is-flat' : 'is-down'">{{ k.delta }}</em>
+              </p>
+              <p v-if="k.target" class="p5__kpi-target">{{ k.target }}</p>
+            </div>
           </div>
-        </div>
 
-        <!-- 环图 + 趋势 -->
-        <div class="p5__charts">
-          <section class="p5__card p5__card--donut">
-            <header class="p5__card-head">
-              <b>健康分四档分布</b>
-              <span>共 {{ overview.distribution.reduce((s, d) => s + d.count, 0) }} 家</span>
-            </header>
-            <DonutChart :data="overview.distribution" />
-          </section>
+          <!-- AI 晨报：主动预警 + 一键拟派（下派打开看板唯一弹层，成功后刷新看板与晨报） -->
+          <ManagerAiBrief ref="briefRef" :region-id="regionId" @dispatch="openDraftDispatch" />
 
-          <section class="p5__card p5__card--trend">
-            <header class="p5__card-head">
-              <b>近 8 周趋势</b>
-              <span class="p5__trend-hint"><AppIcon name="trending-up" :size="14" /> 缺货率↓ 铺货率↑</span>
-            </header>
-            <TrendLine :series="overview.trend" />
-          </section>
-        </div>
+          <!-- 环图 + 趋势 -->
+          <div class="p5__charts">
+            <section class="p5__card p5__card--donut">
+              <header class="p5__card-head">
+                <h2 class="p5__card-title">健康分四档分布</h2>
+                <span>共 {{ overview.distribution.reduce((s, d) => s + d.count, 0) }} 家</span>
+              </header>
+              <DonutChart :data="overview.distribution" />
+            </section>
 
-        <!-- 整改闭环 + 本周订货汇总 -->
-        <div class="p5__loop">
-          <!-- 整改闭环（已整改 / 进行中 / 平均提升分） -->
+            <section class="p5__card p5__card--trend">
+              <header class="p5__card-head">
+                <h2 class="p5__card-title">近 8 周趋势</h2>
+                <span class="p5__trend-hint"><AppIcon name="trending-up" :size="14" /> 缺货率↓ 铺货率↑</span>
+              </header>
+              <TrendLine :series="overview.trend" />
+            </section>
+          </div>
+
+          <!-- 风险 Top5（行内即可下派，按钮带预选 storeId） -->
           <section class="p5__card">
             <header class="p5__card-head">
-              <b><AppIcon name="check-circle" :size="14" /> 整改闭环</b>
-              <span>本区域</span>
-            </header>
-            <div class="p5__loop-stats">
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num">{{ overview.rectification?.done ?? 0 }}</p>
-                <p class="p5__loop-cap">已整改条目</p>
-              </div>
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num" :class="{ 'is-warn': (overview.rectification?.open ?? 0) > 0 }">
-                  {{ overview.rectification?.open ?? 0 }}
-                </p>
-                <p class="p5__loop-cap">进行中任务</p>
-              </div>
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num is-up">+{{ overview.rectification?.avgGain ?? 0 }}</p>
-                <p class="p5__loop-cap">平均提升分</p>
-              </div>
-            </div>
-            <p class="p5__caliber">口径：预置样本门店 S1–S5，非全量 128 家</p>
-          </section>
-
-          <!-- 本周订货汇总（店主下单 → 业代接单 → 经理汇总） -->
-          <section class="p5__card">
-            <header class="p5__card-head">
-              <b><AppIcon name="cart" :size="14" /> 本周订货汇总</b>
-              <span>店主自助下单</span>
-            </header>
-            <div class="p5__loop-stats">
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num">{{ orderSummary.count }}</p>
-                <p class="p5__loop-cap">订货笔数</p>
-              </div>
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num">{{ orderSummary.bottles }}</p>
-                <p class="p5__loop-cap">订货瓶数</p>
-              </div>
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num">¥{{ orderSummary.amount }}</p>
-                <p class="p5__loop-cap">订货金额</p>
-              </div>
-            </div>
-            <!-- 已接单 / 待接单（来自 overview.orderSummary，接单状态真落库） -->
-            <div class="p5__accept">
-              <span class="p5__accept-item">
-                已接单 <b>{{ orderSummary.accepted }}</b>
-              </span>
-              <span class="p5__accept-sep">/</span>
-              <span class="p5__accept-item">
-                待接单 <b :class="{ 'is-warn': orderSummary.pending > 0 }">{{ orderSummary.pending }}</b>
-              </span>
-            </div>
-            <p class="p5__caliber">口径：预置样本门店 S1–S5，非全量 128 家</p>
-          </section>
-
-          <!-- 任务完成率（派了 → 做了没有 → 闭环的最后一眼） -->
-          <section class="p5__card">
-            <header class="p5__card-head">
-              <b><AppIcon name="check" :size="14" /> 任务完成率</b>
-              <span>经理下派任务的执行闭环</span>
-            </header>
-            <div class="p5__loop-stats">
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num">{{ taskSummary.done }}/{{ taskSummary.total }}</p>
-                <p class="p5__loop-cap">已完成 / 总数</p>
-              </div>
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num">{{ taskSummary.rate }}<em>%</em></p>
-                <p class="p5__loop-cap">完成率</p>
-              </div>
-              <div class="p5__loop-stat">
-                <p class="p5__loop-num" :class="{ 'is-warn': taskSummary.overdue > 0 }">{{ taskSummary.overdue }}</p>
-                <p class="p5__loop-cap">逾期未完成</p>
-              </div>
-            </div>
-            <!-- 完成率进度条：宽度 = done/total，与上方数字同源 -->
-            <div class="p5__bar" role="img" :aria-label="`任务完成率 ${taskSummary.rate}%`">
-              <div class="p5__bar-fill" :style="{ width: `${taskSummary.rate}%` }" />
-            </div>
-            <p class="p5__caliber">
-              完成率 = 已完成 ÷（已完成 + 进行中）；逾期按演示基准日 2026-10-02 判定
-            </p>
-          </section>
-        </div>
-
-        <div class="p5__grid">
-          <!-- 门店明细 -->
-          <section class="p5__card">
-            <header class="p5__card-head">
-              <b>门店明细（按健康分升序）</b>
-              <span>共 {{ overview.storeRows.length }} 家重点店</span>
-            </header>
-            <table class="p5__table">
-              <thead>
-                <tr>
-                  <th>门店</th>
-                  <th>健康分</th>
-                  <th>主要问题</th>
-                  <th>周变化</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in overview.storeRows" :key="r.storeId">
-                  <td>{{ r.storeName }}</td>
-                  <td>
-                    <span class="p5__score" :style="{ color: `var(--level-${r.level})` }">{{ r.score }}</span>
-                    <HealthBadge :level="r.level" />
-                  </td>
-                  <td>{{ r.mainIssue }}</td>
-                  <td :class="r.weekDelta > 0 ? 'is-up' : r.weekDelta < 0 ? 'is-down' : ''">
-                    {{ r.weekDelta > 0 ? '+' : '' }}{{ r.weekDelta }}
-                  </td>
-                  <td>
-                    <button class="p5__link" @click="router.push(`/rep/diagnosis/D_${r.storeId}?readonly=1`)">
-                      查看详情
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </section>
-
-          <!-- 风险 Top5 -->
-          <section class="p5__card">
-            <header class="p5__card-head">
-              <b><AppIcon name="alert-triangle" :size="14" /> 风险预警 Top5</b>
-              <button class="p5__dispatch" @click="showDispatch = true">
+              <h2 class="p5__card-title">
+                <AppIcon name="alert-triangle" :size="14" /> 风险预警 Top5
+              </h2>
+              <button type="button" class="p5__dispatch" @click="openDispatch()">
                 <AppIcon name="send" :size="13" /> 下派任务
               </button>
             </header>
-            <div v-for="(r, i) in overview.riskTop5" :key="r.storeId" class="p5__risk">
-              <span class="p5__risk-no">{{ i + 1 }}</span>
+            <div
+              v-for="(r, i) in overview.riskTop5"
+              :key="r.storeId"
+              class="p5__risk"
+              tabindex="0"
+            >
+              <span
+                class="p5__risk-no"
+                :style="{ background: `var(--level-${r.level})` }"
+                :aria-label="`第 ${i + 1} 名`"
+              >{{ i + 1 }}</span>
               <div class="p5__risk-main">
                 <p class="p5__risk-name">{{ r.storeName }}</p>
                 <p class="p5__risk-reason">{{ r.reason }}</p>
               </div>
               <span class="p5__risk-score" :style="{ color: `var(--level-${r.level})` }">{{ r.score }}</span>
+              <button type="button" class="p5__risk-dispatch" @click="openDispatch(r.storeId)">
+                <AppIcon name="send" :size="11" /> 下派
+              </button>
             </div>
           </section>
+        </div>
+
+        <!-- ══════════ 区二：门店明细（搜索 + 筛选 + 分页） ══════════ -->
+        <div v-show="activeTab === 'detail'" class="p5__panel" role="tabpanel" aria-label="门店明细">
+          <section class="p5__card">
+            <header class="p5__card-head">
+              <h2 class="p5__card-title">门店明细（按健康分升序）</h2>
+              <span>共 {{ overview.storeRows.length }} 家重点店</span>
+            </header>
+
+            <div class="p5__filters">
+              <input
+                v-model="searchTerm"
+                type="search"
+                class="p5__search"
+                placeholder="搜索门店名"
+                aria-label="按门店名搜索"
+              />
+              <select v-model="levelFilter" class="p5__select" aria-label="按健康档筛选">
+                <option value="attention">风险 + 预警（默认）</option>
+                <option value="all">全部健康档</option>
+                <option value="risk">仅风险</option>
+                <option value="warning">仅预警</option>
+                <option value="good">仅良好</option>
+                <option value="excellent">仅优秀</option>
+              </select>
+              <span class="p5__filter-count">当前 {{ filteredStoreRows.length }} 家</span>
+            </div>
+
+            <div class="p5__table-wrap">
+              <table class="p5__table">
+                <thead>
+                  <tr>
+                    <th>门店</th>
+                    <th>健康分</th>
+                    <th>主要问题</th>
+                    <th>周变化</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="r in pagedStoreRows"
+                    :key="r.storeId"
+                    :class="{ 'is-clickable': canViewDetail(r.storeId) }"
+                    :tabindex="canViewDetail(r.storeId) ? 0 : undefined"
+                    @click="goDetail(r.storeId)"
+                    @keydown.enter="goDetail(r.storeId)"
+                  >
+                    <td>{{ r.storeName }}</td>
+                    <td>
+                      <span class="p5__score" :style="{ color: `var(--level-${r.level})` }">{{ r.score }}</span>
+                      <HealthBadge :level="r.level" />
+                    </td>
+                    <td>{{ r.mainIssue }}</td>
+                    <td :class="r.weekDelta > 0 ? 'is-up' : r.weekDelta < 0 ? 'is-down' : ''">
+                      {{ r.weekDelta > 0 ? '+' : '' }}{{ r.weekDelta }}
+                    </td>
+                    <td>
+                      <button
+                        v-if="canViewDetail(r.storeId)"
+                        type="button"
+                        class="p5__link"
+                        @click.stop="goDetail(r.storeId)"
+                      >
+                        查看详情
+                      </button>
+                      <span v-else class="p5__link-disabled" title="该门店仅有看板汇总数据，未采集货架实拍诊断">
+                        仅看板数据
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="!pagedStoreRows.length">
+                    <td colspan="5" class="p5__empty">没有符合筛选条件的门店</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <nav class="p5__pager" aria-label="门店明细表分页">
+              <button type="button" class="p5__page-btn" :disabled="page <= 1" @click="goPage(page - 1)">
+                上一页
+              </button>
+              <span class="p5__page-info">第 {{ page }} / {{ totalPages }} 页 · 每页 {{ PAGE_SIZE }} 条</span>
+              <button
+                type="button"
+                class="p5__page-btn"
+                :disabled="page >= totalPages"
+                @click="goPage(page + 1)"
+              >
+                下一页
+              </button>
+            </nav>
+          </section>
+        </div>
+
+        <!-- ══════════ 区三：任务闭环 ══════════ -->
+        <div v-show="activeTab === 'loop'" class="p5__panel" role="tabpanel" aria-label="任务闭环">
+          <div class="p5__loop">
+            <!-- 整改闭环（已整改 / 进行中 / 平均提升分） -->
+            <section class="p5__card">
+              <header class="p5__card-head">
+                <h2 class="p5__card-title">
+                  <AppIcon name="check-circle" :size="14" /> 整改闭环
+                </h2>
+                <span>本区域</span>
+              </header>
+              <div class="p5__loop-stats">
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num">{{ overview.rectification?.done ?? 0 }}</p>
+                  <p class="p5__loop-cap">已整改条目</p>
+                </div>
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num" :class="{ 'is-warn': (overview.rectification?.open ?? 0) > 0 }">
+                    {{ overview.rectification?.open ?? 0 }}
+                  </p>
+                  <p class="p5__loop-cap">进行中任务</p>
+                </div>
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num is-up">+{{ overview.rectification?.avgGain ?? 0 }}</p>
+                  <p class="p5__loop-cap">平均提升分</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- 本周订货汇总（店主下单 → 业代接单 → 经理汇总） -->
+            <section class="p5__card">
+              <header class="p5__card-head">
+                <h2 class="p5__card-title">
+                  <AppIcon name="cart" :size="14" /> 本周订货汇总
+                </h2>
+                <span>店主自助下单</span>
+              </header>
+              <div class="p5__loop-stats">
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num">{{ orderSummary.count }}</p>
+                  <p class="p5__loop-cap">订货笔数</p>
+                </div>
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num">{{ orderSummary.bottles }}</p>
+                  <p class="p5__loop-cap">订货瓶数</p>
+                </div>
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num">¥{{ orderSummary.amount }}</p>
+                  <p class="p5__loop-cap">订货金额</p>
+                </div>
+              </div>
+              <!-- 已接单 / 待接单（来自 overview.orderSummary，接单状态真落库） -->
+              <div class="p5__accept">
+                <span class="p5__accept-item">
+                  已接单 <b>{{ orderSummary.accepted }}</b>
+                </span>
+                <span class="p5__accept-sep">/</span>
+                <span class="p5__accept-item">
+                  待接单 <b :class="{ 'is-warn': orderSummary.pending > 0 }">{{ orderSummary.pending }}</b>
+                </span>
+              </div>
+            </section>
+
+            <!-- 任务完成率（派了 → 做了没有 → 闭环的最后一眼） -->
+            <section class="p5__card">
+              <header class="p5__card-head">
+                <h2 class="p5__card-title">
+                  <AppIcon name="check" :size="14" /> 任务完成率
+                </h2>
+                <span>经理下派任务的执行闭环</span>
+              </header>
+              <div class="p5__loop-stats">
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num">{{ taskSummary.done }}/{{ taskSummary.total }}</p>
+                  <p class="p5__loop-cap">已完成 / 总数</p>
+                </div>
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num">{{ taskSummary.rate }}<em>%</em></p>
+                  <p class="p5__loop-cap">完成率</p>
+                </div>
+                <div class="p5__loop-stat">
+                  <p class="p5__loop-num" :class="{ 'is-warn': taskSummary.overdue > 0 }">{{ taskSummary.overdue }}</p>
+                  <p class="p5__loop-cap">逾期未完成</p>
+                </div>
+              </div>
+              <!-- 完成率进度条：宽度 = done/total，与上方数字同源 -->
+              <div class="p5__bar" role="img" :aria-label="`任务完成率 ${taskSummary.rate}%`">
+                <div class="p5__bar-fill" :style="{ width: `${taskSummary.rate}%` }" />
+              </div>
+            </section>
+          </div>
+
+          <!-- 口径小字：三卡共用，全页只出现一次 -->
+          <p class="p5__caliber p5__caliber--foot">
+            口径：{{ overview.regionName }}全量 {{ overview.regionStoreTotal }}
+            家门店（含预置样本 S1–S5，按健康分升序）；完成率 = 已完成 ÷（已完成 + 进行中），逾期按数据基准日
+            2026-10-02 判定。
+          </p>
         </div>
       </template>
     </div>
 
-    <!-- 下派任务弹层 -->
+    <!-- 下派任务弹层：全看板唯一实例（风险卡 / 行内按钮 / AI 晨报共用） -->
     <TaskDispatchDialog
-      v-if="showDispatch"
+      :visible="showDispatch"
       :stores="dispatchStores"
+      :initial-store-id="dispatchPreset.storeId"
+      :initial-task-type="dispatchPreset.taskType"
+      :initial-due-at="dispatchPreset.dueAt"
+      :initial-note="dispatchPreset.note"
       @close="showDispatch = false"
       @dispatched="onDispatched"
     />
@@ -322,15 +569,62 @@ const taskSummary = computed(() => {
   background: var(--bg-page);
 }
 
+/* 企业级内容容器：4K 不拉宽，窄屏自适应 */
 .p5__body {
+  max-width: 1760px;
+  margin: 0 auto;
   padding: 16px 24px 24px;
 }
 
+/* ── 三区分段控件 ── */
+.p5__tabs {
+  display: inline-flex;
+  gap: 2px;
+  margin-bottom: var(--space-3, 12px);
+  padding: 3px;
+  border-radius: 999px;
+  background: #e9ede9;
+}
+
+.p5__tab {
+  min-height: 32px;
+  padding: 5px 18px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.p5__tab:hover {
+  color: var(--text-1);
+}
+
+.p5__tab.is-active {
+  background: #fff;
+  color: var(--text-1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.p5__tab:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.p5__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* KPI */
 .p5__kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  margin-bottom: 14px;
 }
 
 .p5__kpi {
@@ -338,6 +632,18 @@ const taskSummary = computed(() => {
   border-radius: var(--radius-card);
   background: #fff;
   box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.p5__kpi:hover {
+  transform: translateY(-2px);
+  background: #f7f9f7;
+}
+
+.p5__kpi:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .p5__kpi-label {
@@ -353,7 +659,8 @@ const taskSummary = computed(() => {
   height: 7px;
   border-radius: 50%;
   background: var(--level-risk);
-  animation: pulse 1.4s ease infinite;
+  /* 警报疲劳：只播 2 次后停止，不再无限脉冲；且仅在指标确有恶化时渲染 */
+  animation: pulse 1.4s ease 2;
 }
 
 @keyframes pulse {
@@ -393,18 +700,22 @@ const taskSummary = computed(() => {
   color: var(--level-risk);
 }
 
+/* 持平：中性灰。不定义时会被前一条 is-down 的红色兜住，语义错误 */
+.p5__kpi-value em.is-flat {
+  color: var(--text-3);
+}
+
 .p5__kpi-target {
   margin-top: 2px;
   font-size: 11.5px;
   color: var(--text-3);
 }
 
-/* 整改闭环 + 本周订货汇总 */
+/* 整改闭环三卡：auto-fit 修复三卡孤儿（窄屏自动降列） */
 .p5__loop {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
-  margin-bottom: 14px;
 }
 
 .p5__loop-stats {
@@ -469,7 +780,6 @@ const taskSummary = computed(() => {
   color: var(--text-3);
 }
 
-/* 口径小字（避免评委问「怎么只有 2 家」） */
 /* 任务完成率进度条 */
 .p5__bar {
   height: 6px;
@@ -492,23 +802,22 @@ const taskSummary = computed(() => {
   margin-left: 1px;
 }
 
+/* 口径小字：三卡合并为闭环区底部一处 */
 .p5__caliber {
-  margin-top: 8px;
   font-size: 10px;
   color: var(--text-3);
 }
 
-.p5__grid {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 12px;
+.p5__caliber--foot {
+  margin: 2px 0 0;
+  text-align: center;
+  line-height: 1.7;
 }
 
 .p5__charts {
   display: grid;
   grid-template-columns: 0.9fr 1.6fr;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
 .p5__trend-hint {
@@ -518,6 +827,7 @@ const taskSummary = computed(() => {
   color: var(--mn-green);
 }
 
+/* 下派：AI 动作统一紫色 */
 .p5__dispatch {
   display: inline-flex;
   align-items: center;
@@ -530,6 +840,7 @@ const taskSummary = computed(() => {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: background var(--dur-fast) ease;
 }
 
 .p5__dispatch:hover {
@@ -547,6 +858,8 @@ const taskSummary = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 10px;
   font-size: 13.5px;
 }
@@ -556,8 +869,62 @@ const taskSummary = computed(() => {
   color: var(--text-3);
 }
 
+/* 区块主标题（h2，视觉沿用原 <b> 字号） */
+.p5__card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+/* ── 明细区：搜索 / 筛选 / 分页 ── */
+.p5__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.p5__search,
+.p5__select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text-1);
+  /* ≥14px：避免输入聚焦时 iOS 自动放大 */
+  font-size: 14px;
+}
+
+.p5__search {
+  width: 220px;
+  max-width: 100%;
+}
+
+.p5__search:focus,
+.p5__select:focus {
+  outline: none;
+  border-color: var(--mn-green);
+  box-shadow: 0 0 0 2px var(--mn-green-light);
+}
+
+.p5__filter-count {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.p5__table-wrap {
+  overflow-x: auto;
+}
+
 .p5__table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 12.5px;
 }
@@ -575,6 +942,74 @@ const taskSummary = computed(() => {
   border-bottom: 1px dashed var(--border-color);
 }
 
+/* 桌面微交互：行 hover 仅变底色；可点行（S1–S5）显示指针与键盘焦点 */
+.p5__table tbody tr {
+  transition: background var(--dur-fast) ease;
+}
+
+.p5__table tbody tr:hover td {
+  background: #f7f9f7;
+}
+
+.p5__table tbody tr.is-clickable {
+  cursor: pointer;
+}
+
+.p5__table tbody tr:focus-visible {
+  outline: none;
+}
+
+.p5__table tbody tr:focus-visible td {
+  box-shadow: inset 0 0 0 2px var(--mn-green);
+}
+
+.p5__empty {
+  padding: 24px 8px !important;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.p5__pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.p5__page-info {
+  font-size: 12px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.p5__page-btn {
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.p5__page-btn:hover:not(:disabled) {
+  border-color: var(--mn-green);
+  color: var(--mn-green-dark);
+}
+
+.p5__page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.p5__page-btn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 .p5__score {
   margin-right: 6px;
   font-size: 15px;
@@ -589,20 +1024,56 @@ const taskSummary = computed(() => {
   color: var(--level-risk);
 }
 
+/* 链接补点击内边距（菲茨定律），hover/焦点有底色 */
 .p5__link {
+  padding: 6px 8px;
   border: none;
+  border-radius: 6px;
   background: none;
   color: var(--mn-green);
   font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease;
 }
 
+.p5__link:hover {
+  background: var(--mn-green-light);
+}
+
+.p5__link:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* 无诊断数据门店的占位说明：弱化样式，表明「此处不可点」而非可点入口 */
+.p5__link-disabled {
+  display: inline-block;
+  padding: 6px 8px;
+  color: var(--text-3);
+  font-size: 12px;
+  cursor: not-allowed;
+}
+
+/* 风险行：hover 底色 + 轻微上浮，可键盘聚焦 */
 .p5__risk {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 0;
+  padding: 9px 8px;
+  border-radius: 8px;
   border-bottom: 1px dashed var(--border-color);
+  transition: transform var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.p5__risk:hover {
+  transform: translateY(-1px);
+  background: #f7f9f7;
+}
+
+.p5__risk:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .p5__risk-no {
@@ -613,6 +1084,7 @@ const taskSummary = computed(() => {
   width: 20px;
   height: 20px;
   border-radius: 50%;
+  /* 颜色由行内 level 决定：第 1 名红，其余按橙/黄绿档（拿不到 level 时兜底红） */
   background: var(--level-risk);
   color: #fff;
   font-size: 11px;
@@ -635,23 +1107,69 @@ const taskSummary = computed(() => {
 }
 
 .p5__risk-score {
+  flex: none;
   font-size: 18px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.p5__tip {
-  margin-top: 10px;
-  font-size: 11.5px;
+/* 风险行内下派：浅紫描边按钮（AI 动作紫，确认在弹层绿色主按钮） */
+.p5__risk-dispatch {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  border: 1px solid var(--ai-purple);
+  border-radius: 999px;
+  background: var(--ai-purple-light);
   color: var(--ai-purple);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 
+.p5__risk-dispatch:hover {
+  background: var(--ai-purple);
+  color: #fff;
+}
+
+.p5__risk-dispatch:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* 窄屏降列：1024 图表/明细单列；768 KPI 与闭环单列 */
 @media (max-width: 1024px) {
   .p5__kpis {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .p5__grid {
+  .p5__charts {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .p5__body {
+    padding: 12px;
+  }
+
+  .p5__kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .p5__loop {
+    grid-template-columns: 1fr;
+  }
+
+  .p5__tab {
+    padding: 5px 12px;
+  }
+
+  .p5__search {
+    width: 100%;
   }
 }
 </style>

@@ -12,10 +12,19 @@ interface Props {
   ai?: boolean
   /** 徽标文案 */
   aiText?: string
+  /** 徽标色调：ai=大模型（紫）/ standard=本地兜底（灰）/ muted=来源不明（浅灰） */
+  aiTone?: 'ai' | 'standard' | 'muted'
   /** 内边距是否收紧 */
   dense?: boolean
 }
-withDefaults(defineProps<Props>(), { title: '', subtitle: '', ai: false, aiText: 'AI', dense: false })
+withDefaults(defineProps<Props>(), {
+  title: '',
+  subtitle: '',
+  ai: false,
+  aiText: 'AI',
+  aiTone: 'ai',
+  dense: false,
+})
 </script>
 
 <template>

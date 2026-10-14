@@ -202,8 +202,8 @@
       {
         "storeId": "S101",
         "storeName": "城东片区-01",
-        "score": 96,
-        "level": "excellent",
+        "score": 55,
+        "level": "risk",
         "mainIssue": "",
         "weekDelta": 4,
         "visitId": ""
@@ -211,8 +211,8 @@
       {
         "storeId": "S102",
         "storeName": "城东片区-02",
-        "score": 96,
-        "level": "excellent",
+        "score": 52,
+        "level": "risk",
         "mainIssue": "状态稳定",
         "weekDelta": 3,
         "visitId": ""
@@ -220,8 +220,8 @@
       {
         "storeId": "S103",
         "storeName": "城东片区-03",
-        "score": 96,
-        "level": "excellent",
+        "score": 49,
+        "level": "risk",
         "mainIssue": "执行良好",
         "weekDelta": 3,
         "visitId": ""
@@ -229,8 +229,8 @@
       {
         "storeId": "S104",
         "storeName": "城东片区-04",
-        "score": 95,
-        "level": "excellent",
+        "score": 46,
+        "level": "risk",
         "mainIssue": "陈列达标",
         "weekDelta": -2,
         "visitId": ""
@@ -238,8 +238,8 @@
       {
         "storeId": "S105",
         "storeName": "城东片区-05",
-        "score": 94,
-        "level": "excellent",
+        "score": 69,
+        "level": "warning",
         "mainIssue": "",
         "weekDelta": -3,
         "visitId": ""
@@ -247,8 +247,8 @@
       {
         "storeId": "S106",
         "storeName": "城东片区-06",
-        "score": 94,
-        "level": "excellent",
+        "score": 68,
+        "level": "warning",
         "mainIssue": "",
         "weekDelta": 2,
         "visitId": ""
@@ -256,8 +256,8 @@
       {
         "storeId": "S107",
         "storeName": "城东片区-07",
-        "score": 94,
-        "level": "excellent",
+        "score": 67,
+        "level": "warning",
         "mainIssue": "",
         "weekDelta": -1,
         "visitId": ""
@@ -265,8 +265,8 @@
       {
         "storeId": "S108",
         "storeName": "城东片区-08",
-        "score": 92,
-        "level": "excellent",
+        "score": 66,
+        "level": "warning",
         "mainIssue": "",
         "weekDelta": -2,
         "visitId": ""
@@ -274,8 +274,8 @@
       {
         "storeId": "S109",
         "storeName": "城东片区-09",
-        "score": 92,
-        "level": "excellent",
+        "score": 65,
+        "level": "warning",
         "mainIssue": "陈列达标",
         "weekDelta": 1,
         "visitId": ""
@@ -283,8 +283,8 @@
       {
         "storeId": "S110",
         "storeName": "城东片区-10",
-        "score": 92,
-        "level": "excellent",
+        "score": 64,
+        "level": "warning",
         "mainIssue": "状态稳定",
         "weekDelta": 1,
         "visitId": ""
@@ -589,8 +589,8 @@
       {
         "storeId": "S143",
         "storeName": "城南片区-01",
-        "score": 83,
-        "level": "good",
+        "score": 57,
+        "level": "risk",
         "mainIssue": "",
         "weekDelta": 2,
         "visitId": ""
@@ -598,8 +598,8 @@
       {
         "storeId": "S144",
         "storeName": "城南片区-02",
-        "score": 83,
-        "level": "good",
+        "score": 54,
+        "level": "risk",
         "mainIssue": "价签需更新 1 处",
         "weekDelta": 0,
         "visitId": ""
@@ -607,8 +607,8 @@
       {
         "storeId": "S145",
         "storeName": "城南片区-03",
-        "score": 83,
-        "level": "good",
+        "score": 69,
+        "level": "warning",
         "mainIssue": "排面基本达标",
         "weekDelta": -2,
         "visitId": ""
@@ -616,8 +616,8 @@
       {
         "storeId": "S146",
         "storeName": "城南片区-04",
-        "score": 83,
-        "level": "good",
+        "score": 68,
+        "level": "warning",
         "mainIssue": "排面基本达标",
         "weekDelta": -2,
         "visitId": ""
@@ -625,8 +625,8 @@
       {
         "storeId": "S147",
         "storeName": "城南片区-05",
-        "score": 83,
-        "level": "good",
+        "score": 67,
+        "level": "warning",
         "mainIssue": "价签需更新 1 处",
         "weekDelta": 4,
         "visitId": ""
@@ -634,8 +634,8 @@
       {
         "storeId": "S148",
         "storeName": "城南片区-06",
-        "score": 82,
-        "level": "good",
+        "score": 66,
+        "level": "warning",
         "mainIssue": "陈列待微调",
         "weekDelta": -2,
         "visitId": ""
@@ -643,8 +643,8 @@
       {
         "storeId": "S149",
         "storeName": "城南片区-07",
-        "score": 82,
-        "level": "good",
+        "score": 65,
+        "level": "warning",
         "mainIssue": "排面基本达标",
         "weekDelta": 0,
         "visitId": ""

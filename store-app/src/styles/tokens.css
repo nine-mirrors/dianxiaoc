@@ -51,4 +51,98 @@
   /* ── 演示尺寸（PRD 3.3） ── */
   --phone-w: 390px;
   --phone-h: 844px;
+
+  /* ════════════════════════════════════════════════════════════
+   * 认知心理学设计令牌（新增分组）
+   * 约定：只新增、不删改既有令牌；延续蒙牛绿（信任/健康/行动）
+   * + AI 紫（智能/高级）的清爽调性，不引入荧光色与青色科技风。
+   * ════════════════════════════════════════════════════════════ */
+
+  /* ── 菲茨定律：目标越大、距离越近，操作越快越准 ──
+     * 移动端点按元素命中盒不小于 44px（视觉可更小，padding/伪元素撑热区）；
+     * 紧凑场景不小于 36px；桌面鼠标精确点击不小于 28px。 */
+  --touch-target-min: 44px; /* 移动端可点元素最小边长（iOS HIG / Material 共识） */
+  --touch-target-sm: 36px; /* 紧凑列表内次级点按目标的下限 */
+  --click-min: 28px; /* 桌面端鼠标点击目标最小边长 */
+  --btn-h-lg: 48px; /* 主操作按钮：移动端默认，高度 ≥ 44px 热区 */
+  --btn-h-md: 40px; /* 中按钮：与现有 .u-btn 高度保持一致 */
+  --btn-h-sm: 32px; /* 小按钮：仅桌面/辅助操作，移动端需外扩热区 */
+
+  /* ── 格式塔（邻近/相似/连续）：统一间距刻度 ──
+     * 全产品间距只允许取这 8 档（4 的倍数），相关元素取小档靠近，
+     * 不同分组取大档留白，靠间距而非加框来表达"组"。 */
+  --space-1: calc(var(--space-unit) * 1); /* 4px：图标与文字等紧邻元素 */
+  --space-2: calc(var(--space-unit) * 2); /* 8px：组内条目之间 */
+  --space-3: calc(var(--space-unit) * 3); /* 12px */
+  --space-4: calc(var(--space-unit) * 4); /* 16px：卡片内边距 */
+  --space-5: calc(var(--space-unit) * 6); /* 24px：分组容器之间 */
+  --space-6: calc(var(--space-unit) * 8); /* 32px：区块之间 */
+  --space-7: calc(var(--space-unit) * 12); /* 48px */
+  --space-8: calc(var(--space-unit) * 16); /* 64px：页面级大留白 */
+  --gap-item: var(--space-2); /* 组内间距（邻近律：近=相关），勿与组间混用 */
+  --gap-group: var(--space-5); /* 组间间距，须明显大于组内（建议 ≥ 3 倍） */
+
+  /* ── 米勒定律（7±2）：卡片信息分块，降低工作记忆负担 ──
+     * 同一信息块内部紧凑（chunk），不同信息块之间明显拉开（section），
+     * 配合现有 --radius-card / --shadow-card 形成"块"的边界。 */
+  --chunk-gap: var(--space-3); /* 12px：同组信息块内各行（标题+数值+说明） */
+  --section-gap: var(--space-6); /* 32px：异组信息块/卡片分区，一眼可数出块数 */
+
+  /* ── 色彩心理：语义色（保持既有色相，仅新增"浅底+深字"AA 组合） ──
+     * --c-* 为既有 --color-* 的短名别名，用于实心图标/风险灯/图表，
+     * 不用于小号文字；小号文字一律用同色 *-fg（对浅底与白底均 ≥4.5:1）。 */
+  --c-success: var(--color-success);
+  --c-warning: var(--color-warning);
+  --c-danger: var(--color-danger);
+  --c-info: var(--color-info);
+  --success-bg: var(--mn-green-light); /* #e8f5ec 安心/成功浅底 */
+  --success-fg: var(--mn-green-dark); /* #00662a 深绿文字，AA */
+  --warning-bg: #fff4e0; /* 温和暖橙浅底：预警、临期 */
+  --warning-fg: #8f5200; /* 深棕橙文字，AA（#ff9800 本身对比不足，禁作文字） */
+  --danger-bg: #fdecea; /* 低刺激浅红：风险灯、缺货、删除确认 */
+  --danger-fg: #c01818; /* 深红文字，AA，与 --color-danger 同色相 */
+  --info-bg: #eaf3fe; /* 浅蓝：AI 提示、中性说明（与 --ai-purple 区分用途） */
+  --info-fg: #1d4ed8; /* 深蓝文字，AA，与 --color-info 同色相 */
+
+  /* ── 中性灰阶（--text-1/2/3 已存在，直接复用，此处仅补第 4 档） ── */
+  --text-4: #c6cbd1; /* 禁用/占位等最弱文字，不承载关键信息（不作正文） */
+
+  /* ── 动效预期：时长与缓动单一出处，动效层统一引用，禁止随手写数值 ── */
+  --dur-fast: 150ms; /* 按压、勾选、开关等即时反馈 */
+  --dur-base: 250ms; /* 默认过渡：展开折叠、颜色变化（与现有 .u-btn 0.15s 同量级） */
+  --dur-slow: 400ms; /* 入场、页面/结果块错峰淡入 */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* 通用缓动，自然减速 */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2); /* 强调/轻微回弹：主操作成功反馈 */
+  --ease-entrance: cubic-bezier(0, 0, 0.2, 1); /* 元素进入：快速起步，响应更跟手 */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* 元素退出：加速离场，不拖泥带水 */
+  /* prefers-reduced-motion 约定（本文件只定约定、不写媒体查询，落地交给动效层）：
+     * 1. 动效层必须包裹 @media (prefers-reduced-motion: reduce) 兜底；
+     * 2. 非必要动画关闭，确需保留的过渡时长压到 --dur-fast 或更短；
+     * 3. 仅保留 opacity/颜色等不改变布局位置的过渡，禁止位移、视差、自动播放；
+     * 4. 语义信息（成功/风险）不得只依赖动画传达。 */
+
+  /* ── 无障碍：焦点环与层级 ──
+     * 焦点态使用 outline + 偏移，2px 实线深色环在浅底/白底上均远超 3:1；
+     * 不得只靠颜色或仅去掉轮廓：键盘可见焦点是硬性行为，不是装饰。 */
+  --focus-ring-width: 2px;
+  --focus-ring-style: solid;
+  --focus-ring-color: var(--text-1); /* #1a1f1c，对页面/卡片底约 15.5:1 */
+  --focus-ring: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  --focus-offset: 2px; /* outline-offset，避免贴边糊在一起 */
+  --z-base: 0; /* 常规流内容 */
+  --z-sticky: 100; /* 吸顶筛选/表头 */
+  --z-dropdown: 1000; /* 下拉菜单、气泡 */
+  --z-fixed: 1020; /* 固定底栏（如结算条） */
+  --z-modal-mask: 1100; /* 弹层遮罩 */
+  --z-modal: 1110; /* 对话框本体 */
+  --z-toast: 1200; /* 全局提示，永远最上 */
+
+  /* ── 响应式断点（只定变量与口径，本文件不写任何媒体查询） ──
+     * 注意：传统 @media 条件里多数浏览器不能解析 var()，
+     * 写媒体查询时直接写下方像素值并注释"= --bp-*"；变量供 JS 判定、
+     * 容器查询与文档统一口径使用。 */
+  --bp-sm: 640px; /* 大手机/小平板竖屏 */
+  --bp-md: 1024px; /* 平板横屏/窄桌面 */
+  --bp-lg: 1440px; /* 常规桌面 */
+  --bp-xl: 1920px; /* 大屏桌面 */
 }

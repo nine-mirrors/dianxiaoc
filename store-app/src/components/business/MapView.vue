@@ -37,14 +37,14 @@ async function toggleFull(): Promise<void> {
 }
 
 const LEVEL_COLOR: Record<string, string> = {
-  excellent: '#009639',
-  good: '#8BC34A',
-  warning: '#FF9800',
-  risk: '#E02020',
+  excellent: 'var(--level-excellent)',
+  good: 'var(--level-good)',
+  warning: 'var(--level-warning)',
+  risk: 'var(--level-risk)',
 }
 
 function markerHtml(m: MapMarker): string {
-  const color = LEVEL_COLOR[m.level] ?? '#009639'
+  const color = LEVEL_COLOR[m.level] ?? 'var(--mn-green)'
   return `<div style="width:36px;height:36px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)">${m.score}</div>`
 }
 
@@ -110,7 +110,7 @@ onBeforeUnmount(() => {
       地图底图加载失败（网络受限），门店点位与健康分仍准确
     </p>
 
-    <button class="map-full-btn" type="button" @click="toggleFull">
+    <button class="map-full-btn u-tap" type="button" :aria-label="isFull ? '退出全屏地图' : '全屏查看地图'" @click="toggleFull">
       {{ isFull ? '✕ 退出全屏' : '⤢ 全屏' }}
     </button>
   </div>

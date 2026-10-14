@@ -3,6 +3,8 @@
  * 健康分环形仪表（PRD 3.4：环色随分档变化，中间 48px/700 大数字）。
  */
 import { computed } from 'vue'
+import { colorOf, levelOf, levelLabel } from '@/domain/constants'
+import type { HealthLevelKey } from '@/types'
 
 interface Props {
   /** 分数 0–100 */
@@ -14,16 +16,40 @@ interface Props {
 }
 const props = withDefaults(defineProps<Props>(), { score: 0, color: '', size: 108 })
 
+/**
+ * 分档文字深色档（白底 ≥4.5:1）：中间分数属于信息文字，不随浅色弧着色。
+ * 装饰弧仍可用 colorOf() 的亮色（良好 #8bc34a / 预警 #ff9800）。
+ * 良好档 #558b2f 白底对比 ≈5.1:1。
+ */
+const LEVEL_FG: Record<HealthLevelKey, string> = {
+  excellent: 'var(--mn-green-dark)',
+  good: '#558b2f',
+  warning: 'var(--warning-fg)',
+  risk: 'var(--danger-fg)',
+}
+
 /** 圆环几何参数 */
 const stroke = 9
 const radius = computed<number>(() => (props.size - stroke) / 2)
 const circumference = computed<number>(() => 2 * Math.PI * radius.value)
 /** 已填充弧长 */
 const dash = computed<number>(() => (circumference.value * Math.max(0, Math.min(100, props.score))) / 100)
+
+/** 装饰弧颜色：外部传入优先，缺省按分数分档取亮色 */
+const arcColor = computed<string>(() => props.color || colorOf(levelOf(props.score)))
+/** 中间分数颜色：始终用深色档，保证 AA */
+const scoreColor = computed<string>(() => LEVEL_FG[levelOf(props.score)])
+/** 读屏替代文案：整体作为一张「分数图」播报 */
+const ariaLabel = computed<string>(() => `AI健康分 ${props.score} 分${levelLabel(levelOf(props.score))}`)
 </script>
 
 <template>
-  <div class="score-ring" :style="{ width: `${size}px`, height: `${size}px` }">
+  <div
+    class="score-ring"
+    role="img"
+    :aria-label="ariaLabel"
+    :style="{ width: `${size}px`, height: `${size}px` }"
+  >
     <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`">
       <!-- 轨道 -->
       <circle
@@ -41,14 +67,14 @@ const dash = computed<number>(() => (circumference.value * Math.max(0, Math.min(
         :cy="size / 2"
         :r="radius"
         fill="none"
-        :stroke="color"
+        :stroke="arcColor"
         :stroke-width="stroke"
         stroke-linecap="round"
         :stroke-dasharray="`${dash} ${circumference}`"
       />
     </svg>
     <div class="score-ring__inner">
-      <div class="score-ring__score" :style="{ color, fontSize: `${Math.round(size * 0.42)}px` }">
+      <div class="score-ring__score" :style="{ color: scoreColor, fontSize: `${Math.round(size * 0.42)}px` }">
         {{ score }}
       </div>
       <div class="score-ring__label">
@@ -93,6 +119,6 @@ const dash = computed<number>(() => (circumference.value * Math.max(0, Math.min(
 
 .score-ring__label {
   font-size: 11px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 </style>

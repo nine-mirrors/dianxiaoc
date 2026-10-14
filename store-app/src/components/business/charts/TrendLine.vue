@@ -29,6 +29,16 @@ let chart: echarts.ECharts | null = null
 /** 当前选中的序列 */
 const active = computed<TrendSeries | undefined>(() => props.series.find((s) => s.key === activeKey.value))
 
+/** 读屏替代文本：当前指标 + 周数 + 最新值（全部来自现有 props，不编造口径） */
+const ariaLabel = computed<string>(() => {
+  const s = active.value
+  if (!s) return '近 8 周趋势折线图'
+  const last = s.points.length ? s.points[s.points.length - 1] : undefined
+  return `近 ${s.weeks.length || s.points.length} 周趋势折线图，当前指标：${s.name}${
+    last === undefined ? '' : `，最新值 ${last}${s.unit}`
+  }`
+})
+
 /** 各指标折线色（区别于环图色，突出 AI 洞察） */
 const LINE_COLORS: Record<TrendKey, string> = {
   score: '#009639',
@@ -57,7 +67,7 @@ function render(): void {
         boundaryGap: false,
         axisLine: { lineStyle: { color: '#e5e7eb' } },
         axisTick: { show: false },
-        axisLabel: { color: '#9ca3af', fontSize: 11 },
+        axisLabel: { color: '#6b7280', fontSize: 11 },
       },
       yAxis: {
         type: 'value',
@@ -65,7 +75,7 @@ function render(): void {
         axisLine: { show: false },
         axisTick: { show: false },
         splitLine: { lineStyle: { color: '#f0f2f0', type: 'dashed' } },
-        axisLabel: { color: '#9ca3af', fontSize: 11, formatter: `{value}${s.unit}` },
+        axisLabel: { color: '#6b7280', fontSize: 11, formatter: `{value}${s.unit}` },
       },
       series: [
         {
@@ -104,18 +114,20 @@ watch([() => props.series, activeKey], render, { deep: true })
 
 <template>
   <div class="trend">
-    <div class="trend__tabs">
+    <div class="trend__tabs" role="group" aria-label="趋势指标切换">
       <button
         v-for="s in props.series"
         :key="s.key"
+        type="button"
         class="trend__tab"
         :class="{ 'is-active': activeKey === s.key }"
+        :aria-pressed="activeKey === s.key"
         @click="activeKey = s.key"
       >
         {{ s.name }}
       </button>
     </div>
-    <div ref="el" class="trend__chart" />
+    <div ref="el" class="trend__chart" role="img" :aria-label="ariaLabel" />
   </div>
 </template>
 

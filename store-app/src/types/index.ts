@@ -297,6 +297,31 @@ export interface Diagnosis {
    * 当算法结果与已定稿口径不一致时，此处写明「采用哪个、为什么」。
    */
   algoNote?: string
+  /**
+   * ★ Agent 工作链真实轨迹（P0-1）：本次诊断实际执行的步骤链
+   * 视觉大模型 → MCP 进销存 → 六维引擎 → 预测补货 → LLM 表达。
+   */
+  agentTrace?: AgentTraceStep[]
+}
+
+/** Agent 工作链单步（内容全部来自后端真实执行，前端只负责展示） */
+export interface AgentTraceStep {
+  /** 步骤标识：vision / mcp / score / forecast / llm */
+  key: 'vision' | 'mcp' | 'score' | 'forecast' | 'llm' | string
+  /** 步骤标题 */
+  title: string
+  /** 能力类型：llm 大模型 / tool 外部工具(MCP) / algorithm 规则算法 */
+  kind: 'llm' | 'tool' | 'algorithm' | string
+  /** 真实来源（模型名 / 工具名 / 引擎名） */
+  source: string
+  /** done 完成 / fallback 降级 / ready 待触发（LLM 在追问时才跑） */
+  status: 'done' | 'fallback' | 'ready' | string
+  /** 一句话真实结论（取自该步真实输出） */
+  detail: string
+  /** 该步关键指标（结构随步骤不同，组件按已知 key 渲染） */
+  meta?: Record<string, unknown>
+  /** 耗时毫秒（0 表示本地同步计算或未计） */
+  ms?: number
 }
 
 /* ════════════════════ 任务 / 单据 / 对话 ════════════════════ */
@@ -313,6 +338,8 @@ export interface Task {
   taskType: TaskType
   taskTypeLabel: string
   dueAt: string
+  /** 原始中文时限文案（「今日 18:00」），仅用于展示；比较用 dueAt */
+  dueAtLabel?: string
   note: string
   status: TaskStatus
 }
@@ -382,6 +409,12 @@ export interface ChatMessage {
   role: ChatRole
   content: string
   createdAt: number
+  /**
+   * 该条 AI 内容的真实来源（由后端 SSE done 帧给出）：
+   * llm=大模型生成 / fallback=本地规则兜底 / null=未拿到（网络失败）。
+   * undefined 表示流式输出进行中，前端按「AI 巡检助手」中性角标展示，结束后回填。
+   */
+  source?: 'llm' | 'fallback' | null
 }
 
 /** AI 回复 */

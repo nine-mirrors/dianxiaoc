@@ -384,6 +384,39 @@ export async function getDashboardOverview(regionId: string = 'R_EAST'): Promise
   })
 }
 
+/* ═══════════════ AI 晨报（P0-2：主动预警 + 一键拟派草稿） ═══════════════ */
+
+/** 晨报中单条待下派任务草稿（人确认后才调 POST /tasks 真下发） */
+export interface MorningDraft {
+  storeId: string
+  storeName: string
+  score: number
+  level: string
+  taskType: TaskType
+  taskTypeLabel: string
+  dueAt: string
+  reason: string
+}
+
+export interface MorningBrief {
+  /** 一句话晨报导语（大模型生成或规则兜底） */
+  headline: string
+  /** llm=大模型 / rule=规则兜底（界面据此如实标来源） */
+  source: 'llm' | 'rule' | string
+  stats: { regionName: string; riskCount: number; avgScore: number; draftCount: number }
+  drafts: MorningDraft[]
+}
+
+/** GET /api/v1/ai/morning-brief —— 经理 AI 晨报（含待确认下派草稿，与看板风险同源） */
+export async function getMorningBrief(regionId: string = 'R_EAST'): Promise<MorningBrief> {
+  const res = await request<{ brief: MorningBrief }>({
+    path: '/api/v1/ai/morning-brief',
+    method: 'GET',
+    query: { regionId },
+  })
+  return res.brief
+}
+
 /* ═══════════════ 演示辅助（非 REST 契约） ═══════════════ */
 
 /**

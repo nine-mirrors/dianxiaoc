@@ -41,8 +41,12 @@ const props = withDefaults(defineProps<Props>(), {
 /**
  * ★ 双向高亮联动：悬停某个标注框/角标时，向上抛出该标注 id，
  *   供 DiagnosisView 反查「关联问题」并让问题清单同步高亮（需求池 ㊲ 反向链路）。
+ *   触屏无 hover：点按标注框抛出 select，由父级切换「锁定高亮」（再点取消）。
  */
-const emit = defineEmits<{ (e: 'hover', ids: string[]): void }>()
+const emit = defineEmits<{
+  (e: 'hover', ids: string[]): void
+  (e: 'select', ids: string[]): void
+}>()
 
 /** 鼠标进入标注：高亮关联问题 */
 function onEnter(id: string): void {
@@ -52,6 +56,18 @@ function onEnter(id: string): void {
 /** 鼠标离开：取消高亮 */
 function onLeave(): void {
   emit('hover', [])
+}
+
+/** 点按标注（触屏 / 单击）：通知父级切换锁定高亮 */
+function onSelect(id: string): void {
+  emit('select', [id])
+}
+
+/** 键盘在标注框上回车 / 空格：等同点按 */
+function onSelectKey(id: string, e: KeyboardEvent): void {
+  if (e.key !== 'Enter' && e.key !== ' ') return
+  e.preventDefault()
+  onSelect(id)
 }
 
 /** 可见标注（按图层筛选） */
@@ -75,8 +91,8 @@ function boxStyle(a: Annotation): Record<string, string> {
     top: `${a.y / IMAGE_BOTTOM_CROP}%`,
     width: `${a.w}%`,
     height: `${a.h / IMAGE_BOTTOM_CROP}%`,
-    '--box-color': ANNOTATION_STYLES[a.layer]?.color ?? '#009639',
-  }
+    '--box-color': ANNOTATION_STYLES[a.layer]?.color ?? 'var(--mn-green)',
+  } as Record<string, string>
 }
 
 /** 是否高亮 */
@@ -108,8 +124,13 @@ const legend = computed(() => {
           class="anno__tag"
           :class="{ 'anno__tag--on': isOn(a.id) }"
           :style="boxStyle(a)"
+          role="button"
+          tabindex="0"
+          :aria-label="`定位标注：${a.label}`"
           @mouseenter="onEnter(a.id)"
           @mouseleave="onLeave"
+          @click="onSelect(a.id)"
+          @keydown="onSelectKey(a.id, $event)"
         >
           {{ a.label }}
         </div>
@@ -120,8 +141,13 @@ const legend = computed(() => {
           class="anno__box"
           :class="[`anno__box--${a.layer}`, { 'anno__box--on': isOn(a.id) }]"
           :style="boxStyle(a)"
+          role="button"
+          tabindex="0"
+          :aria-label="`定位标注：${a.label}`"
           @mouseenter="onEnter(a.id)"
           @mouseleave="onLeave"
+          @click="onSelect(a.id)"
+          @keydown="onSelectKey(a.id, $event)"
         >
           <span class="anno__label">{{ a.label }}</span>
         </div>
@@ -178,9 +204,16 @@ const legend = computed(() => {
   z-index: 2;
   border: 2px solid var(--box-color);
   border-radius: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
   transition:
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
+    box-shadow var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
+}
+
+.anno__box:active {
+  transform: scale(0.98);
 }
 
 .anno__box--empty,
@@ -209,13 +242,17 @@ const legend = computed(() => {
   position: absolute;
   left: -2px;
   bottom: calc(100% + 2px);
+  max-width: 150%;
   padding: 1px 5px;
   border-radius: 3px;
   background: rgba(26, 31, 28, 0.86);
   color: #fff;
   font-size: 10px;
   line-height: 1.5;
-  white-space: nowrap;
+  /* 允许换行：长标注不再被单侧裁切 */
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .anno__tag {
@@ -224,15 +261,37 @@ const legend = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 2px 5px;
+  /* WCAG AA：角标承载价签文字（9px），白字压 #ff9800 仅约 2:1；
+     改浅橙底 + 深棕橙字（≈5.7:1），橙色细边保留价签图层的视觉身份 */
+  border: 1px solid var(--box-color);
   border-radius: 3px;
-  background: var(--box-color);
-  color: #fff;
+  background: var(--warning-bg);
+  color: var(--warning-fg);
   font-size: 9px;
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
+  line-height: 1.3;
+  /* 允许换行避免文字裁切 */
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* 角标普遍偏小：透明热区外扩到约 36px（舞台 overflow 裁切到边界为止） */
+.anno__tag::before {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+
+.anno__tag:active {
+  transform: scale(0.94);
 }
 
 .anno__tag--on {
@@ -262,5 +321,13 @@ const legend = computed(() => {
 
 .anno__legend-swatch--dashed {
   border-top-style: dashed;
+}
+
+/* WCAG：减弱动态效果时关闭标注框/角标的无限脉冲（正常态不动；高亮仍靠白底描边与底色区分） */
+@media (prefers-reduced-motion: reduce) {
+  .anno__box--on,
+  .anno__tag--on {
+    animation: none;
+  }
 }
 </style>

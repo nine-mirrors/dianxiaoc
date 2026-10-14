@@ -57,7 +57,7 @@ onBeforeUnmount(() => {
     <!-- 后端未连接提示：避免看板整页空白却毫无说明 -->
     <p v-if="offline" class="desk-header__offline">
       <AppIcon name="warning" :size="13" color="#b26a00" />
-      后端未连接 · 请确认服务已启动（cd server &amp;&amp; npm start），页面数据暂不可用
+      服务暂不可用 · 页面数据暂时无法更新，请稍后重试
     </p>
     <div class="desk-header__brand">
       <span class="desk-header__logo"><AppIcon name="milk" :size="20" color="#fff" /></span>

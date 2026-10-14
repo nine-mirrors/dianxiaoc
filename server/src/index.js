@@ -15,6 +15,7 @@ import {
   createTask, listTasks, updateTask, createTicket, listTickets, updateTicketStatus, TICKET_STATUS, createVisit, allVisits,
   saveDiagnosis, getStoredDiagnosis, seedDefaultTasks, resetDemo,
   createRectification, listRectifications, computeAfterScore,
+  TASK_TYPE_LABEL, normalizeDueAt,
   STORE_TO_RAW_KEY, VISIT_TO_RAW_KEY, VISIT_ID_PREFIX } from './db.js'
 import {
   resolveHealth, resolvePlan, resolveRisk, buildSteps, sortIssues, chatReply, visionToDimensions,
@@ -27,6 +28,7 @@ import { verifyAccount, issueSession, accountFromToken, demoAccountList, require
 import { attachRealtime, broadcast, clientCount } from './realtime.js'
 import { analyzeShelfWithBoxes, patchVisionAnnotations } from './vision.js'
 import { buildDashboardOverview, DEMO_NOW, DEMO_TODAY } from './dashboard.js'
+import { loginRateLimiter, aiRateLimiter } from './rateLimit.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const UPLOADS_DIR = join(__dirname, '../data/uploads')
@@ -35,6 +37,11 @@ if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true })
 const uploadMap = new Map()
 
 const app = express()
+/**
+ * 反代信任：生产环境在 Nginx 之后，req.ip 需取 X-Forwarded-For，限流才能按真实访客 IP
+ * 计数。只信任回环代理（Nginx 与 Node 同机），不信任外部直连伪造的转发头。
+ */
+app.set('trust proxy', 'loopback')
 /**
  * ⚠ A2 安全整改：CORS 白名单（原先 `cors()` 等于 `Access-Control-Allow-Origin: *`，
  *   任意第三方网页都能跨域读本接口 —— 包括
@@ -70,6 +77,17 @@ import { readFileSync } from 'node:fs'
 // .env 加载统一到 env.js（见该文件顶部注释：为什么必须各模块自载）
 loadEnv()
 
+/**
+ * 生产/公网模式（PM2 ecosystem 或 .env 设置 NODE_ENV=production）。
+ * 公网下：① 不再下发含明文密码的 demo-accounts；② 登录与 AI 接口限流（见 rateLimit.js）。
+ */
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+/**
+ * 生产环境挂到「会真实调用大模型/视觉模型」的路由上（按登录用户限流）。
+ * 本地开发为空数组，不限流，方便反复调试。
+ */
+const aiLimiterMW = IS_PRODUCTION ? [aiRateLimiter] : []
+
 /** 文本 LLM（多轮追问，默认 DeepSeek，OpenAI 兼容） */
 const LLM = {
   key: process.env.LLM_API_KEY || '',
@@ -85,6 +103,27 @@ const VL = {
 }
 
 const PORT = process.env.PORT || 3000
+
+/**
+ * ⚠ RW-7 安全整改：HTTP 监听地址必须**显式**指定，且默认锁回环。
+ *
+ * 【原来的缺陷】`app.listen(PORT)` 省略 host 参数时，Node 会监听 `::`（IPv6 any）
+ *   并在 IPv4 下等价于 `0.0.0.0` —— 即**所有网卡**，局域网内任意设备都能直连本后端。
+ *   而本后端在鉴权白名单里放行了 `GET /api/v1/auth/demo-accounts`（返回三个演示账号的
+ *   明文密码，见下方 AUTH_WHITELIST 注释），等于把三个账号口令贴在了会场公共 WiFi 上。
+ *   更糟的是启动日志硬编码打印 `http://127.0.0.1:3000`，**日志与真实行为相反**，
+ *   现场据此判断「只在本机」就会误判暴露面 —— 所以本行日志必须与实际绑定地址同源。
+ *
+ * 【现在的行为】默认 `127.0.0.1`，只有本机能访问，局域网不可达。
+ *
+ * 【确需换机 / 手机同网段访问时】显式放开（属于主动承担风险，启动日志会同步打告警）：
+ *   Windows CMD : `set HOST=0.0.0.0 && npm start`
+ *   PowerShell  : `$env:HOST='0.0.0.0'; npm start`
+ *   Linux/macOS : `HOST=0.0.0.0 npm start`
+ *   演示结束务必去掉 HOST 变量，回到默认的回环绑定。
+ */
+const HOST = process.env.HOST || '127.0.0.1'
+
 const DEMO_WEEKDAY = '周五'
 const DEMO_WEATHER = '晴 22℃'
 
@@ -109,10 +148,21 @@ const MAX_USER_TEXT = 500
  * @param {unknown} raw query 里的原始值
  * @param {number} [fallback] 默认条数
  */
+/** 列表接口单页最大条数：三个列表接口共用一个上限，避免各处漂移 */
+const LIST_LIMIT_MAX = 200
+
+/** 单张货架照落盘上限 5MB（前端已压缩，足够；防磁盘被写满导致演示中断） */
+const UPLOAD_MAX_BYTES = 5 * 1024 * 1024
+
+/** limit 归一：非法值回落默认、正数生效，并统一钳制上限。
+ *  原实现只校验正数不设上限，与 /tickets、/rectifications 里
+ *  Math.min(limitRaw, 200) 的策略不一致 —— 同一后端三个列表接口
+ *  两套规则，属遗漏而非设计。抽取为公共函数避免继续漂移。 */
 function normalizeLimit(raw, fallback = 20) {
   if (raw == null || raw === '') return fallback
   const n = Number(raw)
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback
+  const safe = Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback
+  return Math.min(safe, LIST_LIMIT_MAX)
 }
 
 /** 截断用户输入到上限，并去掉首尾空白 */
@@ -274,8 +324,13 @@ async function buildFixtureDiagnosis(rawKey, opts = {}) {
   let visionCounts = null
   // 识别置信度 = 采纳（视觉采信）的层数 / fixture 层总数
   let visionConfidence = null
+  /** Agent 工作链真实轨迹（每一步都来自下面实际执行，不事后编造），供前端「AI 工作链」呈现 */
+  const trace = []
+  let visionMs = 0
   if (opts.useVision) {
+    const visionStart = Date.now()
     const vision = await analyzeShelfWithBoxes(opts.photoUrlOverride || raw.photoUrl, store.name)
+    visionMs = Date.now() - visionStart
     if (vision) {
       const patched = patchVisionAnnotations(vision.boxes, annotations)
       annotations = patched.boxes
@@ -375,6 +430,93 @@ async function buildFixtureDiagnosis(rawKey, opts = {}) {
     algoNote: auth.algoNote,
   }
 
+  /* ═══════════════ Agent 工作链：装配真实执行轨迹（P0-1） ═══════════════
+   * 每一步都对应本函数里真实跑过的调用，detail/meta 全部取自真实输出；
+   * 前端据此渲染「视觉→MCP→六维→预测→LLM」流水线，作为"AI 含量"的可视化证据。 */
+  // ① 视觉大模型
+  if (opts.useVision) {
+    const adoptedLayers = visionConfidence != null
+      ? Math.round((visionConfidence ?? 0) * new Set(raw.annotations.map((a) => a.layer)).size)
+      : 0
+    trace.push({
+      key: 'vision',
+      title: '视觉大模型识别货架',
+      kind: 'llm',
+      source: VL.model,
+      status: visionCounts ? 'done' : 'fallback',
+      detail: visionCounts
+        ? `蒙牛 SKU ${visionCounts.skuCount ?? '-'} · 空位 ${visionCounts.emptyCount ?? '-'} · 竞品 ${visionCounts.competitorCount ?? '-'} · 价签问题 ${visionCounts.priceTagMissing ?? '-'}`
+        : '视觉定位已生效；计数超业务上限已按门店基线计算',
+      meta: { confidence: visionConfidence, adoptedLayers, totalLayers: new Set(raw.annotations.map((a) => a.layer)).size },
+      ms: visionMs,
+    })
+  }
+  // ② MCP 进销存真实取数（效期/价签/在库，本地 stdio 工具，成本极低）
+  //   ★ 短超时：本步骤是"展示用证据"，绝不能让 MCP 挂起拖慢诊断页（GET 读路径也会走到这里）。
+  //     MCP 单次 RPC 自身有 4s 超时且 3 个 SKU 串行，这里再加一层 2.5s 总预算兜底。
+  try {
+    const mcpStart = Date.now()
+    const mcpSkuIds = [...new Set((plan.restock ?? []).map((r) => r.skuId).filter(Boolean))].slice(0, 3)
+    let timer
+    const facts = await Promise.race([
+      fetchInventoryFacts(raw.storeId, mcpSkuIds),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('mcp-brief-timeout')), 2500)
+      }),
+    ]).finally(() => clearTimeout(timer))
+    const usableFacts = facts.filter((f) => f.nearExpiry != null || f.priceMismatch != null || f.onHand != null)
+    // ★ 一个 SKU 最多产生效期/价签/库存 3 条 fact，计数必须按 skuId 去重，不能用 fact 条数
+    const skuCovered = new Set(usableFacts.map((f) => f.skuId)).size
+    const expiryBottles = usableFacts.reduce((s, f) => s + (Number(f.nearExpiry) || 0), 0)
+    trace.push({
+      key: 'mcp',
+      title: 'MCP 工具读取进销存',
+      kind: 'tool',
+      source: 'inventory-mcp',
+      status: 'done',
+      detail: skuCovered
+        ? `${skuCovered} 个 SKU 的效期/价签/在库（临期合计 ${expiryBottles} 瓶），不靠看图猜`
+        : '已查询进销存，本批无临期与价签异常',
+      meta: { skuCount: skuCovered, expiryBottles, tools: ['get_batch_expiry', 'get_price_book', 'get_store_inventory'] },
+      ms: Date.now() - mcpStart,
+    })
+  } catch {
+    trace.push({ key: 'mcp', title: 'MCP 工具读取进销存', kind: 'tool', source: 'inventory-mcp', status: 'fallback', detail: '进销存暂不可用，效期/价签以陈列标准库参考', meta: {}, ms: 0 })
+  }
+  // ③ 六维诊断引擎（规则/算法，可解释）
+  trace.push({
+    key: 'score',
+    title: '六维加权健康诊断',
+    kind: 'algorithm',
+    source: 'domain-engine',
+    status: 'done',
+    detail: `健康分 ${health.score}（${health.source === 'vision' ? '视觉实读折算' : '门店基线'}）· 维度：排面/缺货/价签/竞品/陈列/期效`,
+    meta: { score: health.score, source: health.source, dimensions: dimensions.map((d) => ({ key: d.key, score: d.score, weight: d.weight })) },
+    ms: 0,
+  })
+  // ④ Holt 预测 + 动态安全库存补货算法
+  trace.push({
+    key: 'forecast',
+    title: '销量预测 · 千店千面补货',
+    kind: 'algorithm',
+    source: 'holt-safety-stock',
+    status: 'done',
+    detail: `Holt 指数平滑 + 动态安全库存 z·σ·√L → 建议补货 ${auth.totalBottles} 瓶 / ¥${auth.totalAmount}`,
+    meta: { totalBottles: auth.totalBottles, totalAmount: auth.totalAmount, serviceLevel: 0.9 },
+    ms: 0,
+  })
+  // ⑤ 大模型生成（真正在用户追问/生成小结时流式触发，此处如实标记为"待触发"）
+  trace.push({
+    key: 'llm',
+    title: 'AI 把依据讲成人话',
+    kind: 'llm',
+    source: LLM.model,
+    status: 'ready',
+    detail: '在下方追问或点「巡店小结」时由大模型实时流式生成（只表达、不重算数字）',
+    meta: {},
+    ms: 0,
+  })
+
   return {
     id: `D_${raw.key}`,
     visitId: raw.visitId ?? undefined,
@@ -394,6 +536,8 @@ async function buildFixtureDiagnosis(rawKey, opts = {}) {
     plan,
     // ★ 阶段 B：识别置信度（供答辩说明「这次识别有多少层采信了视觉」）
     ...(visionConfidence != null ? { visionConfidence } : {}),
+    // ★ Agent 工作链真实轨迹（P0-1）：视觉→MCP→六维→预测→LLM
+    agentTrace: trace,
   }
 }
 
@@ -661,92 +805,113 @@ async function askLLM(message, store, diagnosis) {
 }
 
 /**
- * ★ 流式 LLM（SSE）—— 把上游 OpenAI 兼容的流式输出逐帧转发给浏览器。
+ * ★ SSE 流式调用 LLM（供 /api/v1/ai/chat/stream 与 /api/v1/ai/generate/stream）。
  *
- * 帧格式（与前端 streamSse 解析约定一致）：
- *   data: {"delta":"片段"}\n\n       多帧
- *   data: {"done":true,"source":"llm"}\n\n  结束帧
+ * 【帧协议】前端 streamSse 按此解析：
+ *   data: {"delta":"片段"}\n\n —— 逐段增量
+ *   data: {"done":true,"source":"llm|fallback"}\n\n —— 收尾帧（source 必须如实）
  *
- * 响应头：Content-Type: text/event-stream、Cache-Control: no-cache、X-Accel-Buffering: no。
+ * 【降级矩阵】保证绝不白屏、来源如实标注：
+ *   无 key / 上游非 200 / 一个增量都没收到 → 切句发兜底文案，done 标 fallback
+ *   流式中途中断但已发过增量              → 直接收尾，source=llm（已发内容确为模型所写）
  *
- * 降级（无 key / 上游非 200 / 网络失败）：在已发过真 token 前，发一帧完整兜底文本 + done
- * （source 标 fallback），保证绝不抛出 5xx 白屏（响应头已是 text/event-stream，无法再回 JSON）。
- *
- * @param messages 对话消息
- * @param res     响应对象（调用方须先写好 text/event-stream 头）
- * @param fallbackText 降级用的完整文本
- * @param source  降级来源标记
+ * @param {Array} messages OpenAI 风格消息数组
+ * @param {object} res Express 响应（调用方已写 SSE 头）
+ * @param {string} fallback 兜底文案
  */
-async function streamLLM(messages, res, fallbackText, source) {
-  const sendFrame = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`)
-
-  // 已写出 SSE 头后，任何异常都不允许再回 5xx：统一用 done 帧收尾
-  const finish = (useFallback) => {
-    if (res.writableEnded) return
-    if (useFallback && !sentAny) sendFrame({ delta: fallbackText })
-    sendFrame({ done: true, source: sentAny ? 'llm' : source })
-    res.end()
+async function streamLLM(messages, res, fallback) {
+  const alive = () => !res.writableEnded && !res.destroyed
+  const sendFrame = (obj) => {
+    if (alive()) res.write(`data: ${JSON.stringify(obj)}\n\n`)
   }
 
-  let sentAny = false
+  /** 兜底文案切小段逐帧发送，保留打字式体验；返回 'fallback' */
+  async function sendFallback() {
+    const text = String(fallback || '').trim() || '（暂时没有生成内容，请稍后再试）'
+    const size = 18
+    for (let i = 0; i < text.length; i += size) {
+      if (!alive()) return 'fallback'
+      sendFrame({ delta: text.slice(i, i + size) })
+      await new Promise((r) => setTimeout(r, 24))
+    }
+    return 'fallback'
+  }
+
+  // 客户端断开 → 中止上游请求，不白烧 token
   const controller = new AbortController()
   const onClose = () => controller.abort()
   res.on('close', onClose)
+  const timer = setTimeout(() => controller.abort(), 25000)
 
+  let source = 'fallback'
+  // 提到 try 外：断线 catch 时也要知道已发过多少真内容，避免「真片段 + 兜底文案」混排
+  let delivered = 0
   try {
-    if (!LLM.key) return finish(true)
-
-    const upstream = await fetch(`${LLM.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LLM.key}` },
-      body: JSON.stringify({
-        model: LLM.model,
-        messages,
-        temperature: 0.7,
-        max_tokens: 500,
-        stream: true,
-      }),
-      signal: controller.signal,
-    })
-
-    if (!upstream.ok || !upstream.body) return finish(true)
-
-    const reader = upstream.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      // 按空行分帧（OpenAI / DashScope 均为 \n\n 分隔）
-      const parts = buffer.split('\n\n')
-      buffer = parts.pop() || ''
-      for (const frame of parts) {
-        const line = frame.trim()
-        if (!line.startsWith('data:')) continue
-        const data = line.slice(5).trim()
-        if (!data || data === '[DONE]') continue
-        try {
-          const j = JSON.parse(data)
-          const delta = j.choices?.[0]?.delta?.content ?? j.choices?.[0]?.text ?? ''
-          if (delta) {
-            sentAny = true
-            sendFrame({ delta })
+    if (!LLM.key) {
+      source = await sendFallback()
+    } else {
+      const upstream = await fetch(`${LLM.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LLM.key}` },
+        body: JSON.stringify({
+          model: LLM.model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 500,
+          stream: true,
+        }),
+        signal: controller.signal,
+      })
+      if (!upstream.ok || !upstream.body) {
+        source = await sendFallback()
+      } else {
+        const reader = upstream.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let finished = false
+        while (!finished && alive()) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed.startsWith('data:')) continue
+            const payload = trimmed.slice(5).trim()
+            if (payload === '[DONE]') { finished = true; break }
+            if (!payload) continue
+            try {
+              const j = JSON.parse(payload)
+              const delta = j.choices?.[0]?.delta?.content
+              if (delta) { sendFrame({ delta }); delivered += delta.length }
+            } catch {
+              /* 心跳/碎片帧，跳过 */
+            }
           }
-        } catch {
-          /* 跳过无法解析的碎片帧 */
         }
+        // 一个增量都没收到（空响应/中途秒断）→ 兜底；收到过即为真模型内容
+        source = delivered > 0 ? 'llm' : await sendFallback()
       }
     }
-    finish(false)
   } catch {
-    finish(true)
+    // abort（客户端断开/超时）或网络异常：
+    //   已发过真增量 → source 维持 fallback 默认值不对，应认 llm 并直接收尾，绝不再补兜底
+    //   一字未发且连接仍活 → 发兜底文案
+    if (delivered > 0) {
+      source = 'llm'
+    } else if (alive()) {
+      source = await sendFallback()
+    }
   } finally {
+    clearTimeout(timer)
     res.off('close', onClose)
   }
+  if (alive()) {
+    sendFrame({ done: true, source })
+    res.end()
+  }
 }
-
-/* ═══════════════ 路由（17 个契约接口） ═══════════════ */
 
 const wrap = (fn) => async (req, res) => {
   try {
@@ -779,6 +944,17 @@ const TASK_STATUS = ['open', 'done']
  * 无需登录的白名单（登录自身 + 公开元数据）。
  * ⚠ 白名单之外的所有 `/api/v1/*` 一律要求有效 token —— 用「默认拒绝」而不是逐个加，
  *    这样以后新增接口不会漏掉鉴权（漏一个就是越权漏洞）。
+ *
+ * 【RW-7 风险面收敛说明】
+ *   白名单里的 `GET /api/v1/auth/demo-accounts` **必然是明文口令**（前端登录页要渲染
+ *   可一键填充的账号，且前端 5180 → 后端 3000 属跨域，无法改成服务端渲染；
+ *   因此该端点不能删除、也不能加鉴权，否则登录页直接不可用）。
+ *   它原先的真实风险不是CORS，而是**网络可达性**：后端曾监听全部网卡，会场公共 WiFi 下
+ *   同网段任意设备可直接 `curl` 走拿到三账号口令。现已由文件顶部的
+ *   `HOST`（默认 `127.0.0.1`）+ `app.listen(PORT, HOST, …)` 收敛 ——
+ *   绑定回环后局域网不可达，该端点的暴露面自然归零。
+ *   ⚠ 维护约束：**任何放开监听地址的改动（HOST=0.0.0.0）都必须视为安全降级**，
+ *     启动日志会在非回环时打出显式告警，不允许静默生效。
  */
 const AUTH_WHITELIST = new Set([
   'POST /api/v1/auth/login',
@@ -806,11 +982,19 @@ app.use('/api/v1', (req, res, next) => {
 // ① GET /api/v1/meta/roles
 app.get('/api/v1/meta/roles', wrap(() => ({ roles: roleOptions })))
 
-// ② GET /api/v1/auth/demo-accounts —— 演示账号清单（凭证由后端下发，前端不硬编码）
-app.get('/api/v1/auth/demo-accounts', wrap(() => ({ accounts: demoAccountList() })))
+// ② GET /api/v1/auth/demo-accounts —— 演示账号清单
+// ⚠ 本端点在 AUTH_WHITELIST 内。本地开发（回环）时返回含密码的完整清单，方便一键填入；
+//    **公网/生产模式（NODE_ENV=production）一律 404**：登录页已不再调用本端点，
+//    账号密码直接印在提交 PDF 上，绝不能让任何人从公网拉走明文口令。
+//    （旧设计依赖「只监听回环」收敛暴露面；上云后由 Nginx 反代对公网可达，该前提不再成立。）
+app.get('/api/v1/auth/demo-accounts', wrap(() => {
+  if (IS_PRODUCTION) throw new ApiError(404, '接口不存在')
+  return { accounts: demoAccountList() }
+}))
 
 // ② POST /api/v1/auth/login —— 账号密码登录（身份由账号决定，前端不可自选角色）
-app.post('/api/v1/auth/login', wrap((req) => {
+//    公网下挂登录限流（防爆破，见 rateLimit.js）；本地不限。
+app.post('/api/v1/auth/login', ...(IS_PRODUCTION ? [loginRateLimiter] : []), wrap((req) => {
   const { username, password } = req.body ?? {}
   const result = verifyAccount(username, password)
   if (!result.ok) throw new ApiError(401, result.reason)
@@ -841,11 +1025,19 @@ app.get('/api/v1/stores/:id', wrap((req) => {
 
 // ⑤ GET /api/v1/visits/today
 app.get('/api/v1/visits/today', wrap((req) => {
-  const repId = req.query.repId || 'U_REP'
+  /* repId 以 token 身份为准，不再信任 query。
+     原实现 `req.query.repId || 'U_REP'` 可被任意传参枚举他人巡店记录。
+     取「该角色的真实 user id」而非 username —— username(liqiang) 与
+     tasks.assignee_id(U_REP) 是两套标识，直接比对恒不相等。*/
+  const repId = findUserByRole(req.account?.role)?.id || 'U_REP'
   const order = ['S1', 'S2', 'S3', 'S4', 'S5']
   const visits = allVisits()
+  /* 「今日已巡」判定：必须同时满足「本次巡店」与「当天」两个条件。
+     原写法 `v.visitedAt.startsWith(DEMO_TODAY) || v.id.startsWith(VISIT_ID_PREFIX)`
+     是 OR——只要 id 带 V_T 前缀（即本轮新增的巡店记录）就永久算「今日已巡」，
+     跨天不清零。早先 demo 会话遗留的记录会让第二天演示仍显示已巡。*/
   const isTodayDone = (storeId) =>
-    visits.find((v) => v.storeId === storeId && v.status === 'done' && (v.visitedAt.startsWith(DEMO_TODAY) || v.id.startsWith(VISIT_ID_PREFIX)))
+    visits.find((v) => v.storeId === storeId && v.status === 'done' && v.visitedAt.startsWith(DEMO_TODAY))
 
   const routeStores = order.map((id, idx) => {
     const store = findStore(id)
@@ -911,8 +1103,8 @@ app.post('/api/v1/visits', wrap(async (req) => {
   return { visit }
 }))
 
-// ⑨ POST /api/v1/diagnoses
-app.post('/api/v1/diagnoses', wrap(async (req) => {
+// ⑨ POST /api/v1/diagnoses（视觉识别+大模型，耗时烧钱，生产限流）
+app.post('/api/v1/diagnoses', ...aiLimiterMW, wrap(async (req) => {
   const payload = req.body ?? {}
   if (!payload.storeId) throw new ApiError(400, '缺少门店参数')
   if (payload.unknownPhoto) {
@@ -944,15 +1136,32 @@ app.post('/api/v1/diagnoses', wrap(async (req) => {
 }))
 
 // ⑩ GET /api/v1/diagnoses/:id
-app.get('/api/v1/diagnoses/:id', wrap(async (req) => {
-  const id = req.params.id
-  const stored = getStoredDiagnosis(id)
-  if (stored) return { diagnosis: stored }
-  const rawKey = id.replace(/^D_/, '')
-  if (findDiagnosisRaw(rawKey)) return { diagnosis: await buildFixtureDiagnosis(rawKey) }
+/**
+ * 诊断结果解析（三级回退，与历史行为一致）：
+ *   ① SQLite 已存诊断快照（本次演示跑出来的）
+ *   ② fixture 诊断（按 D_xxx / xxx 两种id 形态）
+ *   ③ 按门店 id 反查 fixture（处理 S2_BEFORE 这类变体）
+ * 找不到返回 null，由调用方决定是404 还是静默降级。
+ *
+ * ⚠ 抽成共用函数的原因：此前行业监测路由把这套逻辑抄成 `||` 链，
+ *   因getStoredDiagnosis 的返回值形态判断不一致导致查不到、误报 404。
+ *   单一出处避免两处行为漂移。
+ */
+async function resolveDiagnosis(id) {
+  const key = String(id || '')
+  const stored = getStoredDiagnosis(key)
+  if (stored) return stored
+  const rawKey = key.replace(/^D_/, '')
+  if (findDiagnosisRaw(rawKey)) return await buildFixtureDiagnosis(rawKey)
   const keyByStore = STORE_TO_RAW_KEY[rawKey]
-  if (keyByStore) return { diagnosis: await buildFixtureDiagnosis(keyByStore) }
-  throw new ApiError(404, '诊断结果不存在或已过期')
+  if (keyByStore) return await buildFixtureDiagnosis(keyByStore)
+  return null
+}
+
+app.get('/api/v1/diagnoses/:id', wrap(async (req) => {
+  const diagnosis = await resolveDiagnosis(req.params.id)
+  if (!diagnosis) throw new ApiError(404, '诊断结果不存在或已过期')
+  return { diagnosis }
 }))
 
 /**
@@ -974,7 +1183,7 @@ function sseGuard(req, res) {
 }
 
 // ⑪ POST /api/v1/ai/chat —— 有 LLM key 走真大模型（带门店+诊断上下文），否则降级关键词匹配
-app.post('/api/v1/ai/chat', async (req, res) => {
+app.post('/api/v1/ai/chat', ...aiLimiterMW, async (req, res) => {
   if (!sseGuard(req, res)) return
   try {
     const { diagnosisId, message: rawMessage } = req.body ?? {}
@@ -1078,7 +1287,7 @@ function genPrompt(type, d) {
  * body: { type: 'summary' | 'order' | 'owner' | 'pitch', diagnosisId }
  * 无 key / 失败降级为本地拼装文案。
  */
-app.post('/api/v1/ai/generate', async (req, res) => {
+app.post('/api/v1/ai/generate', ...aiLimiterMW, async (req, res) => {
   if (!sseGuard(req, res)) return
   try {
     const { type, diagnosisId } = req.body ?? {}
@@ -1122,7 +1331,7 @@ function setSseHeaders(res) {
 }
 
 // ★ POST /api/v1/ai/chat/stream —— 多轮追问的 SSE 流式版本（body 同 /ai/chat）
-app.post('/api/v1/ai/chat/stream', async (req, res) => {
+app.post('/api/v1/ai/chat/stream', ...aiLimiterMW, async (req, res) => {
   if (!sseGuard(req, res)) return
   try {
     const { diagnosisId, message: rawMessage } = req.body ?? {}
@@ -1163,7 +1372,7 @@ app.post('/api/v1/ai/chat/stream', async (req, res) => {
 })
 
 // ★ POST /api/v1/ai/generate/stream —— AI 生成（巡店小结 / 订货建议理由）的 SSE 流式版本
-app.post('/api/v1/ai/generate/stream', async (req, res) => {
+app.post('/api/v1/ai/generate/stream', ...aiLimiterMW, async (req, res) => {
   if (!sseGuard(req, res)) return
   try {
     const { type, diagnosisId } = req.body ?? {}
@@ -1250,7 +1459,7 @@ app.post('/api/v1/tickets', wrap((req) => {
 app.get('/api/v1/tickets', wrap((req) => {
   const q = req.query ?? {}
   const limitRaw = Number(q.limit)
-  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 200) : undefined
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, LIST_LIMIT_MAX) : undefined
   const tickets = listTickets({
     storeId: q.storeId || undefined,
     kind: q.kind || undefined,
@@ -1340,7 +1549,7 @@ app.post('/api/v1/rectifications', wrap(async (req) => {
 app.get('/api/v1/rectifications', wrap((req) => {
   const q = req.query ?? {}
   const limitRaw = Number(q.limit)
-  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 200) : undefined
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, LIST_LIMIT_MAX) : undefined
   const rectifications = listRectifications({
     storeId: q.storeId || undefined,
     diagnosisId: q.diagnosisId || undefined,
@@ -1349,13 +1558,53 @@ app.get('/api/v1/rectifications', wrap((req) => {
   return { rectifications }
 }))
 
-// ⑭ GET /api/v1/tasks
-app.get('/api/v1/tasks', wrap((req) => ({ tasks: listTasks(req.query.assigneeId) })))
+/* ⑭ GET /api/v1/tasks
+   ★ 归属收敛：rep 只能读自己的任务；manager 可按 assigneeId 查（看板与派发回显需要全量）。
+     原实现只有登录校验、不传 assigneeId 即返回**全部任务**，导致权限最低的 owner
+     也能枚举他人的任务。演示态只有单业代危害≈0，但多业代上线后即为越权。 */
+/* ⚠ 账号对象的真实结构：accountFromToken 返回 accounts.json 里的条目
+     { username, password, role } —— **没有 user 字段**（issueSession 返回的才是
+     带 user 的完整对象，但那只用于登录响应，不挂在 req 上）。
+     且 username（liqiang）与 tasks.assignee_id（U_REP）是**两套标识**，
+     直接拿 username 去比对 assignee_id 恒不相等，等于没校验。
+     因此这里按角色取该角色的真实 user id（findUserByRole 返回 users.json 条目，
+     含真实 id）。找不到时返回空串→ 查不到任务，比错误放行安全。*/
+function accountTaskAssigneeId(req) {
+  const role = req.account?.role
+  if (!role) return ''
+  return findUserByRole(role)?.id ?? ''
+}
+
+app.get('/api/v1/tasks', wrap((req) => {
+  const role = req.account?.role
+  // rep / owner 一律只返回自己的任务（owner 演示态无任务，等价空列表）
+  const assigneeId = role === 'manager' ? req.query.assigneeId : accountTaskAssigneeId(req)
+  return { tasks: listTasks(assigneeId) }
+}))
 
 // ⑮ POST /api/v1/tasks —— 经理下派（角色限 manager，业代/店主无权下派）
 app.post('/api/v1/tasks', requireRole('manager'), wrap((req) => {
   const payload = req.body ?? {}
   if (!payload.storeId) throw new ApiError(400, '请选择门店')
+  /* 校验门店真实存在：原来直接透传给 createTask，若 storeId 是前端不认识的
+     id，findStore 返回 undefined，最终以「Provided value cannot be bound to
+     SQLite parameter 4」这种技术错误 500 暴露 —— 用户看不懂，评委也看不懂。
+     这里前置校验，给出可读提示。 */
+  const store = findStore(payload.storeId)
+  if (!store) throw new ApiError(400, `门店不存在（${payload.storeId}），请刷新后重试`)
+  /* ★ 任务类型白名单：必须用 hasOwn 判定（不能用 ?? 兜底）——
+     'toString' 等 Object.prototype 成员会被直接调用接口探到，
+     历史脏数据里就混入过 taskType='toString' / 'closure'、空时限的垃圾行，
+     业代首页因此渲染出「请在前完成整改 · closure」。 */
+  if (!Object.hasOwn(TASK_TYPE_LABEL, payload.taskType)) {
+    throw new ApiError(400, '任务类型不合法')
+  }
+  /* ★ 时限必填且必须可归一：空串 / 无法识别的文案拒绝入库，
+     避免页面出现「请在前完成整改」这种残缺文案。 */
+  const normalizedDue = normalizeDueAt(payload.dueAt, DEMO_TODAY)
+  if (!String(payload.dueAt ?? '').trim() || !normalizedDue.dueAt) {
+    throw new ApiError(400, '请选择有效的整改时限')
+  }
   const task = createTask(payload)
   // ★ 实时推送：业代端无需刷新即可收到（payload.toRole 定向投递给 rep）
   broadcast('task:new', { task, toRole: 'rep' })
@@ -1370,6 +1619,14 @@ app.patch('/api/v1/tasks/:id', requireRole('rep'), wrap((req) => {
   if (!TASK_STATUS.includes(nextStatus)) {
     throw new ApiError(400, `status 必须是 ${TASK_STATUS.map((s) => `'${s}'`).join(' 或 ')}`)
   }
+  /* ★ 归属校验：rep 只能完成**分配给自己**的任务。
+     原实现只校验了角色，没校验归属 —— 任何登录用户可对任意 task id 标记完成。
+     演示态只有 1 个业代，危害≈0；但多业代时 A 可把挂在B 名下的任务标记完成，
+     属于「演示态看不出来、上线必出事」的越权，必须在写库前拦。*/
+  const mine = listTasks(findUserByRole(req.account?.role)?.id ?? '')
+  if (!mine.some((t) => t.id === req.params.id)) {
+    throw new ApiError(403, '只能处理分配给自己的任务')
+  }
   const task = updateTask(req.params.id, nextStatus)
   if (!task) throw new ApiError(404, '任务不存在')
   return { task }
@@ -1377,10 +1634,118 @@ app.patch('/api/v1/tasks/:id', requireRole('rep'), wrap((req) => {
 
 // ⑰ GET /api/v1/dashboard/overview
 // ★ 按 regionId 返回**不同的**门店明细与 KPI（dashboard.js 内按区域过滤并重算，口径自洽）
-app.get('/api/v1/dashboard/overview', wrap((req) => {
+// ★ 角色限 manager：该接口返回全区域经营数据（128 家门店健康分 / KPI / 风险 Top5 /
+//   订货金额 / 任务完成率），是系统里商业敏感度最高的数据。原实现无角色校验，
+//   owner 登录后同样可读 —— 演示中若评委问「店员能看到区域大盘吗」，答案是"能"。
+//   已确认前端唯一调用方是 DashboardView.vue，且路由 meta.roles=['manager'] 已有守卫，
+//   因此加此校验不会影响任何现有演示路径。
+app.get('/api/v1/dashboard/overview', requireRole('manager'), wrap((req) => {
   const regionId = req.query.regionId || 'R_EAST'
   return { overview: buildDashboardOverview(regionId) }
 }))
+
+/**
+ * ★ AI 晨报（P0-2）：区域经理上班第一眼——AI 已把今日风险门店排好并拟好下派草稿，
+ *   人确认后才真正下发（human-in-the-loop），把产品从"人找问题"升级为"AI 主动预警"。
+ *
+ * 数据口径：直接复用 buildDashboardOverview 的 riskTop5（与看板严格同源），
+ *   且只保留**真实存在门店**（findStore 通过），保证确认后 createTask 一定能落库、
+ *   业代端真能收到，绝不给合成店号生成无法下派的假草稿。
+ */
+app.get('/api/v1/ai/morning-brief', requireRole('manager'), wrap(async (req) => {
+  const regionId = req.query.regionId || 'R_EAST'
+  const overview = buildDashboardOverview(regionId)
+
+  // 已有 open 任务的门店不重复拟稿（避免一键下派出同一门店多张重复单）
+  const openStoreIds = new Set(listTasks('U_REP').filter((t) => t.status === 'open').map((t) => t.storeId))
+
+  // 风险档→任务类型映射：红灯缺货风险高→缺货补货；黄灯→排面调整
+  // ★ 排序优先级：业代「今日线路」里可拍照诊断的门店（S1–S5，STORE_TO_RAW_KEY）
+  //   排最前——一键下派后业代点「查看」必须能定位到门店卡并真正到店处理；
+  //   其余 128 家片区门店作为补充候选，否则只会排到业代无法执行的店。
+  const diagnosable = new Set(Object.keys(STORE_TO_RAW_KEY))
+  const drafts = overview.riskTop5
+    .filter((r) => findStore(r.storeId) && !openStoreIds.has(r.storeId))
+    .sort((a, b) => {
+      const da = diagnosable.has(a.storeId) ? 1 : 0
+      const db = diagnosable.has(b.storeId) ? 1 : 0
+      if (da !== db) return db - da
+      return a.score - b.score
+    })
+    .slice(0, 3)
+    .map((r) => {
+      const isRisk = r.level === 'risk'
+      const taskType = isRisk ? 'OOS' : 'FACING'
+      return {
+        storeId: r.storeId,
+        storeName: r.storeName,
+        score: r.score,
+        level: r.level,
+        taskType,
+        taskTypeLabel: TASK_TYPE_LABEL[taskType],
+        dueAt: '今日 18:00',
+        reason: isRisk
+          ? `健康分 ${r.score}（红灯），优先核查缺货与排面并补齐`
+          : `健康分 ${r.score}（预警），现场复核陈列与价签执行`,
+      }
+    })
+
+  const riskCount = (overview.distribution ?? []).find((d) => d.level === 'risk')?.count ?? 0
+  const avgScore = Number((overview.kpis ?? []).find((k) => k.key === 'avgScore')?.value ?? 0)
+  const stats = {
+    regionName: overview.regionName ?? overview.regionId,
+    riskCount,
+    avgScore,
+    draftCount: drafts.length,
+  }
+
+  // AI 生成一段晨报导语（有 key 走真模型，失败/无 key 用规则口径，并如实标 source）
+  let headline = ''
+  let source = 'rule'
+  if (LLM.key) {
+    const ai = await askMorningLLM(stats, drafts)
+    if (ai) {
+      headline = ai
+      source = 'llm'
+    }
+  }
+  if (!headline) {
+    headline = drafts.length
+      ? `今日区域平均健康分 ${stats.avgScore}，有 ${stats.riskCount} 家红灯门店；已为你拟好 ${drafts.length} 张优先下派草稿，确认后立即推送给业代。`
+      : `今日区域平均健康分 ${stats.avgScore}、红灯门店 ${stats.riskCount} 家，暂无需立即下派的高风险门店。`
+  }
+
+  return { brief: { headline, source, stats, drafts } }
+}))
+
+/** 晨报导语的专用大模型调用（短、稳；失败返回 null 走规则兜底） */
+async function askMorningLLM(stats, drafts) {
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 12000)
+    const lines = drafts.map((d) => `· ${d.storeName}（健康分 ${d.score}，${d.taskTypeLabel}）`).join('\n')
+    const res = await fetch(`${LLM.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LLM.key}` },
+      body: JSON.stringify({
+        model: LLM.model,
+        messages: [
+          { role: 'system', content: '你是蒙牛区域销售经理的 AI 助手，用一句话（不超过60字、口语、有行动指向）概括今日晨报，不要编造未给出的数字。' },
+          { role: 'user', content: `区域平均分 ${stats.avgScore}，红灯门店 ${stats.riskCount} 家，待下派草稿：\n${lines || '无'}` },
+        ],
+        temperature: 0.5,
+        max_tokens: 120,
+      }),
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+    if (!res.ok) return null
+    const j = await res.json()
+    return String(j.choices?.[0]?.message?.content || '').trim() || null
+  } catch {
+    return null
+  }
+}
 
 // 附加：POST /api/v1/demo/reset
 // ⚠ P1-6：清库是**破坏性**操作，必须限 manager —— 原来任何登录角色（含店员）都能调，
@@ -1406,10 +1771,20 @@ app.post('/api/v1/demo/reset', requireRole('manager'), wrap(async () => {
 function saveUpload(data, filename, req) {
   if (!data) throw new ApiError(400, '缺少图片数据')
   const ALLOW_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp'])
-  const rawExt = (extname(String(filename || '')) || '.jpg').toLowerCase()
+  /* 文件名清洗：去掉路径分隔符，防止 `../` 一类片段影响 extname 判定。
+     扩展名白名单本身是有效防线（不在白名单一律回落 .jpg），
+     这里补的是纵深防御：不让客户端完全控制落盘名的一部分。*/
+  const safeName = String(filename || '').replace(/[/\\]/g, '')
+  const rawExt = (extname(safeName) || '.jpg').toLowerCase()
   const ext = ALLOW_EXT.has(rawExt) ? rawExt : '.jpg'
   const photoId = `UP_${Date.now().toString(36).toUpperCase()}${Math.floor(Math.random() * 900 + 100)}`
   const buffer = Buffer.from(String(data).replace(/^data:image\/\w+;base64,/, ''), 'base64')
+  /* ★ 落盘体积上限：express.json 的 20mb 是唯一约束，任何登录角色都能循环调用
+     把磁盘写满 → SQLite 写入失败 → 写接口连锁 500 → 演示中途白屏。
+     巡店货架照经前端压缩后远小于此值，5MB 足够且安全。 */
+  if (buffer.length > UPLOAD_MAX_BYTES) {
+    throw new ApiError(400, `图片过大（${(buffer.length / 1024 / 1024).toFixed(1)}MB），请控制在 5MB 以内`)
+  }
   writeFileSync(join(UPLOADS_DIR, `${photoId}${ext}`), buffer)
   const base = `${req.protocol}://${req.get('host')}`
   const url = `${base}/uploads/${photoId}${ext}`
@@ -1437,6 +1812,13 @@ app.use(
 
 // 健康检查
 app.get('/health', async (_req, res) => {
+  // ★ 公网/生产：只暴露存活状态。明细（LLM key 存在性、MCP 工具名、缓存/在线连接数）
+  //   属于内部侦察面，过去只绑回环无所谓；经 Nginx 对公网可达后必须收口。
+  //   需要明细时走鉴权接口或在服务器本机 curl 回环地址。
+  if (IS_PRODUCTION) {
+    res.json({ ok: true })
+    return
+  }
   res.json({
     ok: true,
     service: 'store-app-server',
@@ -1464,13 +1846,28 @@ app.get('/api/v1/forecast/:diagnosisId', wrap(async (req) => {
 }))
 
 /** 启动 HTTP server，并把 WebSocket 实时推送挂在 /ws 上 */
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, HOST, () => {
   // 接口数动态统计（原来写死「17 个」，加接口后一直漂移 —— 改为从 Express 路由栈实数）
   let apiCount = 0
   for (const layer of app._router?.stack ?? []) {
     if (layer.route) apiCount += Object.keys(layer.route.methods ?? {}).length
   }
-  console.log(`✅ 店小C 后端已启动：http://127.0.0.1:${PORT}`)
+  // ⚠ 日志地址必须从 server.address() 实读，不能写死 '127.0.0.1'：
+  //   HOST 可被环境变量改，写死就会再次出现「日志说本机、实际监听全网卡」的矛盾（RW-7 根因）。
+  const addr = server.address()
+  const boundHost = typeof addr === 'object' && addr ? addr.address : HOST
+  const boundPort = typeof addr === 'object' && addr ? addr.port : PORT
+  // IPv6 回环要带方括号才是合法 URL（http://[::1]:3000）
+  const shownHost = boundHost.includes(':') ? `[${boundHost}]` : boundHost
+  const isLoopback = ['127.0.0.1', '::1', 'localhost'].includes(boundHost)
+
+  console.log(`✅ 店小C 后端已启动：http://${shownHost}:${boundPort}`)
   console.log(`   ${apiCount} 个接口契约就绪，实时推送：/ws，健康检查：/health`)
+  if (isLoopback) {
+    console.log('   🔒 仅监听本机回环，局域网不可达（会场公共 WiFi 下同网段设备无法读取 demo-accounts 口令）')
+  } else {
+    console.log(`   ⚠️ 当前监听 ${boundHost}（非回环），局域网内任意设备均可访问本接口！`)
+    console.log('      如需换机/手机同网段访问请显式设置 HOST=0.0.0.0；演示结束请去掉该变量恢复回环绑定。')
+  }
 })
 attachRealtime(server, '/ws')

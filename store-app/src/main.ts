@@ -5,6 +5,7 @@ import router from './router'
 
 import './styles/tokens.css'
 import './styles/global.css'
+import './styles/motion.css'
 
 const app = createApp(App)
 

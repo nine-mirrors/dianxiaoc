@@ -16,11 +16,11 @@ echo [2/2] 启动前端（Vue3，端口 5180）...
 start "店小C-前端" cmd /k "cd /d %~dp0store-app && npm run dev -- --port 5180 --host 127.0.0.1"
 
 timeout /t 6 /nobreak > nul
-start http://127.0.0.1:5180/#/role
+start http://127.0.0.1:5180/#/login
 
 echo.
 echo  ============================================
-echo   已启动！浏览器将自动打开角色选择页
+echo   已启动！浏览器将自动打开登录页
 echo   前端页面：http://127.0.0.1:5180
 echo   后端接口：http://127.0.0.1:3000/health
 echo   关闭演示：关闭两个命令行窗口即可

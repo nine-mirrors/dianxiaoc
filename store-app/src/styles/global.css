@@ -10,6 +10,11 @@
   box-sizing: border-box;
 }
 
+/* 去掉 iOS/Android 点击时的灰色高亮块（反馈交给按压动效，不依赖系统闪块） */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 html,
 body,
 #app {
@@ -50,6 +55,12 @@ button {
   cursor: pointer;
 }
 
+/* 消除按钮双击缩放延迟，且避免滚动手势被误判为点击（不影响页面整体缩放） */
+button,
+[role='button'] {
+  touch-action: manipulation;
+}
+
 img {
   display: block;
   max-width: 100%;
@@ -58,6 +69,31 @@ img {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* ── 无障碍：统一键盘焦点环（WCAG 2.4.7） ──
+ * :where() 把特异性降到 0，组件级 :focus-visible 覆盖无需 !important；
+ * 仅在键盘/开关输入的 :focus-visible 时出现，鼠标点击不显示。 */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: 6px;
+}
+
+/* 仅供屏幕阅读器的可视隐藏类（clip 方案）。
+ * 与常见的 sr-only--focusable 不同：本类在获得焦点时也保持隐藏，
+ * 用于纯读屏补充信息；需要"跳过导航"类可见焦点链接请勿使用本类。 */
+.u-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ── 常用原子类 ── */
@@ -76,6 +112,25 @@ a {
 
 .u-safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── 小图标按钮触控热区扩容（WCAG 2.5.8 Target Size，最小 44px） ──
+ * 用法：给视觉上很小的图标按钮加 class="u-tap"，视觉尺寸完全不变，
+ * 通过 ::before 伪元素把可点区域外扩到 var(--touch-target-min)。
+ * 伪元素全透明，不挡任何视觉；不设负 z-index，以免被父级背景盖住后热区失灵。
+ * 注意：承载元素的父级请避免 overflow:hidden，否则超出父盒的热区会被裁切；
+ * 相邻热区允许重叠，触控事件按 DOM 层级自然归属。 */
+.u-tap {
+  position: relative;
+}
+
+.u-tap::before {
+  content: '';
+  position: absolute;
+  inset: 50%;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  transform: translate(-50%, -50%);
 }
 
 /* ── 通用卡片 / 按钮 / 标签（供各页面复用，避免重复造轮子） ── */
@@ -106,9 +161,18 @@ a {
   transform: scale(0.97);
 }
 
+/* 实心主按钮：底色由 --mn-green(#009639) 加深到同色相 #007a30。
+ * #009639 + 白字对比度仅 3.87:1，不达 WCAG AA（4.5:1）；
+ * #007a30 + 白字 ≈ 5.5:1，AA 达标。
+ * 注意：不要在此改 --mn-green 变量——描边按钮、图标、浅绿态继续用原绿。 */
 .u-btn--primary {
-  background: var(--mn-green);
+  background: #007a30;
   color: #fff;
+}
+
+/* hover 在 #007a30 基础上再压暗约 4%（同色相 #00752e，白字 ≈ 5.9:1） */
+.u-btn--primary:hover {
+  background: #00752e;
 }
 
 .u-btn--primary:active {

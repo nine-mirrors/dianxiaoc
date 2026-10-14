@@ -1,17 +1,46 @@
 <script setup lang="ts">
 /**
  * 骨架屏块（P2 数据概览 / 列表卡片加载态）。
+ *
+ * - shape：rect（默认，外观与旧版完全一致）/ text（文字行，胶囊圆角）/ circle（圆形，以 width 为直径）；
+ * - 根节点携带 mot-skeleton-shimmer 类，供全局动效层统一接管（本组件不定义该类、不与其冲突）；
+ * - 装饰性占位 aria-hidden，避免屏幕阅读器朗读空块；
+ * - prefers-reduced-motion 下动画静止。
  */
+import { computed } from 'vue'
+
 interface Props {
   width?: string
   height?: string
   radius?: string
+  /** 形状：rect 矩形（默认）/ text 文字行 / circle 圆形（取 width 为直径） */
+  shape?: 'rect' | 'text' | 'circle'
 }
-withDefaults(defineProps<Props>(), { width: '100%', height: '16px', radius: '6px' })
+const props = withDefaults(defineProps<Props>(), {
+  width: '100%',
+  height: '16px',
+  radius: '6px',
+  shape: 'rect',
+})
+
+const sizeStyle = computed<Record<string, string>>(() => {
+  if (props.shape === 'circle') {
+    return { width: props.width, height: props.width, borderRadius: '50%' }
+  }
+  if (props.shape === 'text') {
+    return { width: props.width, height: props.height, borderRadius: '999px' }
+  }
+  return { width: props.width, height: props.height, borderRadius: props.radius }
+})
 </script>
 
 <template>
-  <div class="skeleton" :style="{ width, height, borderRadius: radius }" />
+  <div
+    class="skeleton mot-skeleton-shimmer"
+    :class="`skeleton--${shape}`"
+    :style="sizeStyle"
+    aria-hidden="true"
+  />
 </template>
 
 <style scoped>
@@ -27,6 +56,14 @@ withDefaults(defineProps<Props>(), { width: '100%', height: '16px', radius: '6px
   }
   100% {
     background-position: 0 50%;
+  }
+}
+
+/* 降低动态偏好：静止在初始静态帧 */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background-position: 100% 50%;
   }
 }
 </style>

@@ -38,7 +38,13 @@ loadEnv()
  */
 const VL = {
   key: process.env.LLM_VL_API_KEY || process.env.VL_KEY || process.env.LLM_API_KEY || '',
-  model: process.env.LLM_VL_MODEL || process.env.VL_MODEL || 'qwen-vl-ocr',
+  /* 默认模型改为 qwen3-vl-plus（视觉理解模型）。
+   * 原默认 `qwen-vl-ocr` 是 OCR 模型，不擅长计数（实测把 6 个 SKU 读成 1 或 100），
+   * 会导致计数被安全网全数丢弃、visionConfidence 恒为 0 —— 视觉 AI 等于白接。
+   * 2026-10-11 实测 qwen3-vl-plus 计数可信（SKU 12/空位 2/竞品 3），故设为默认。
+   * ⚠ qwen-vl-plus/max 系列属付费模型，账号需开通；若返回 Access denied，
+   *   可在 .env 显式设回 qwen-vl-ocr（系统仍能跑，只是计数回退陈列标准库）。*/
+  model: process.env.LLM_VL_MODEL || process.env.VL_MODEL || 'qwen3-vl-plus',
   baseUrl: (
     process.env.LLM_VL_BASE_URL || process.env.VL_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
   ).replace(/\/$/, ''),
@@ -176,11 +182,17 @@ export async function analyzeShelfWithBoxes(photoUrl, storeName) {
     //   但**计数是真识别出来的**，照样采信；框交给安全网回退陈列标准库。
     //   这样 summary 里的 SKU/空位/竞品/价签 数字始终来自视觉模型。
     /**
-     * 合理性校验（重要）。
-     * 当前可用的视觉模型是 qwen-vl-ocr（账号未开通 qwen-vl-plus/max），
-     * OCR 模型擅长文字识别但**不擅长计数**，实测会把 8~14 个SKU 读成 100。
-     * 因此对计数做业务上限校验，明显离谱的判为不可信 → 返回 null → 回退陈列标准库，
-     * **绝不让离谱数字进入健康分与页面**（否则答辩现场看到「蒙牛SKU 100 项」直接穿帮）。
+     * 合理性校验（重要，**安全网不可删**）。
+     *
+     * 历史背景：曾用 `qwen-vl-ocr`（OCR 模型），它擅长读文字但**不擅长计数**，
+     * 实测把 6~14 个 SKU 分别读成 1 或 100。于是本校验把离谱计数判为不可信 → 回退陈列标准库。
+     *
+     * 2026-10-11 已改用 `qwen3-vl-plus`（视觉理解模型，账号内可用），
+     * 实测计数回到可信区间（如蒙牛 SKU 12 项 / 空位 2 / 竞品 3），visionConfidence 由 0 升至 0.5。
+     *
+     * ⚠ 但**这层校验必须保留**：它是「AI 结论要能被检验」的最后一道闸。
+     * 万一换模型/上游抽风返回离谱数字，页面出现「蒙牛 SKU 100 项」就是当场穿帮。
+     * 超限时返回 null → 界面标注「已按门店基线计算」，如实告知而非静默使用假数。
      */
     const LIMITS = { skuCount: 40, emptyCount: 20, competitorCount: 20, priceTagMissing: 30 }
     const rawCounts = {

@@ -52,8 +52,8 @@ const emit = defineEmits<{ (e: 'order'): void; (e: 'adjust'): void }>()
       <!-- 口径说明：这是「建议备多少货」，与风险卡的「预测会少卖多少」不是同一个数 -->
       <p class="plan__hint">口径：备货建议 = max(安全库存, 日均×(提前期+铺货天数), 缺口补齐)，已扣除在库</p>
       <div v-if="showActions" class="plan__actions">
-        <button class="u-btn u-btn--ghost plan__btn" @click="emit('adjust')">调整数量</button>
-        <button class="u-btn u-btn--primary plan__btn" @click="emit('order')">生成订货建议</button>
+        <button type="button" class="u-btn u-btn--ghost plan__btn u-tap" @click="emit('adjust')">调整数量</button>
+        <button type="button" class="u-btn u-btn--primary plan__btn u-tap" @click="emit('order')">生成订货建议</button>
       </div>
     </div>
   </div>

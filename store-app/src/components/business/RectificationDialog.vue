@@ -13,6 +13,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import SmartImage from '@/components/common/SmartImage.vue'
 import { createRectification } from '@/api'
 import { useToast } from '@/composables/useToast'
+import { useDialogFocus } from '@/composables/useDialogFocus'
 import type { Diagnosis, Issue, Rectification, Severity } from '@/types'
 
 interface Props {
@@ -28,6 +29,16 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+
+/**
+ * 弹窗焦点管理：Esc 关闭 / Tab 焦点陷阱 / 关闭后焦点还到「已处理」按钮。
+ * visible 来自 prop，包一层 computed 保持只读 Ref 语义。
+ */
+const visibleRef = computed<boolean>(() => props.visible)
+const { panelRef } = useDialogFocus({
+  visible: visibleRef,
+  onClose: () => emit('close'),
+})
 
 /** 提交中 */
 const submitting = ref<boolean>(false)
@@ -121,12 +132,18 @@ async function submit(): Promise<void> {
 <template>
   <Transition name="rc">
     <div v-if="visible && issue" class="rc-mask" @click.self="emit('close')">
-      <div class="rc">
-        <p class="rc__title">
+      <div
+        ref="panelRef"
+        class="rc"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rc-title"
+      >
+        <p id="rc-title" class="rc__title">
           <AppIcon name="clipboard" :size="16" color="var(--mn-green)" />
           整改回执 · 留证闭环
         </p>
-        <button class="rc__x" @click="emit('close')">✕</button>
+        <button type="button" class="rc__x u-tap" data-close aria-label="关闭" @click="emit('close')">✕</button>
 
         <p class="rc__issue">{{ issue.title }}</p>
         <p class="rc__sev">严重程度：{{ severityLabel }}</p>
@@ -149,9 +166,15 @@ async function submit(): Promise<void> {
         <div class="rc__photo">
           <div v-if="photoPreview" class="rc__photo-prev">
             <SmartImage :src="photoPreview" alt="整改后照片" />
-            <button class="rc__photo-clear" @click="photo = ''; photoPreview = ''">移除</button>
+            <button
+              type="button"
+              class="rc__photo-clear u-tap"
+              @click="photo = ''; photoPreview = ''"
+            >
+              移除
+            </button>
           </div>
-          <button v-else class="rc__photo-btn" @click="pickPhoto">
+          <button v-else type="button" class="rc__photo-btn" @click="pickPhoto">
             <AppIcon name="camera" :size="16" /> 上传整改后照片（强烈建议）
           </button>
           <input ref="fileInput" type="file" accept="image/*" class="rc__file" @change="onFileChange" />
@@ -160,11 +183,20 @@ async function submit(): Promise<void> {
         <p v-else-if="!photo" class="rc__tip">未留证将按 50% 折算加分，且状态记为「待复查」。</p>
 
         <!-- 备注 -->
-        <textarea v-model="note" class="rc__note" rows="2" placeholder="备注（可选）：如「已补货并调整排面」" />
+        <label for="rc-note" class="rc__note-label">备注（可选）</label>
+        <textarea
+          id="rc-note"
+          v-model="note"
+          class="rc__note"
+          rows="2"
+          placeholder="如「已补货并调整排面」"
+        />
 
         <div class="rc__ops">
-          <button class="u-btn u-btn--ghost" :disabled="submitting" @click="emit('close')">取消</button>
-          <button class="u-btn u-btn--primary" :disabled="submitting" @click="submit">
+          <button type="button" class="u-btn u-btn--ghost" data-close :disabled="submitting" @click="emit('close')">
+            取消
+          </button>
+          <button type="button" class="u-btn u-btn--primary" :disabled="submitting" @click="submit">
             {{ submitting ? '提交中…' : '提交留证' }}
           </button>
         </div>
@@ -186,6 +218,8 @@ async function submit(): Promise<void> {
 .rc {
   position: relative;
   width: 100%;
+  max-height: 90dvh;
+  overflow-y: auto;
   padding: 18px 16px 16px;
   border-radius: 18px 18px 0 0;
   background: #fff;
@@ -202,8 +236,13 @@ async function submit(): Promise<void> {
 
 .rc__x {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: none;
   background: transparent;
   color: var(--text-3);
@@ -291,14 +330,20 @@ async function submit(): Promise<void> {
 .rc__photo-prev {
   position: relative;
   border-radius: 12px;
-  overflow: hidden;
+}
+
+/* 不用 overflow:hidden 裁切圆角：保证「移除」小钮的 .u-tap 热区不被父级裁掉 */
+.rc__photo-prev :deep(img) {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
 }
 
 .rc__photo-clear {
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 3px 10px;
+  padding: 5px 10px;
   border: none;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.5);
@@ -314,18 +359,27 @@ async function submit(): Promise<void> {
 .rc__tip {
   margin-top: 6px;
   font-size: 11px;
-  color: var(--level-warning);
+  color: var(--warning-fg);
 }
 
 .rc__err {
   margin-top: 6px;
   font-size: 11px;
-  color: var(--level-risk);
+  color: var(--danger-fg);
+}
+
+.rc__note-label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
 }
 
 .rc__note {
   width: 100%;
-  margin-top: 10px;
+  margin-top: 0;
   padding: 9px 11px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
@@ -369,5 +423,19 @@ async function submit(): Promise<void> {
 .rc-enter-from .rc,
 .rc-leave-to .rc {
   transform: translateY(24px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-enter-active,
+  .rc-leave-active,
+  .rc-enter-active .rc,
+  .rc-leave-active .rc {
+    transition-duration: 0.01ms;
+  }
+
+  .rc-enter-from .rc,
+  .rc-leave-to .rc {
+    transform: none;
+  }
 }
 </style>
