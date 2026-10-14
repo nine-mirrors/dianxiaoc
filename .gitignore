@@ -43,3 +43,6 @@ _backup/
 .idea
 .DS_Store
 Thumbs.db
+
+# 误克隆进项目目录的嵌套仓库（GitHub Desktop clone）
+/dianxiaoc/
