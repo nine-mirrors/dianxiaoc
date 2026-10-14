@@ -30,14 +30,15 @@ export async function registerExtRoutes() {
     const route = mod.default
     if (!route || typeof route !== 'object') continue
     const { base, router } = route
-    if (!base || !router) {
+    // base 允许为空串（表示直接挂在 /api/v1 根，用于 /stores/:id/profile 等平级路由）
+    if (base == null || !router) {
       // eslint-disable-next-line no-console
       console.warn(`[routes] 跳过 ${f}：缺少 { base, router } 默认导出`)
       continue
     }
-    root.use(base, router)
+    root.use(base || '/', router)
     // eslint-disable-next-line no-console
-    console.log(`[routes] 挂载 ${base}  ←  ${f}`)
+    console.log(`[routes] 挂载 ${base || '/(root)'}  ←  ${f}`)
   }
   return root
 }
