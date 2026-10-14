@@ -996,6 +996,16 @@ app.use('/api/v1', (req, res, next) => {
   return requireAuth(req, res, next)
 })
 
+/* ═══════════════ W2+ 模块化路由（routes/ 自动挂载，含扩展鉴权） ═══════════════
+ * 所有新增业务接口（ChatBI/周报/知识/黑名单/账号/盘点/排行榜/导出/消息中心…）
+ * 都在 src/routes/*.js 内实现并默认导出 { base, router }；此处一次性挂载，
+ * 已在上方 /api/v1 闸门之后 → 自动需要登录，管理类再在文件内 requireRole。*/
+import { registerExtRoutes } from './routes/index.js'
+import { seedExtData } from './ext.js'
+seedExtData()
+const extRouter = await registerExtRoutes()
+app.use('/api/v1', extRouter)
+
 // ① GET /api/v1/meta/roles
 app.get('/api/v1/meta/roles', wrap(() => ({ roles: roleOptions })))
 
