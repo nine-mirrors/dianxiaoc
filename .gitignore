@@ -17,17 +17,21 @@ server/data/
 # 构建产物
 **/dist/
 
-# QA 临时产物
+# QA 临时产物（浏览器自动化 profile/缓存/截图，整目录不入库）
 _qa/
-
-# 自测截图
-_smoke/*.png
+_smoke/
 
 # 本地预览 / 临时服务目录
 .preview/
 
 # 日志
 *.log
+
+# 备份与离线归档（含服务器整站包/git bundle，体积大且仅供本机/异地留档）
+_backup/
+*.zip
+*.tar.gz
+*.bundle
 
 # 改动前的本地备份（调数据/ 改 schema 前的快照，仅供本机回滚，不进仓库）
 *.bak
