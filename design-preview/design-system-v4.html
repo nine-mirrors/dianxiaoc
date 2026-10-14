@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>店小C · 设计系统 Design System v1.1（终版）</title>
+<style>
+:root{
+  --brand:#00b451; --brand-deep:#00934a; --brand-bright:#17c964; --brand-mist:#e8faf0;
+  --sky:#2fa7e0; --sky-mist:#e8f5fd; --amber:#ff8a1e; --amber-mist:#fff2e2;
+  --red:#e60012; --red-mist:#fde9e7; --gold:#c6a15b; --gold-mist:#f7eedd;
+  --ai:#7c6cf0; --ai-mist:#f0eefb; --teal:#0fb5a8;
+  --ink:#14241b; --t1:#1d2b23; --t2:#4a5d52; --t3:#81918a; --line:#e7efe9;
+  --milk:#fbfaf5; --cream:#fdfdf7; --page:#f3f8f4;
+  --r-s:10px; --r-m:14px; --r-l:18px; --r-xl:24px; --r-pill:999px;
+  --sh-1:0 2px 8px rgba(20,60,40,.06); --sh-2:0 8px 22px rgba(20,60,40,.10);
+  --sh-3:0 18px 44px rgba(20,60,40,.16); --sh-brand:0 10px 22px rgba(0,150,74,.35); --sh-ai:0 8px 20px rgba(124,108,240,.28);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--page);color:var(--t1);padding-bottom:80px;}
+.hero{background:linear-gradient(135deg,#04994b,#00b451 60%,#17c964);color:#fff;padding:40px 48px 46px;position:relative;overflow:hidden;}
+.hero::after{content:"";position:absolute;right:-60px;bottom:-90px;width:340px;height:200px;background:radial-gradient(ellipse,rgba(255,255,255,.16),transparent 70%);}
+.hero h1{font-size:28px;font-weight:900;position:relative;z-index:2;}
+.hero p{margin-top:9px;font-size:13.5px;opacity:.93;line-height:1.85;max-width:820px;position:relative;z-index:2;}
+.hero .ver{display:inline-block;margin-top:13px;font-size:11px;font-weight:800;letter-spacing:2px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);padding:5px 14px;border-radius:999px;position:relative;z-index:2;}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px;position:relative;}
+.hero+.wrap{margin-top:-24px;}
+section{background:#fff;border-radius:var(--r-xl);padding:26px 32px;margin-top:22px;box-shadow:var(--sh-1);}
+h2{font-size:17px;font-weight:900;display:flex;align-items:center;gap:10px;}
+h2 .no{width:25px;height:25px;border-radius:8px;background:var(--brand-mist);color:var(--brand-deep);font-size:12.5px;display:flex;align-items:center;justify-content:center;font-weight:900;}
+.sec-sub{font-size:12.5px;color:var(--t3);margin:8px 0 20px;line-height:1.8;}
+
+/* ── 三端预览 ── */
+.phones{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.phone{border-radius:26px;overflow:hidden;height:470px;position:relative;box-shadow:0 20px 46px rgba(20,60,40,.16);background:#fff;}
+.phone .scr{position:absolute;inset:0;overflow:hidden;}
+.plab{text-align:center;margin-bottom:12px;}
+.plab b{font-size:13.5px;font-weight:900;}
+.plab p{font-size:11px;color:var(--t3);margin-top:3px;line-height:1.6;}
+.dots{display:flex;gap:5px;justify-content:center;margin-top:10px;}
+.dots i{width:13px;height:13px;border-radius:50%;}
+/* 极简天际线 */
+.horizon{position:absolute;left:0;right:0;bottom:0;height:120px;pointer-events:none;}
+/* phone A */
+.pa{background:#f4fbf6;}
+.pa .top{position:relative;z-index:5;display:flex;align-items:center;gap:9px;padding:18px 16px 0;}
+.pa .mark{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#17c964,#00934a);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px rgba(0,140,70,.32),inset 0 1px 0 rgba(255,255,255,.35);}
+.pa .top b{font-size:15px;font-weight:900;color:var(--ink);}
+.pa .top span{display:block;font-size:8px;color:var(--brand-deep);font-weight:800;letter-spacing:2px;margin-top:1px;}
+.pa .h3{position:relative;z-index:5;margin:12px 16px 0;font-size:18px;font-weight:900;color:var(--ink);}
+.pa .h3p{position:relative;z-index:5;margin:3px 16px 0;font-size:10px;color:#5e806e;}
+.pa .sheet{position:relative;z-index:6;margin:11px 12px 0;background:#fff;border-radius:18px;padding:12px;box-shadow:var(--sh-1);border:1px solid #ecf5ef;}
+.pa .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.pa .k{border-radius:12px;padding:8px 7px;}
+.pa .k .v{font-size:16px;font-weight:900;}
+.pa .k .l{font-size:8.5px;margin-top:1px;}
+.pa .ai{margin-top:9px;border-radius:12px;padding:9px 10px;background:linear-gradient(120deg,#f6f4ff,#efeefd);border:1px solid #ddd6f8;}
+.pa .ai .b{font-size:8px;font-weight:900;color:#fff;background:linear-gradient(90deg,#8f7fff,#6a58e6);border-radius:5px;padding:2px 6px;}
+.pa .ai p{font-size:9.5px;color:#3a3560;line-height:1.6;margin-top:5px;}
+.pa .btn{position:relative;z-index:6;margin:10px 12px 0;height:40px;border-radius:13px;background:linear-gradient(135deg,#17c964,#00a64d);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:var(--sh-brand);}
+.pa .list{position:relative;z-index:6;margin:9px 12px 0;border-radius:14px;padding:2px 12px;background:#fff;box-shadow:var(--sh-1);}
+.pa .r{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:700;padding:8px 0;border-bottom:1px dashed #edf4f0;color:#33503f;}
+.pa .r:last-child{border:none;}
+.pa .r i{width:7px;height:7px;border-radius:50%;margin-right:6px;}
+.pa .tg{font-size:7.5px;font-weight:800;border-radius:4px;padding:1.5px 5px;margin-left:5px;}
+/* phone B */
+.pb{background:#f6fbff;}
+.pb .top{position:relative;z-index:5;display:flex;align-items:center;gap:9px;padding:18px 16px 0;}
+.pb .mark{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#39c4ff,#1192d3);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px rgba(17,146,211,.32),inset 0 1px 0 rgba(255,255,255,.35);}
+.pb .top b{font-size:15px;font-weight:900;color:#0d3448;}
+.pb .top span{display:block;font-size:8px;color:#0b74b8;font-weight:800;letter-spacing:2px;margin-top:1px;}
+.pb .h3{position:relative;z-index:5;margin:12px 16px 0;font-size:17px;font-weight:900;color:#0d3448;}
+.pb .h3 .g{color:#00934a;font-size:15px;}
+.pb .kpis{position:relative;z-index:6;margin:10px 12px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.pb .k{background:rgba(255,255,255,.92);border:1px solid #e2f1f9;border-radius:12px;padding:8px 7px;box-shadow:var(--sh-1);}
+.pb .k .v{font-size:15px;font-weight:900;}
+.pb .k .l{font-size:8.5px;color:#5a8ba3;margin-top:1px;}
+.pb .chart{position:relative;z-index:6;margin:9px 12px 0;background:#fff;border:1px solid #e2f1f9;border-radius:14px;padding:10px 11px;box-shadow:var(--sh-1);}
+.pb .chart .t{display:flex;justify-content:space-between;font-size:8.5px;color:#5a8ba3;margin-bottom:5px;}
+.pb .chart .t b{color:#0b74b8;}
+.pb .aib{position:relative;z-index:6;margin:9px 12px 0;border-radius:13px;padding:9px 10px;background:linear-gradient(120deg,#f6f4ff,#ece9fc);border:1px solid #ddd6f8;}
+.pb .aib .b{font-size:8px;font-weight:900;color:#fff;background:linear-gradient(90deg,#8f7fff,#6a58e6);border-radius:5px;padding:2px 6px;}
+.pb .aib p{font-size:9.5px;color:#3a3560;line-height:1.6;margin-top:5px;}
+.pb .btn{position:relative;z-index:6;margin:10px 12px 0;height:40px;border-radius:13px;background:linear-gradient(135deg,#17c964,#00a64d);color:#fff;font-weight:900;font-size:12.5px;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-brand);}
+/* phone C */
+.pc{background:#fbfaf5;}
+.pc .bandline{height:5px;background:linear-gradient(90deg,#00b451 0 60%,#e60012 60% 76%,#c6a15b 76% 100%);}
+.pc .top{display:flex;align-items:center;gap:9px;padding:15px 16px 0;}
+.pc .mark{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1cc866,#009a48);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,140,70,.28);}
+.pc .top b{font-size:15px;font-weight:900;color:#14241b;font-family:"Songti SC","STKaiti",serif;letter-spacing:1px;}
+.pc .top span{display:block;font-size:7.5px;color:#9a7428;font-weight:800;letter-spacing:2.5px;margin-top:1px;}
+.pc .seal{margin-left:auto;width:30px;height:30px;border-radius:7px;background:#e60012;color:#fff;font-family:"STKaiti",serif;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;transform:rotate(-6deg);line-height:1.05;text-align:center;box-shadow:0 3px 8px rgba(230,0,18,.28);}
+.pc .hero{margin:11px 14px 0;border-radius:14px;padding:13px 14px;background:linear-gradient(135deg,#0c9e4c,#087a3d);color:#fff;position:relative;overflow:hidden;}
+.pc .hero::after{content:"";position:absolute;right:-20px;bottom:-26px;width:96px;height:96px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%);}
+.pc .hero .cap{font-size:7.5px;letter-spacing:2.5px;color:#bff0d4;font-weight:800;}
+.pc .hero h4{font-size:14.5px;font-weight:900;margin-top:5px;}
+.pc .cards{margin:9px 14px 0;display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.pc .cd{background:#fff;border:1px solid #eee7d8;border-radius:12px;padding:9px 10px;box-shadow:var(--sh-1);}
+.pc .cd .l{font-size:8.5px;color:#8a8270;}
+.pc .cd .v{font-size:17px;font-weight:900;font-family:Georgia,serif;margin-top:2px;}
+.pc .rep{margin:9px 14px 0;background:#fff;border:1px solid #eee7d8;border-radius:12px;padding:10px 12px;}
+.pc .rr{display:flex;justify-content:space-between;font-size:9.5px;padding:5px 0;border-bottom:1px solid #f4efe2;color:#4a4638;}
+.pc .rr:last-child{border:none;}
+.pc .btn{margin:10px 14px 0;height:38px;border-radius:10px;background:var(--ink);color:#f2dca6;font-size:12px;letter-spacing:2px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;}
+
+/* ── 色板 ── */
+.cgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
+.tok{border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;}
+.tok .chip{height:58px;display:flex;align-items:flex-end;padding:8px 11px;color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.5px;}
+.tok .chip.ist{color:var(--ink);}
+.tok .meta{padding:8px 11px 10px;font-size:11px;line-height:1.55;}
+.tok .meta b{font-size:12px;}
+.tok .meta span{display:block;color:var(--t3);font-size:10px;margin-top:1px;}
+
+/* ── 招牌 Loading ── */
+.loaders{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:18px;align-items:center;}
+.splash{border-radius:var(--r-l);background:linear-gradient(150deg,#06964c,#02803f);height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;position:relative;overflow:hidden;}
+.splash .brand{display:flex;align-items:center;gap:9px;color:#fff;}
+.splash .brand b{font-size:16px;letter-spacing:2px;font-weight:900;}
+.splash .brand span{display:block;font-size:8px;opacity:.75;letter-spacing:3px;margin-top:1px;}
+.splash .tip{color:#bff0d4;font-size:10.5px;letter-spacing:2px;}
+.miniload{border:1px solid var(--line);border-radius:var(--r-l);height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#fbfdfb;}
+.miniload p{font-size:11px;color:var(--t3);}
+.miniload .lg{transform:scale(.62);}
+/* 奶滴注入 */
+.dropfill{width:120px;height:120px;}
+.dropfill .outline{fill:none;stroke:#fff;stroke-width:3;}
+.dropfill .milk{fill:#fdfdf7;}
+.dropfill.dark .outline{stroke:var(--brand-deep);stroke-width:3.5;}
+.dropfill.dark .milk{fill:#e9f9f0;}
+.wavegrp{animation:pour 2.4s cubic-bezier(.45,.05,.35,1) infinite;}
+.wavegrp2{animation:pour 2.4s cubic-bezier(.45,.05,.35,1) infinite;}
+@keyframes pour{0%{transform:translateY(58px);}55%{transform:translateY(6px);}82%{transform:translateY(6px);}100%{transform:translateY(58px);}}
+.bubble{fill:#fff;opacity:.7;animation:bub 2.4s ease-in infinite;}
+@keyframes bub{0%{transform:translateY(8px);opacity:0}40%{opacity:.8}100%{transform:translateY(-14px);opacity:0}}
+
+/* ── 字体 ── */
+.type{display:flex;flex-direction:column;gap:12px;}
+.type .row{display:flex;align-items:baseline;gap:18px;border-bottom:1px dashed var(--line);padding-bottom:10px;}
+.type .lab{width:118px;flex:none;font-size:11px;color:var(--t3);font-weight:700;}
+.type .demo{flex:1;}
+.type .px{font-size:10.5px;color:var(--t3);width:104px;flex:none;text-align:right;}
+.serif{font-family:Georgia,"Songti SC","STKaiti",serif;}
+
+.tri{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.tri h4{font-size:12px;color:var(--t2);margin-bottom:11px;letter-spacing:1px;}
+.sp-demo{display:flex;align-items:flex-end;gap:6px;height:52px;}
+.sp-demo i{display:block;background:var(--brand);border-radius:4px;}
+.rad-demo{display:flex;gap:10px;}
+.rad-demo i{width:48px;height:38px;background:var(--brand-mist);border:2px solid var(--brand);display:block;}
+.sh-demo{display:flex;gap:12px;flex-wrap:wrap;}
+.sh-demo i{width:76px;height:44px;background:#fff;border-radius:10px;display:block;}
+
+.icons{display:flex;flex-wrap:wrap;gap:10px;}
+.ic-chip{width:62px;height:62px;border-radius:var(--r-m);background:var(--page);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:9px;color:var(--t3);}
+
+.comp{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+.comp h4{font-size:12px;letter-spacing:1px;color:var(--t2);margin-bottom:11px;}
+.btnrow{display:flex;flex-wrap:wrap;gap:9px;align-items:center;}
+.btn{height:40px;padding:0 18px;border-radius:var(--r-m);font-size:13px;font-weight:800;display:inline-flex;align-items:center;gap:6px;border:none;cursor:pointer;}
+.btn-p{background:linear-gradient(135deg,#17c964,#00a64d);color:#fff;box-shadow:var(--sh-brand);}
+.btn-ai{background:linear-gradient(135deg,#8f7fff,#6a58e6);color:#fff;box-shadow:var(--sh-ai);}
+.btn-gold{background:linear-gradient(135deg,#d8bb84,#b08a3e);color:#fff;}
+.btn-o{background:#fff;color:var(--brand-deep);border:1.5px solid #b6e8c8;}
+.btn-r{background:#fff;color:var(--red);border:1.5px solid #f3c3c7;}
+.btn-d{background:var(--ink);color:#f2dca6;letter-spacing:2px;}
+.btn-sm{height:32px;padding:0 13px;font-size:11.5px;border-radius:10px;}
+.btn:active{transform:translateY(1px) scale(.98);}
+.tags{display:flex;flex-wrap:wrap;gap:7px;}
+.tag{font-size:11px;font-weight:800;padding:4px 10px;border-radius:var(--r-pill);}
+.tg{background:var(--brand-mist);color:var(--brand-deep);}.to{background:var(--amber-mist);color:#c96600;}
+.tr{background:var(--red-mist);color:#cf1a26;}.tb{background:var(--sky-mist);color:#0b74b8;}
+.ta{background:var(--ai-mist);color:#5a48d4;}.tk{background:var(--gold-mist);color:#8a6a2a;}.tt{background:#eef2f0;color:var(--t2);}
+.inputs{display:flex;flex-direction:column;gap:9px;max-width:330px;}
+.inp{height:42px;border-radius:var(--r-m);border:1.5px solid var(--line);padding:0 13px;font-size:13px;display:flex;align-items:center;background:#fff;}
+.inp.ph{color:var(--t3);}
+.inp.f{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,180,81,.12);}
+.inp.e{border-color:#f0b0b4;}
+.aib{border-radius:var(--r-m);padding:13px 14px;background:linear-gradient(120deg,#f6f4ff,#efeefd);border:1px solid #ddd6f8;max-width:380px;}
+.aib .hd{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+.aib .bd{font-size:9px;font-weight:900;color:#fff;background:linear-gradient(90deg,#8f7fff,#6a58e6);border-radius:6px;padding:2.5px 7px;}
+.aib .src{font-size:10px;color:#8a7fd6;}
+.aib p{font-size:12px;line-height:1.75;color:#3a3560;}
+.cur{display:inline-block;width:2px;height:13px;background:var(--ai);vertical-align:-2px;animation:blink 1s steps(1) infinite;}
+@keyframes blink{50%{opacity:0;}}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.minicard{border:1px solid var(--line);border-radius:var(--r-m);padding:12px 13px;box-shadow:var(--sh-1);}
+.minicard .l{font-size:10.5px;color:var(--t3);}
+.minicard .v{font-size:20px;font-weight:900;margin-top:2px;}
+.minicard .d{font-size:10px;font-weight:800;margin-top:2px;}
+.ringwrap{display:flex;align-items:center;gap:16px;}
+.ring{width:70px;height:70px;border-radius:50%;background:conic-gradient(var(--brand) 0 78%,#e9f1ec 78%);display:flex;align-items:center;justify-content:center;position:relative;}
+.ring::after{content:"";position:absolute;inset:6px;background:#fff;border-radius:50%;}
+.ring b{position:relative;font-size:19px;z-index:2;}
+.barprog{flex:1;}
+.barprog .t{display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:6px;}
+.barprog .track{height:9px;border-radius:99px;background:#e9f1ec;overflow:hidden;}
+.barprog .fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--brand-bright),var(--brand));}
+.empty{border:1.5px dashed #d3e2d9;border-radius:var(--r-m);padding:22px;text-align:center;background:#fbfdfb;}
+.empty b{display:block;font-size:13px;margin:7px 0 3px;}
+.empty p{font-size:11px;color:var(--t3);line-height:1.7;}
+.sk{display:flex;gap:8px;}
+.sk i{display:block;border-radius:8px;background:linear-gradient(90deg,#eef4f0,#e3eee8,#eef4f0);background-size:200% 100%;animation:sksh 1.4s infinite;height:48px;}
+@keyframes sksh{to{background-position:-200% 0;}}
+
+.chartrow{display:flex;border-radius:var(--r-m);overflow:hidden;border:1px solid var(--line);}
+.chartrow i{flex:1;height:52px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;color:#fff;font-size:9.5px;font-weight:800;}
+.chartnote{font-size:11.5px;color:var(--t3);margin-top:10px;line-height:1.8;}
+
+.motifs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.mf{border:1px solid var(--line);border-radius:var(--r-m);padding:16px;text-align:center;}
+.mf .v{height:78px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+.mf b{font-size:12px;}
+.mf p{font-size:10.5px;color:var(--t3);margin-top:3px;line-height:1.6;}
+
+.foot{max-width:1180px;margin:22px auto 0;padding:0 28px;font-size:12px;color:var(--t3);text-align:center;line-height:1.9;}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>店小C 设计系统 · Design System 1.1</h1>
+  <p>四端一套语言：三端配比示意 + 11 语义色 + 招牌牛奶注入 Loading + 字体/间距/圆角/阴影/线描图标/组件库/图表色/品牌元素。克制、干净、有品质感。</p>
+  <span class="ver">PANTONE 7481C · #00B451 · 终版施工蓝图</span>
+</div>
+
+<div class="wrap">
+
+<!-- 0 三端 -->
+<section>
+  <h2><span class="no">0</span>分端气质示意（同一套组件，配色与元素密度不同）</h2>
+  <p class="sec-sub">奶滴品牌标统一为「绿色容器 + 白色奶滴」；页头用极简天际线细线，不做厚重草坡；奶牛纹样废弃。</p>
+  <div class="phones">
+    <!-- A -->
+    <div>
+      <div class="plab"><b>① 鲜萃活力</b><p>业代 / 店主 · 翠绿主调 + 橙红蓝多彩</p></div>
+      <div class="phone pa">
+        <div class="scr">
+          <svg class="horizon" viewBox="0 0 300 120" preserveAspectRatio="none"><path d="M0 96 Q80 78 150 88 T300 80" fill="none" stroke="#9fe3bd" stroke-width="1.5"/><path d="M0 108 Q90 94 170 102 T300 98" fill="none" stroke="#c9f0d8" stroke-width="1.5"/></svg>
+          <div class="top"><div class="mark"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z" fill="#fff"/></svg></div><div><b>店小C</b><span>MENGNIU AI</span></div></div>
+          <div class="h3">下午好，李强</div><div class="h3p">10月14日 周三 · 今日 5 家门店</div>
+          <div class="sheet">
+            <div class="kpis">
+              <div class="k" style="background:var(--brand-mist)"><div class="v" style="color:var(--brand-deep)">2/5</div><div class="l">已完成</div></div>
+              <div class="k" style="background:var(--amber-mist)"><div class="v" style="color:#c96600">3</div><div class="l">待巡</div></div>
+              <div class="k" style="background:var(--sky-mist)"><div class="v" style="color:#0b74b8">85.5</div><div class="l">健康分</div></div>
+            </div>
+            <div class="ai"><span class="b">✦ AI 晨报</span><p>优益C 断货 3 天为最大失分项，优先整改中央公园店。</p></div>
+          </div>
+          <div class="btn"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z" fill="#fff"/></svg>开始今日巡店</div>
+          <div class="list">
+            <div class="r"><span><i style="background:var(--red);display:inline-block"></i>永辉生活·中央公园店<span class="tg" style="background:var(--red-mist);color:var(--red)">缺货</span></span><b style="color:var(--red)">46</b></div>
+            <div class="r"><span><i style="background:var(--amber);display:inline-block"></i>美宜佳·城建学院店<span class="tg" style="background:var(--amber-mist);color:#c96600">陈列</span></span><b style="color:#c96600">62</b></div>
+            <div class="r"><span><i style="background:var(--brand);display:inline-block"></i>全家·科技园店</span><b style="color:var(--brand-deep)">88</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="dots"><i style="background:#00b451"></i><i style="background:#17c964"></i><i style="background:#e8faf0;border:1px solid #bfe6cd"></i><i style="background:#ff8a1e"></i><i style="background:#e60012"></i><i style="background:#2fa7e0"></i><i style="background:#7c6cf0"></i></div>
+    </div>
+    <!-- B -->
+    <div>
+      <div class="plab"><b>② 蓝天碧草</b><p>经理 / 管理员 · 蓝绿理性 + AI 紫</p></div>
+      <div class="phone pb">
+        <div class="scr">
+          <svg class="horizon" viewBox="0 0 300 120" preserveAspectRatio="none" style="opacity:.9"><path d="M0 92 Q90 74 160 84 T300 76" fill="none" stroke="#a9d8f2" stroke-width="1.5"/><path d="M0 106 Q100 92 180 100 T300 96" fill="none" stroke="#d2ecf9" stroke-width="1.5"/></svg>
+          <div class="top"><div class="mark"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z" fill="#fff"/></svg></div><div><b>店小C 中枢</b><span>REGION COMMAND</span></div></div>
+          <div class="h3">本周健康分 <span class="g">81.8</span> <span style="font-size:11px;color:#00934a">▲2.4</span></div>
+          <div class="kpis">
+            <div class="k"><div class="v" style="color:var(--red)">4</div><div class="l">红灯</div></div>
+            <div class="k"><div class="v" style="color:#0b74b8">7.1%</div><div class="l">缺货率</div></div>
+            <div class="k"><div class="v" style="color:#5a48d4">12</div><div class="l">AI 调用</div></div>
+          </div>
+          <div class="chart"><div class="t"><span>近 8 周趋势</span><b>W8 · 81.8</b></div>
+            <svg viewBox="0 0 260 40" style="width:100%;height:40px" preserveAspectRatio="none"><path d="M0 34 L37 31 L74 26 L111 22 L148 17 L185 11 L222 8 L260 6" fill="none" stroke="#1aa2e3" stroke-width="2"/><circle cx="260" cy="6" r="2.6" fill="#00b451"/></svg>
+          </div>
+          <div class="aib"><span class="b">✦ AI 经营问答</span><p>下滑主因：冷柜缺货 -1.8、竞品占位 -0.9。</p></div>
+          <div class="btn">向 AI 追问区域经营</div>
+        </div>
+      </div>
+      <div class="dots"><i style="background:#2fa7e0"></i><i style="background:#7c6cf0"></i><i style="background:#00b451"></i><i style="background:#0fb5a8"></i><i style="background:#e8f5fd;border:1px solid #b9dff2"></i><i style="background:#f0eefb;border:1px solid #cfc7f4"></i><i style="background:#e60012"></i><i style="background:#c6a15b"></i></div>
+    </div>
+    <!-- C -->
+    <div>
+      <div class="plab"><b>③ 金牌国牌</b><p>报告 / 导出 · 墨玉奶白 + 翠绿金红</p></div>
+      <div class="phone pc">
+        <div class="scr">
+          <div class="bandline"></div>
+          <div class="top"><div class="mark"><svg width="19" height="19" viewBox="0 0 24 24"><path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z" fill="#fff"/></svg></div><div><b>店小C</b><span>MENGNIU QUALITY</span></div><div class="seal">AI<br>报告</div></div>
+          <div class="hero"><div class="cap">REGION BRIEF · 城东片区</div><h4>今日风险与拟派任务</h4></div>
+          <div class="cards">
+            <div class="cd"><div class="l">平均健康分</div><div class="v" style="color:var(--brand-deep)">81.8</div></div>
+            <div class="cd"><div class="l">红灯门店</div><div class="v" style="color:var(--red)">4</div></div>
+            <div class="cd"><div class="l">缺货率</div><div class="v" style="color:#0b74b8">7.1%</div></div>
+            <div class="cd"><div class="l">铺货率</div><div class="v" style="color:#b08a3e">84%</div></div>
+          </div>
+          <div class="rep">
+            <div class="rr"><span>优益C 冷柜断货</span><b style="color:var(--red)">高风险</b></div>
+            <div class="rr"><span>7 天建议补货</span><b>96 瓶</b></div>
+            <div class="rr"><span>整改后预计分</span><b style="color:var(--brand-deep)">85</b></div>
+          </div>
+          <div class="btn">❖ 导 出 体 检 报 告</div>
+        </div>
+      </div>
+      <div class="dots"><i style="background:#14241b"></i><i style="background:#00b451"></i><i style="background:#c6a15b"></i><i style="background:#e60012"></i><i style="background:#fbfaf5;border:1px solid #e0d8c0"></i><i style="background:#0fb5a8"></i><i style="background:#2fa7e0"></i></div>
+    </div>
+  </div>
+</section>
+
+<!-- 1 Loading -->
+<section>
+  <h2><span class="no">1</span>招牌加载 · 牛奶注入奶滴</h2>
+  <p class="sec-sub">启动/AI 等待的统一语言：线条奶滴中，奶白色液面带波浪缓缓注入，小气泡上浮；填满即进入页面。可全屏（深绿品牌底）或内嵌（白底小尺寸），循环播放。系统开启减弱动效时静止为满滴+静态提示。</p>
+  <div class="loaders">
+    <div class="splash">
+      <svg class="dropfill" width="120" height="120" viewBox="0 0 100 120">
+        <defs>
+          <clipPath id="dropClip"><path d="M50 6 C50 6 14 46 14 74 a36 36 0 0 0 72 0 C86 46 50 6 50 6z"/></clipPath>
+        </defs>
+        <g clip-path="url(#dropClip)">
+          <g class="wavegrp">
+            <path class="milk" d="M-10 40 Q15 32 40 40 T90 40 T140 40 V130 H-10 Z"/>
+            <circle class="bubble" cx="38" cy="86" r="2.4"/>
+            <circle class="bubble" cx="58" cy="96" r="1.8" style="animation-delay:.7s"/>
+            <circle class="bubble" cx="48" cy="100" r="1.5" style="animation-delay:1.2s"/>
+          </g>
+        </g>
+        <path class="outline" d="M50 6 C50 6 14 46 14 74 a36 36 0 0 0 72 0 C86 46 50 6 50 6z"/>
+      </svg>
+      <div class="brand">
+        <div style="width:26px;height:26px;border-radius:9px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z" fill="#fff"/></svg></div>
+        <div><b>店小C</b><span>MENGNIU AI</span></div>
+      </div>
+      <div class="tip">牛 奶 注 入 中 · AI 正 在 准 备</div>
+    </div>
+    <div class="miniload">
+      <div class="lg">
+        <svg class="dropfill dark" width="120" height="120" viewBox="0 0 100 120">
+          <defs><clipPath id="dropClip2"><path d="M50 6 C50 6 14 46 14 74 a36 36 0 0 0 72 0 C86 46 50 6 50 6z"/></clipPath></defs>
+          <g clip-path="url(#dropClip2)">
+            <g class="wavegrp2">
+              <path class="milk" d="M-10 40 Q15 32 40 40 T90 40 T140 40 V130 H-10 Z"/>
+            </g>
+          </g>
+          <path class="outline" d="M50 6 C50 6 14 46 14 74 a36 36 0 0 0 72 0 C86 46 50 6 50 6z"/>
+        </svg>
+      </div>
+      <p>卡片内嵌 · 白底绿线</p>
+    </div>
+    <div class="miniload" style="justify-content:center;gap:18px">
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <i style="width:9px;height:9px;border-radius:50%;background:#00b451;animation:dot 1.2s infinite"></i>
+        <i style="width:9px;height:9px;border-radius:50%;background:#17c964;animation:dot 1.2s .2s infinite"></i>
+        <i style="width:9px;height:9px;border-radius:50%;background:#7c6cf0;animation:dot 1.2s .4s infinite"></i>
+      </div>
+      <p>轻量等待 · 三点呼吸<br>（AI 追问/列表加载）</p>
+      <style>@keyframes dot{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-6px);opacity:1}}</style>
+    </div>
+  </div>
+</section>
+
+<!-- 2 色 -->
+<section>
+  <h2><span class="no">2</span>色彩令牌 · 11 色统一语义</h2>
+  <p class="sec-sub">主色唯一（品牌翠绿）；颜色即信息：AI 独占智紫，红=风险、橙=缺货、蓝=信息、金=报告时刻、青=冷链。奶滴内的"奶"一律白色/奶白，不使用绿色填充。</p>
+  <div class="cgrid">
+    <div class="tok"><div class="chip" style="background:#00b451">#00B451</div><div class="meta"><b>品牌翠绿</b><span>主按钮 / 品牌 / 健康</span></div></div>
+    <div class="tok"><div class="chip" style="background:#00934a">#00934A</div><div class="meta"><b>深草原</b><span>按下态 / 深色块</span></div></div>
+    <div class="tok"><div class="chip" style="background:#17c964">#17C964</div><div class="meta"><b>鲜萃亮绿</b><span>渐变高光 / 进步</span></div></div>
+    <div class="tok"><div class="chip ist" style="background:#e8faf0;border-bottom:1px solid #d3eede">#E8FAF0</div><div class="meta"><b>奶绿底</b><span>浅底 / 标签</span></div></div>
+    <div class="tok"><div class="chip" style="background:#2fa7e0">#2FA7E0</div><div class="meta"><b>天空蓝</b><span>信息 / 低温 / 链接</span></div></div>
+    <div class="tok"><div class="chip" style="background:#ff8a1e">#FF8A1E</div><div class="meta"><b>晨光橙</b><span>缺货 / 临期</span></div></div>
+    <div class="tok"><div class="chip" style="background:#e60012">#E60012</div><div class="meta"><b>中国红</b><span>风险 / 红灯 / 印章</span></div></div>
+    <div class="tok"><div class="chip" style="background:#c6a15b">#C6A15B</div><div class="meta"><b>特仑金</b><span>品质 / 报告 / 成就</span></div></div>
+    <div class="tok"><div class="chip" style="background:#7c6cf0">#7C6CF0</div><div class="meta"><b>智紫 AI</b><span>AI 生成 / AI 入口</span></div></div>
+    <div class="tok"><div class="chip" style="background:#0fb5a8">#0FB5A8</div><div class="meta"><b>青碧</b><span>冷链 / 第二序列</span></div></div>
+    <div class="tok"><div class="chip ist" style="background:#fbfaf5;border-bottom:1px solid #e4dcc6;color:#8a7d63">#FBFAF5</div><div class="meta"><b>奶白 / 墨玉</b><span>页面底 + 文字 #14241B</span></div></div>
+    <div class="tok"><div class="chip" style="background:linear-gradient(135deg,#8f7fff,#6a58e6)">AI GRADIENT</div><div class="meta"><b>智紫渐变</b><span>AI 主行动 / 流式气泡</span></div></div>
+  </div>
+</section>
+
+<!-- 3 字体 -->
+<section>
+  <h2><span class="no">3</span>字体排印</h2>
+  <p class="sec-sub">中文系统字体栈，免加载；数字 tabular-nums 对齐；衬线仅用于报告标题/朱印场景。</p>
+  <div class="type">
+    <div class="row"><div class="lab">Display 28/900</div><div class="demo" style="font-size:28px;font-weight:900;letter-spacing:-.5px">81.8 区域健康分</div><div class="px">看板大数字</div></div>
+    <div class="row"><div class="lab">Title 22/900</div><div class="demo" style="font-size:22px;font-weight:900">下午好，李强</div><div class="px">页面主标题</div></div>
+    <div class="row"><div class="lab">H3 16/800</div><div class="demo" style="font-size:16px;font-weight:800">今日风险与拟派任务</div><div class="px">卡片标题</div></div>
+    <div class="row"><div class="lab">Body 14/1.7</div><div class="demo" style="font-size:14px;line-height:1.7">优益C 冷柜断货 3 天为最大失分项，建议今日 18:00 前优先整改。</div><div class="px">正文</div></div>
+    <div class="row"><div class="lab">Caption 12</div><div class="demo" style="font-size:12px;color:var(--t3)">共 44 家门店 · 数据每 5 分钟更新</div><div class="px">辅助说明</div></div>
+    <div class="row"><div class="lab">数字等宽</div><div class="demo" style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums">7.1%　04　96瓶　¥1,280</div><div class="px">表格 / KPI</div></div>
+    <div class="row"><div class="lab">衬线（仅报告）</div><div class="demo serif" style="font-size:20px;font-weight:700">门店经营体检报告</div><div class="px">报告时刻</div></div>
+  </div>
+</section>
+
+<!-- 4 间距圆角阴影 -->
+<section>
+  <h2><span class="no">4</span>间距 / 圆角 / 阴影</h2>
+  <p class="sec-sub">4pt 栅格 4·8·12·16·20·24·32；触控 ≥44px；圆角 8/14/22/999；阴影三级 + 品牌/AI 彩色投影，克制不浮。</p>
+  <div class="tri">
+    <div><h4>间距</h4><div class="sp-demo"><i style="width:4px;height:16px"></i><i style="width:8px;height:24px"></i><i style="width:12px;height:32px"></i><i style="width:16px;height:40px"></i><i style="width:24px;height:48px"></i><i style="width:32px;height:52px"></i></div><p style="font-size:11px;color:var(--t3);margin-top:9px">4 / 8 / 12 / 16 / 24 / 32 px</p></div>
+    <div><h4>圆角</h4><div class="rad-demo"><i style="border-radius:8px"></i><i style="border-radius:12px"></i><i style="border-radius:16px"></i><i style="border-radius:22px"></i><i style="border-radius:999px;width:40px"></i></div><p style="font-size:11px;color:var(--t3);margin-top:9px">8 控件 / 14 卡片 / 22 弹层 / 胶囊</p></div>
+    <div><h4>阴影</h4><div class="sh-demo"><i style="box-shadow:0 2px 8px rgba(20,60,40,.06)"></i><i style="box-shadow:0 8px 22px rgba(20,60,40,.10)"></i><i style="box-shadow:0 18px 44px rgba(20,60,40,.16)"></i><i style="box-shadow:0 10px 22px rgba(0,150,74,.32)"></i><i style="box-shadow:0 8px 20px rgba(124,108,240,.26)"></i></div><p style="font-size:11px;color:var(--t3);margin-top:9px">三级高度 + 绿 / AI 紫投影</p></div>
+  </div>
+</section>
+
+<!-- 5 图标 -->
+<section>
+  <h2><span class="no">5</span>线描图标</h2>
+  <p class="sec-sub">全站统一 1.8px 圆润描边、24px 网格；空状态/引导也全部使用线条图标，不使用 emoji，不用实心花哨插画。</p>
+  <div class="icons">
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#00b451" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z"/></svg>奶滴</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#4a5d52" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M8 14h5"/></svg>门店</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#ff8a1e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18l-2 12H5L3 7z"/><path d="M8 7a4 4 0 0 1 8 0"/></svg>缺货</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#7c6cf0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>AI</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#2fa7e0" stroke-width="1.7" stroke-linecap="round"><path d="M4 18V9l8-5 8 5v9"/><path d="M9 18v-6h6v6"/></svg>首页</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#4a5d52" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5c0-4 3.6-6 7.5-6s7.5 2 7.5 6"/></svg>我的</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#c6a15b" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6v20h12V6l-4-4z"/><path d="M14 2v4h4M9 14l2 2 4-4"/></svg>报告</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#e60012" stroke-width="1.7" stroke-linecap="round"><path d="M12 3l9 16H3l9-16z"/><path d="M12 10v4M12 17h.01"/></svg>风险</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#00b451" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h5l2-2h2l2 2h5v11H4z"/><circle cx="12" cy="13.5" r="3.2"/></svg>拍照空态</div>
+    <div class="ic-chip"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#81918a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6v3h4v13H5V7h4z"/><path d="M9 12h6M9 15.5h4"/></svg>通用空态</div>
+  </div>
+</section>
+
+<!-- 6 组件 -->
+<section>
+  <h2><span class="no">6</span>核心组件</h2>
+  <p class="sec-sub">所有页面只从这套组件拼装；绿=人工行动、紫=AI 行动、金=品质、墨=导出。</p>
+  <div class="comp">
+    <div>
+      <h4>按钮</h4>
+      <div class="btnrow"><button class="btn btn-p">开始巡店</button><button class="btn btn-ai">✦ 问 AI</button><button class="btn btn-gold">生成报告</button><button class="btn btn-d btn-sm">导出</button><button class="btn btn-o">次按钮</button><button class="btn btn-r btn-sm">危险</button></div>
+      <h4 style="margin-top:20px">状态标签</h4>
+      <div class="tags"><span class="tag tg">健康</span><span class="tag to">缺货</span><span class="tag tr">红灯</span><span class="tag tb">低温冷链</span><span class="tag ta">✦ AI 生成</span><span class="tag tk">金牌门店</span><span class="tag tt">已关闭</span></div>
+      <h4 style="margin-top:20px">输入框</h4>
+      <div class="inputs"><div class="inp ph">请输入账号</div><div class="inp f">wangmin</div><div class="inp e">密码不正确，请重新输入</div></div>
+    </div>
+    <div>
+      <h4>AI 流式气泡</h4>
+      <div class="aib"><div class="hd"><span class="bd">✦ AI 生成</span><span class="src">依据：区域看板数据</span></div><p>本周健康分下滑主因是 3 家门店冷柜缺货（-1.8 分）与竞品占陈列（-0.9 分），建议今日优先巡中央公园店<span class="cur"></span></p></div>
+      <h4 style="margin-top:18px">KPI / 评分环 / 进度</h4>
+      <div class="cards" style="margin-bottom:12px"><div class="minicard"><div class="l">红灯门店</div><div class="v" style="color:var(--red)">4</div><div class="d" style="color:var(--red)">需 24h 处理</div></div><div class="minicard"><div class="l">铺货率</div><div class="v" style="color:var(--gold)">84.3%</div><div class="d" style="color:var(--brand-deep)">▲ 13.1pt</div></div></div>
+      <div class="ringwrap"><div class="ring"><b>78</b></div><div class="barprog"><div class="t"><span>整改完成率</span><span>78%</span></div><div class="track"><div class="fill" style="width:78%"></div></div></div></div>
+      <h4 style="margin-top:16px">空状态（线条图标，非 emoji）& 骨架屏</h4>
+      <div class="empty" style="margin-bottom:9px">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7fc49d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h5l2-2h2l2 2h5v11H4z"/><circle cx="12" cy="13.5" r="3.2"/></svg>
+        <b>今天还没有巡店记录</b><p>拍第一张货架照，AI 帮你出诊断</p>
+      </div>
+      <div class="sk"><i style="width:100%"></i><i style="width:100%"></i></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 图表 -->
+<section>
+  <h2><span class="no">7</span>数据可视化配色</h2>
+  <p class="sec-sub">序列固定，颜色即语义；AI 预测一律紫虚线 + 角标，目标线金色虚线。</p>
+  <div class="chartrow">
+    <i style="background:#00b451">健康/实际</i><i style="background:#7c6cf0">AI 预测</i><i style="background:#2fa7e0">第二序列</i><i style="background:#0fb5a8">冷链</i><i style="background:#ff8a1e">缺货</i><i style="background:#e60012">红灯</i><i style="background:#c6a15b">目标</i>
+  </div>
+  <p class="chartnote">顺序：翠绿 → 智紫 → 天蓝 → 青碧 → 晨光橙 → 中国红 → 特仑金；图表文字 ≥11px，深色档保证对比度。</p>
+</section>
+
+<!-- 8 品牌元素 -->
+<section>
+  <h2><span class="no">8</span>品牌元素库（克制使用）</h2>
+  <p class="sec-sub">只用四样：绿容器白奶滴品牌标、牛奶注入 Loading、报告朱印、极简天际线细线。无奶牛纹、无厚草坡、无卡通插画。</p>
+  <div class="motifs">
+    <div class="mf">
+      <div class="v"><div style="width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#17c964,#00934a);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px rgba(0,140,70,.3),inset 0 1.5px 0 rgba(255,255,255,.35)"><svg width="28" height="28" viewBox="0 0 24 24"><path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z" fill="#fff"/></svg></div></div>
+      <b>品牌标</b><p>绿色容器 + 白色奶滴</p>
+    </div>
+    <div class="mf">
+      <div class="v"><svg width="52" height="62" viewBox="0 0 100 120"><defs><clipPath id="mc2"><path d="M50 6 C50 6 14 46 14 74 a36 36 0 0 0 72 0 C86 46 50 6 50 6z"/></clipPath></defs><g clip-path="url(#mc2)"><rect x="10" y="72" width="80" height="60" fill="#dff3e7"/></g><path d="M50 6 C50 6 14 46 14 74 a36 36 0 0 0 72 0 C86 46 50 6 50 6z" fill="none" stroke="#00934a" stroke-width="4"/></svg></div>
+      <b>注入奶滴</b><p>招牌加载符号</p>
+    </div>
+    <div class="mf">
+      <div class="v"><div style="width:48px;height:48px;border-radius:11px;background:#e60012;color:#fff;font-family:STKaiti,serif;font-size:19px;font-weight:900;display:flex;align-items:center;justify-content:center;transform:rotate(-6deg);line-height:1.05;text-align:center;box-shadow:0 6px 14px rgba(230,0,18,.28)">AI<br>报告</div></div>
+      <b>朱印</b><p>仅报告 / 认证</p>
+    </div>
+    <div class="mf">
+      <div class="v"><svg width="90" height="48" viewBox="0 0 120 60" fill="none"><path d="M0 40 Q30 26 60 34 T120 28" stroke="#9fe3bd" stroke-width="2" stroke-linecap="round"/><path d="M0 52 Q36 42 70 48 T120 46" stroke="#c9f0d8" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <b>极简天际线</b><p>页头细曲线，低对比</p>
+    </div>
+  </div>
+</section>
+
+</div>
+<p class="foot">店小C Design System 1.1 · 确认后写入 tokens.css 与组件库，作为四端施工唯一视觉依据</p>
+</body>
+</html>

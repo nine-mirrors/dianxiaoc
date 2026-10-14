@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>店小C · 品牌视觉方向</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #20302a 0%, #111a16 55%, #0d1411 100%);
+    color:#e8f0eb; padding:48px 32px 80px; min-height:100vh;
+  }
+  .page-head { max-width:1240px; margin:0 auto 40px; text-align:center; }
+  .page-head h1 { font-size:30px; font-weight:800; letter-spacing:1px; }
+  .page-head h1 em { font-style:normal; color:#37e08f; }
+  .page-head p { margin-top:10px; color:#9fb3a8; font-size:14px; letter-spacing:.5px; }
+  .grid { max-width:1240px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:28px; align-items:start; }
+  .dir { display:flex; flex-direction:column; gap:16px; }
+  .dir-label { text-align:center; }
+  .dir-label .tag { display:inline-block; font-size:12px; font-weight:700; letter-spacing:2px; padding:4px 14px; border-radius:999px; }
+  .dir-label h2 { font-size:21px; font-weight:800; margin-top:12px; }
+  .dir-label p { font-size:13px; color:#9fb3a8; margin-top:6px; line-height:1.7; }
+
+  /* ============ 通用手机画板 ============ */
+  .canvas { border-radius:36px; overflow:hidden; height:600px; position:relative; box-shadow:0 30px 70px rgba(0,0,0,.45); }
+  .swatches { display:flex; gap:8px; justify-content:center; }
+  .sw { flex:1; border-radius:10px; padding:10px 6px; text-align:center; font-size:10px; font-weight:700; letter-spacing:.5px; line-height:1.5; }
+  .fit { text-align:center; font-size:12px; color:#8fa89c; }
+  .fit b { color:#cfe3d8; }
+
+  /* ═══════════ 方向 A · 草原鲜萃 ═══════════ */
+  .A .tag { background:rgba(7,158,88,.18); color:#2fd685; border:1px solid rgba(47,214,133,.35); }
+  .canvas.a { background:#eef7f0; }
+  .a-hero { position:relative; padding:26px 22px 66px; background:linear-gradient(135deg,#0aa865 0%,#06905a 55%,#05794c 100%); color:#fff; overflow:hidden; }
+  .a-hero svg.arc { position:absolute; right:-40px; top:-50px; opacity:.5; }
+  .a-hero svg.arc2 { position:absolute; left:-30px; bottom:-60px; opacity:.25; }
+  .a-top { display:flex; align-items:center; gap:10px; position:relative; z-index:2; }
+  .a-logo { width:38px; height:38px; border-radius:12px; background:rgba(255,255,255,.18); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.35); }
+  .a-top b { font-size:17px; letter-spacing:1px; }
+  .a-top span { display:block; font-size:10px; opacity:.85; font-weight:400; letter-spacing:2px; margin-top:2px; }
+  .a-hero h3 { position:relative; z-index:2; margin-top:18px; font-size:20px; font-weight:800; }
+  .a-hero .sub { position:relative; z-index:2; font-size:11px; opacity:.85; margin-top:4px; }
+  .a-sheet { position:relative; z-index:3; margin:-46px 14px 0; background:#fff; border-radius:22px; padding:16px; box-shadow:0 12px 30px rgba(5,90,55,.12), 0 2px 6px rgba(5,90,55,.06); }
+  .a-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .a-kpi { background:linear-gradient(180deg,#f4fbf6,#eaf7ef); border-radius:14px; padding:10px 8px; border:1px solid #e0f2e7; }
+  .a-kpi .v { font-size:19px; font-weight:800; color:#078a56; letter-spacing:-.5px; }
+  .a-kpi .l { font-size:9.5px; color:#6b8a79; margin-top:3px; }
+  .a-ai { margin-top:12px; border-radius:14px; padding:12px; background:linear-gradient(120deg,#f0fbf4,#e7f8ef 60%,#e2f5ec); border:1px solid #d3efdf; position:relative; overflow:hidden; }
+  .a-ai::before { content:""; position:absolute; width:70px; height:70px; border-radius:50%; background:radial-gradient(circle,rgba(47,214,133,.25),transparent 70%); right:-15px; top:-20px; }
+  .a-badge { display:inline-flex; align-items:center; gap:4px; font-size:9px; font-weight:700; color:#0a8a54; background:#d9f6e6; border-radius:6px; padding:2px 7px; }
+  .a-ai p { font-size:10.5px; color:#3d5b4d; line-height:1.65; margin-top:7px; position:relative; z-index:1; }
+  .a-btn { margin:14px 14px 0; height:44px; border-radius:14px; background:linear-gradient(135deg,#0cb06c,#06925c); color:#fff; font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px; box-shadow:0 8px 18px rgba(8,150,95,.35), inset 0 1px 0 rgba(255,255,255,.25); }
+  .a-list { margin:12px 14px 0; background:#fff; border-radius:16px; padding:12px 14px; box-shadow:0 4px 14px rgba(5,90,55,.07); }
+  .a-row { display:flex; align-items:center; justify-content:space-between; padding:7px 0; font-size:11.5px; color:#33503f; border-bottom:1px dashed #eef4f0; }
+  .a-row:last-child{border-bottom:none;}
+  .a-row .dot{width:7px;height:7px;border-radius:50%;margin-right:8px;display:inline-block;}
+  .a-row b{color:#e0493d;font-weight:800;}
+
+  /* ═══════════ 方向 B · 数智中枢 ═══════════ */
+  .B .tag { background:rgba(34,224,140,.12); color:#3df0a4; border:1px solid rgba(61,240,164,.35); }
+  .canvas.b { background:#0a1411; color:#d9f5e6; }
+  .b-bg { position:absolute; inset:0;
+    background-image:linear-gradient(rgba(34,224,140,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(34,224,140,.05) 1px,transparent 1px);
+    background-size:26px 26px; }
+  .b-glow { position:absolute; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle,rgba(34,224,140,.16),transparent 65%); top:-80px; left:40px; }
+  .b-inner { position:relative; z-index:2; padding:22px 18px; }
+  .b-top { display:flex; align-items:center; justify-content:space-between; }
+  .b-brand { display:flex; align-items:center; gap:9px; }
+  .b-mark { width:34px;height:34px;border-radius:10px; background:linear-gradient(135deg,#1ef099,#0bbf74); display:flex;align-items:center;justify-content:center; box-shadow:0 0 18px rgba(34,224,140,.5); }
+  .b-brand b{font-size:15px;letter-spacing:1px;}
+  .b-brand span{display:block;font-size:8.5px;color:#5f8f78;letter-spacing:2px;margin-top:2px;}
+  .b-pill { font-size:9px; color:#3df0a4; border:1px solid rgba(61,240,164,.4); padding:4px 10px; border-radius:999px; background:rgba(34,224,140,.07); }
+  .b-h{font-size:17px;font-weight:800;margin-top:18px;letter-spacing:.5px;}
+  .b-h span{color:#3df0a4;}
+  .b-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px;}
+  .b-kpi{background:linear-gradient(180deg,rgba(20,40,31,.9),rgba(14,28,22,.9));border:1px solid rgba(61,240,164,.18);border-radius:14px;padding:11px 9px;backdrop-filter:blur(6px);}
+  .b-kpi .v{font-size:20px;font-weight:800;color:#eafff4;text-shadow:0 0 14px rgba(61,240,164,.45);letter-spacing:-.5px;}
+  .b-kpi .v.green{color:#3df0a4;}
+  .b-kpi .v.red{color:#ff6a5e;text-shadow:0 0 14px rgba(255,106,94,.4);}
+  .b-kpi .l{font-size:9px;color:#719885;margin-top:4px;}
+  .b-chart{margin-top:12px;background:linear-gradient(180deg,rgba(20,40,31,.9),rgba(14,28,22,.9));border:1px solid rgba(61,240,164,.14);border-radius:14px;padding:12px;}
+  .b-chart .t{font-size:10px;color:#8ab39e;display:flex;justify-content:space-between;}
+  .b-chart .t b{color:#3df0a4;}
+  .b-spark{margin-top:10px;height:54px;}
+  .b-ai{margin-top:12px;border-radius:14px;padding:12px 13px;background:rgba(18,38,29,.92);border:1px solid rgba(61,240,164,.3);position:relative;}
+  .b-ai::after{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;background:linear-gradient(#3df0a4,#0bbf74);box-shadow:0 0 10px #3df0a4;}
+  .b-badge{font-size:9px;font-weight:700;color:#06130d;background:#3df0a4;border-radius:6px;padding:2px 7px;}
+  .b-ai p{font-size:10.5px;line-height:1.7;color:#bfe7d4;margin-top:7px;}
+  .b-btn{margin-top:12px;height:42px;border-radius:12px;border:1px solid rgba(61,240,164,.55);color:#3df0a4;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(34,224,140,.08);box-shadow:0 0 22px rgba(34,224,140,.15) inset;}
+
+  /* ═══════════ 方向 C · 金质醇选 ═══════════ */
+  .C .tag { background:rgba(198,161,91,.15); color:#d8bb84; border:1px solid rgba(216,187,132,.4); }
+  .canvas.c { background:#faf6ec; color:#23322b; }
+  .c-band{background:linear-gradient(135deg,#123f30,#0c2e23);padding:24px 22px 20px;position:relative;overflow:hidden;}
+  .c-band::after{content:"";position:absolute;right:-30px;top:-40px;width:150px;height:150px;border-radius:50%;border:1px solid rgba(198,161,91,.35);}
+  .c-band::before{content:"";position:absolute;right:10px;top:0px;width:90px;height:90px;border-radius:50%;border:1px solid rgba(198,161,91,.22);}
+  .c-brand{display:flex;align-items:center;gap:10px;position:relative;z-index:2;}
+  .c-mark{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#d8bb84,#b78f4e);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.3);}
+  .c-brand b{font-size:16px;color:#f4ecd9;letter-spacing:2px;font-weight:600;}
+  .c-brand span{display:block;font-size:8.5px;color:#c6a15b;letter-spacing:3px;margin-top:3px;}
+  .c-title{position:relative;z-index:2;margin-top:16px;font-family:Georgia,"Songti SC","Noto Serif SC",serif;color:#f4ecd9;font-size:19px;font-weight:600;letter-spacing:1px;}
+  .c-title i{color:#d8bb84;font-style:normal;}
+  .c-sub{position:relative;z-index:2;font-size:10px;color:#9cb6a8;margin-top:5px;letter-spacing:1px;}
+  .c-body{margin:-14px 16px 0;position:relative;z-index:3;}
+  .c-score{background:#fff;border-radius:6px;padding:16px 18px;box-shadow:0 10px 28px rgba(18,47,35,.12);border-top:3px solid #c6a15b;display:flex;align-items:center;gap:16px;}
+  .c-ring{width:62px;height:62px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#123f30;background:conic-gradient(#123f30 0 78%,#ece3d0 78% 100%);position:relative;}
+  .c-ring::after{content:"";position:absolute;inset:6px;background:#fff;border-radius:50%;}
+  .c-ring span{position:relative;z-index:2;}
+  .c-score .meta b{font-size:15px;font-family:Georgia,serif;}
+  .c-score .meta p{font-size:10px;color:#8a7d63;margin-top:4px;letter-spacing:.5px;}
+  .c-sec{margin-top:14px;background:#fff;border-radius:6px;padding:14px 16px;box-shadow:0 4px 14px rgba(18,47,35,.07);}
+  .c-sec h4{font-size:11px;letter-spacing:2px;color:#123f30;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .c-sec h4::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,#e5d8bd,transparent);}
+  .c-badge{font-size:8.5px;color:#8a6d33;border:1px solid #d8bb84;background:#faf4e6;border-radius:3px;padding:1px 6px;letter-spacing:1px;}
+  .c-row{display:flex;justify-content:space-between;font-size:11px;padding:8px 0;border-bottom:1px solid #f0ead9;color:#46564c;}
+  .c-row:last-child{border:none;}
+  .c-row b{color:#123f30;font-family:Georgia,serif;}
+  .c-row b.warn{color:#b04a3a;}
+  .c-btn{margin-top:14px;height:44px;background:linear-gradient(135deg,#174c39,#0e3527);color:#e9d3a2;font-size:13px;letter-spacing:3px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:4px;box-shadow:0 8px 20px rgba(14,53,39,.28);}
+
+  .sw.a1{background:#0aa865;color:#fff;} .sw.a2{background:#05794c;color:#fff;} .sw.a3{background:#e7f8ef;color:#0a6b47;} .sw.a4{background:#ffd34d;color:#5a4400;} .sw.a5{background:#e0493d;color:#fff;}
+  .sw.b1{background:#0a1411;color:#719885;border:1px solid #234;} .sw.b2{background:#13241d;color:#9ad0b8;} .sw.b3{background:#3df0a4;color:#04210f;} .sw.b4{background:#0bbf74;color:#04210f;} .sw.b5{background:#ff6a5e;color:#2a0603;}
+  .sw.c1{background:#123f30;color:#fff;} .sw.c2{background:#c6a15b;color:#fff;} .sw.c3{background:#faf6ec;color:#5a4e38;border:1px solid #ddd0b2;} .sw.c4{background:#f4ecd9;color:#5a4e38;} .sw.c5{background:#b04a3a;color:#fff;}
+  .footnote{max-width:1240px;margin:44px auto 0;text-align:center;color:#7d9589;font-size:13px;line-height:1.9;}
+  .footnote b{color:#cfe3d8;}
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>店小C · <em>品牌视觉方向</em></h1>
+  <p>同一套产品能力，三种气质。请选一个方向（或指定融合，如「A 的亲和 + C 的金质报告」）</p>
+</div>
+
+<div class="grid">
+
+  <!-- ============ A ============ -->
+  <div class="dir A">
+    <div class="dir-label">
+      <span class="tag">方向 A</span>
+      <h2>草原鲜萃</h2>
+      <p>蒙牛经典绿 × 奶白，圆润亲和、生鲜感强<br>业代与店主第一眼就觉得"这是蒙牛"</p>
+    </div>
+    <div class="canvas a">
+      <div class="a-hero">
+        <svg class="arc" width="180" height="180" viewBox="0 0 180 180" fill="none"><circle cx="90" cy="90" r="80" stroke="white" stroke-width="1.5" stroke-dasharray="4 8"/><circle cx="90" cy="90" r="55" stroke="white" stroke-width="1.5"/></svg>
+        <svg class="arc2" width="160" height="160" viewBox="0 0 160 160"><circle cx="80" cy="80" r="70" fill="white" opacity=".12"/></svg>
+        <div class="a-top">
+          <div class="a-logo">
+            <svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 2C12 2 5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13z" fill="white"/></svg>
+          </div>
+          <div><b>店小C</b><span>MENGNIU AI</span></div>
+        </div>
+        <h3>下午好，李强</h3>
+        <div class="sub">2026-10-14 周三 · 今日 5 家门店待巡</div>
+      </div>
+      <div class="a-sheet">
+        <div class="a-kpis">
+          <div class="a-kpi"><div class="v">5</div><div class="l">今日门店</div></div>
+          <div class="a-kpi"><div class="v">2/5</div><div class="l">已完成</div></div>
+          <div class="a-kpi"><div class="v">85.5</div><div class="l">平均健康分</div></div>
+        </div>
+        <div class="a-ai">
+          <span class="a-badge">✦ AI 晨报</span>
+          <p>永辉生活·中央公园店优益C 断货 3 天，建议 18:00 前优先整改，预计带动该店健康分 +9。</p>
+        </div>
+      </div>
+      <div class="a-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"><path d="M12 2C12 2 5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13z"/></svg>
+        开始今日巡店
+      </div>
+      <div class="a-list">
+        <div class="a-row"><span><i class="dot" style="background:#e0493d"></i>永辉生活·中央公园店</span><b>46</b></div>
+        <div class="a-row"><span><i class="dot" style="background:#f0a02e"></i>美宜佳·城建学院店</span><b style="color:#d98a1e">62</b></div>
+        <div class="a-row"><span><i class="dot" style="background:#22b573"></i>全家·科技园店</span><b style="color:#0a8a54">88</b></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw a1">#0AA865<br>鲜萃绿</div><div class="sw a2">#05794C<br>深草原</div>
+      <div class="sw a3">#E7F8EF<br>奶白绿</div><div class="sw a4">#FFD34D<br>奶酪黄</div>
+      <div class="sw a5">#E0493D<br>预警红</div>
+    </div>
+    <div class="fit">最适合：<b>业代端 / 店主端</b>（高频、亲和、现场感）</div>
+  </div>
+
+  <!-- ============ B ============ -->
+  <div class="dir B">
+    <div class="dir-label">
+      <span class="tag">方向 B</span>
+      <h2>数智中枢</h2>
+      <p>墨绿黑 × 荧光数据绿，科技感与大屏张力<br>让经理/管理员端有"指挥中心"的震撼</p>
+    </div>
+    <div class="canvas b">
+      <div class="b-bg"></div><div class="b-glow"></div>
+      <div class="b-inner">
+        <div class="b-top">
+          <div class="b-brand">
+            <div class="b-mark"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2C12 2 5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13z" fill="#06130d"/></svg></div>
+            <div><b>店小C 中枢</b><span>REGION COMMAND</span></div>
+          </div>
+          <div class="b-pill">王敏 · 城东片区</div>
+        </div>
+        <div class="b-h">本周区域健康分 <span>81.8</span> <span style="font-size:11px;color:#3df0a4">▲ 2.4</span></div>
+        <div class="b-kpis">
+          <div class="b-kpi"><div class="v red">4</div><div class="l">红灯门店</div></div>
+          <div class="b-kpi"><div class="v">7.1%</div><div class="l">缺货率</div></div>
+          <div class="b-kpi"><div class="v green">84.3%</div><div class="l">蒙牛铺货率</div></div>
+        </div>
+        <div class="b-chart">
+          <div class="t"><span>近 8 周健康分趋势</span><b>W8 · 81.8</b></div>
+          <svg class="b-spark" viewBox="0 0 300 54" preserveAspectRatio="none">
+            <defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3df0a4" stop-opacity=".35"/><stop offset="1" stop-color="#3df0a4" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0 42 L43 38 L86 33 L129 28 L172 24 L215 17 L258 12 L300 9 L300 54 L0 54 Z" fill="url(#bg1)"/>
+            <path d="M0 42 L43 38 L86 33 L129 28 L172 24 L215 17 L258 12 L300 9" fill="none" stroke="#3df0a4" stroke-width="2" style="filter:drop-shadow(0 0 4px #3df0a4)"/>
+            <circle cx="300" cy="9" r="3" fill="#3df0a4"/>
+          </svg>
+        </div>
+        <div class="b-ai">
+          <span class="b-badge">✦ AI 经营问答</span>
+          <p>下滑主因是 3 家门店冷柜缺货（贡献 -1.8 分）与竞品占陈列（-0.9 分），建议今日优先巡中央公园店。</p>
+        </div>
+        <div class="b-btn">向 AI 追问区域经营 →</div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw b1">#0A1411<br>墨夜底</div><div class="sw b2">#13241D<br>数据卡</div>
+      <div class="sw b3">#3DF0A4<br>荧光绿</div><div class="sw b4">#0BBF74<br>主绿</div>
+      <div class="sw b5">#FF6A5E<br>警报红</div>
+    </div>
+    <div class="fit">最适合：<b>经理端 / 管理员端</b>（大屏、深色、数据驾驶舱）</div>
+  </div>
+
+  <!-- ============ C ============ -->
+  <div class="dir C">
+    <div class="dir-label">
+      <span class="tag">方向 C</span>
+      <h2>金质醇选</h2>
+      <p>森林绿 × 奶白 × 香槟金，精致克制<br>体检报告、管理后台有"特仑苏级"高级感</p>
+    </div>
+    <div class="canvas c">
+      <div class="c-band">
+        <div class="c-brand">
+          <div class="c-mark"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2C12 2 5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13z" fill="#123f30"/></svg></div>
+          <div><b>店小 C</b><span>MENGNIU · PREMIUM</span></div>
+        </div>
+        <div class="c-title">门店经营 <i>体检报告</i></div>
+        <div class="c-sub">永辉生活 · 中央公园店　|　2026.10.14</div>
+      </div>
+      <div class="c-body">
+        <div class="c-score">
+          <div class="c-ring"><span>70</span></div>
+          <div class="meta">
+            <b>综合健康分 70 · 良好</b>
+            <p>较上周 +4　目标 89　同类门店排名 31/44</p>
+          </div>
+        </div>
+        <div class="c-sec">
+          <h4>核心发现 <span class="c-badge">AI 辅助</span></h4>
+          <div class="c-row"><span>优益C 冷柜断货 3 天</span><b class="warn">高风险</b></div>
+          <div class="c-row"><span>竞品占用 2 个黄金陈列位</span><b class="warn">高风险</b></div>
+          <div class="c-row"><span>建议补货量（7 天动销）</span><b>96 瓶</b></div>
+          <div class="c-row"><span>整改后预计健康分</span><b>85</b></div>
+        </div>
+        <div class="c-btn">导 出 完 整 报 告</div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw c1">#123F30<br>森林绿</div><div class="sw c2">#C6A15B<br>香槟金</div>
+      <div class="sw c3">#FAF6EC<br>奶白</div><div class="sw c4">#F4ECD9<br>象牙</div>
+      <div class="sw c5">#B04A3A<br>印泥红</div>
+    </div>
+    <div class="fit">最适合：<b>体检报告 / 管理后台</b>（正式、高级、可信）</div>
+  </div>
+</div>
+
+<div class="footnote">
+  我的推荐：<b>分端气质、一套体系</b>——业代/店主用 A 的草原鲜萃（亲和高频），经理/管理员驾驶舱用 B 的数智中枢（深色震撼），<br>
+  体检报告与正式导出用 C 的金质醇选（高级可信）；三者共用同一奶滴品牌符号与绿-金点缀规则，切换自然、品牌一致。
+</div>
+</body>
+</html>

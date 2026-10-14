@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>店小C · 品牌视觉方向 V2（蒙牛本色）</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background:#eef3ef; color:#1d2b23; padding:44px 28px 90px; min-height:100vh;
+  }
+  .head { max-width:1280px; margin:0 auto 34px; display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+  .head h1 { font-size:27px; font-weight:900; letter-spacing:.5px; }
+  .head h1 em { font-style:normal; color:#00b451; }
+  .head p { margin-top:8px; font-size:13px; color:#5b7164; line-height:1.8; }
+  .src { font-size:11px; color:#8aa094; background:#fff; border:1px solid #dce7e0; border-radius:10px; padding:10px 14px; line-height:1.8; max-width:420px; }
+  .src b{color:#00934a;}
+  .grid { max-width:1280px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:26px; align-items:start; }
+  .dir { display:flex; flex-direction:column; gap:14px; }
+  .lab { text-align:center; }
+  .lab .k { display:inline-block; font-size:11px; font-weight:800; letter-spacing:2px; padding:4px 13px; border-radius:999px; }
+  .lab h2 { font-size:20px; font-weight:900; margin-top:11px; }
+  .lab p { font-size:12.5px; color:#5f7468; margin-top:5px; line-height:1.7; }
+  .phone { width:100%; aspect-radio:390/780; border-radius:34px; overflow:hidden; height:612px; position:relative; box-shadow:0 26px 60px rgba(20,60,40,.18); background:#fff; }
+  .fit { text-align:center; font-size:11.5px; color:#6d8377; }
+  .fit b { color:#234 }
+  .swatches{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+  .sw{width:52px;border-radius:9px;padding:8px 4px;text-align:center;font-size:8.5px;font-weight:800;line-height:1.5;}
+
+  /* 共用奶滴标 */
+  .drop{width:22px;height:22px;}
+
+  /* ═════════ ① 鲜萃活力 ═════════ */
+  .d1 .k{background:#e3f8ec;color:#00a04d;border:1px solid #9fe3bd;}
+  .p1{background:#f4fbf6;}
+  .p1 .sky{position:absolute;top:0;left:0;right:0;height:210px;background:linear-gradient(180deg,#eafbf1 0%,#f4fbf6 100%);}
+  .p1 .cloud{position:absolute;background:#fff;border-radius:50px;opacity:.9;}
+  .p1 .c1{width:64px;height:20px;top:26px;right:34px;box-shadow:-18px 6px 0 -3px #fff,16px 8px 0 -6px #fff;}
+  .p1 .sun{position:absolute;width:34px;height:34px;border-radius:50%;top:30px;left:150px;background:radial-gradient(circle,#ffd76a,#ffb84d);opacity:.85;}
+  .p1 .hills{position:absolute;top:120px;left:0;right:0;height:110px;}
+  .p1 .bar{position:relative;z-index:5;display:flex;align-items:center;gap:10px;padding:22px 20px 0;}
+  .p1 .logo{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#17c964,#00a64d);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(0,160,77,.35),inset 0 1px 0 rgba(255,255,255,.4);}
+  .p1 .bar b{font-size:17px;font-weight:900;color:#0c3b24;letter-spacing:.5px;}
+  .p1 .bar span{display:block;font-size:8.5px;color:#00a04d;font-weight:800;letter-spacing:2.5px;margin-top:2px;}
+  .p1 .hello{position:relative;z-index:5;margin:16px 20px 0;color:#0c3b24;}
+  .p1 .hello h3{font-size:21px;font-weight:900;}
+  .p1 .hello p{font-size:11px;color:#4a7a5e;margin-top:4px;}
+  .p1 .sheet{position:relative;z-index:6;margin:14px 14px 0;background:#fff;border-radius:22px;padding:14px;box-shadow:0 10px 26px rgba(6,90,50,.10);border:1px solid #e8f5ec;}
+  .p1 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+  .p1 .kpi{border-radius:15px;padding:10px 8px;text-align:left;}
+  .p1 .kpi .ic{width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;margin-bottom:6px;}
+  .p1 .kpi .v{font-size:18px;font-weight:900;letter-spacing:-.5px;}
+  .p1 .kpi .l{font-size:9px;margin-top:2px;}
+  .p1 .kg{background:#e8fbF0;color:#00a04d;} .p1 .kg2{background:#e8faf0;}
+  .p1 .ko{background:#fff2e2;} .p1 .ko .ic{background:#ff8a1e;color:#fff;} .p1 .ko .v{color:#d96b00;} .p1 .ko .l{color:#a76a2c;}
+  .p1 .kb{background:#e8f5fd;} .p1 .kb .ic{background:#2fa7e0;color:#fff;} .p1 .kb .v{color:#0b74b8;} .p1 .kb .l{color:#4a7f9f;}
+  .p1 .ai{margin-top:12px;border-radius:15px;padding:11px 12px;background:linear-gradient(120deg,#eafcF1,#e3f9ec);border:1px solid #c9f2d8;position:relative;overflow:hidden;}
+  .p1 .ai::after{content:"";position:absolute;right:-10px;top:-16px;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(0,180,81,.18),transparent 70%);}
+  .p1 .bd{display:inline-flex;align-items:center;gap:4px;font-size:8.5px;font-weight:900;color:#fff;background:linear-gradient(90deg,#17c964,#00a64d);border-radius:6px;padding:2.5px 7px;}
+  .p1 .ai p{font-size:10.5px;color:#2f5c43;line-height:1.65;margin-top:7px;position:relative;z-index:2;}
+  .p1 .btn{position:relative;z-index:6;margin:13px 14px 0;height:46px;border-radius:15px;background:linear-gradient(135deg,#17c964,#00a64d);color:#fff;font-weight:900;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 22px rgba(0,150,74,.4),inset 0 1.5px 0 rgba(255,255,255,.3);}
+  .p1 .list{position:relative;z-index:6;margin:12px 14px 0;background:#fff;border-radius:18px;padding:6px 14px;box-shadow:0 6px 16px rgba(6,90,50,.07);border:1px solid #eef4f0;}
+  .p1 .row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;font-size:11.5px;font-weight:600;color:#2b4a38;border-bottom:1px dashed #eaf2ed;}
+  .p1 .row:last-child{border:none;}
+  .p1 .row i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:8px;}
+  .p1 .tag{font-size:8px;font-weight:800;border-radius:5px;padding:2px 6px;margin-left:6px;}
+  .p1 .t-r{background:#fde8e6;color:#e0392b;} .p1 .t-o{background:#fff0dd;color:#d96b00;} .p1 .t-g{background:#e4f8ec;color:#00a04d;}
+
+  /* ═════════ ② 蓝天碧草 ═════════ */
+  .d2 .k{background:#e3f3fb;color:#0b74b8;border:1px solid #a9d8f2;}
+  .p2{background:#f6fbff;}
+  .p2 .sky2{position:absolute;top:0;left:0;right:0;height:230px;background:linear-gradient(180deg,#bfe9fb 0%,#dcf4fe 55%,#f6fbff 100%);}
+  .p2 .cloud2{position:absolute;background:#fff;border-radius:50px;opacity:.95;filter:blur(.3px);}
+  .p2 .z1{width:70px;height:22px;top:34px;left:30px;box-shadow:22px 8px 0 -4px #fff,-20px 9px 0 -6px #fff;}
+  .p2 .z2{width:52px;height:16px;top:74px;right:40px;opacity:.85;box-shadow:16px 6px 0 -4px #fff;}
+  .p2 .bar{position:relative;z-index:5;display:flex;align-items:center;gap:10px;padding:22px 20px 0;}
+  .p2 .logo{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#39c4ff,#1192d3);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(17,146,211,.35),inset 0 1px 0 rgba(255,255,255,.4);}
+  .p2 .bar b{font-size:17px;font-weight:900;color:#0d3448;}
+  .p2 .bar span{display:block;font-size:8.5px;color:#0b74b8;font-weight:800;letter-spacing:2.5px;margin-top:2px;}
+  .p2 .hello{position:relative;z-index:5;margin:15px 20px 0;color:#0d3448;}
+  .p2 .hello h3{font-size:21px;font-weight:900;}
+  .p2 .hello p{font-size:11px;color:#3d7189;margin-top:4px;}
+  .p2 .grass{position:absolute;top:150px;left:0;right:0;height:96px;z-index:4;}
+  .p2 .sheet{position:relative;z-index:6;margin:12px 14px 0;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);border-radius:22px;padding:14px;box-shadow:0 10px 26px rgba(15,80,110,.12);border:1px solid #e2f1f9;}
+  .p2 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+  .p2 .kpi{border-radius:15px;padding:10px 8px;}
+  .p2 .kpi .ic{width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;margin-bottom:6px;}
+  .p2 .kpi .v{font-size:18px;font-weight:900;letter-spacing:-.5px;}
+  .p2 .kpi .l{font-size:9px;margin-top:2px;}
+  .p2 .kg{background:#e7faf0;}.p2 .kg .ic{background:#00b451;color:#fff;}.p2 .kg .v{color:#00934a;}.p2 .kg .l{color:#4e8a67;}
+  .p2 .kb{background:#e7f5fe;}.p2 .kb .ic{background:#1aa2e3;color:#fff;}.p2 .kb .v{color:#0b74b8;}.p2 .kb .l{color:#4a7f9f;}
+  .p2 .kc{background:#f0eefb;}.p2 .kc .ic{background:#7c6cf0;color:#fff;}.p2 .kc .v{color:#5a48d4;}.p2 .kc .l{color:#7c72b0;}
+  .p2 .chart{margin-top:12px;border-radius:15px;padding:11px 12px;background:#f7fcff;border:1px solid #e2f1f9;}
+  .p2 .chart .tt{display:flex;justify-content:space-between;font-size:9.5px;color:#5a8ba3;margin-bottom:6px;}
+  .p2 .chart .tt b{color:#0b74b8;}
+  .p2 .ai{margin-top:11px;border-radius:15px;padding:11px 12px;background:linear-gradient(120deg,#e8f8ff,#dff3fc);border:1px solid #bfe4f6;}
+  .p2 .bd{display:inline-flex;align-items:center;gap:4px;font-size:8.5px;font-weight:900;color:#fff;background:linear-gradient(90deg,#39c4ff,#1192d3);border-radius:6px;padding:2.5px 7px;}
+  .p2 .ai p{font-size:10.5px;color:#27546a;line-height:1.65;margin-top:7px;}
+  .p2 .btn{position:relative;z-index:6;margin:12px 14px 0;height:46px;border-radius:15px;background:linear-gradient(135deg,#17c964,#00a64d);color:#fff;font-weight:900;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 22px rgba(0,150,74,.38);}
+  .p2 .prog{position:relative;z-index:6;margin:12px 14px 0;background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 6px 16px rgba(15,80,110,.08);}
+  .p2 .prog .t{font-size:10px;color:#5a8ba3;display:flex;justify-content:space-between;margin-bottom:7px;}
+  .p2 .prog .t b{color:#0b74b8;}
+  .p2 .bar2{height:8px;border-radius:99px;background:#e4f0f7;overflow:hidden;}
+  .p2 .bar2 i{display:block;height:100%;width:72%;border-radius:99px;background:linear-gradient(90deg,#39c4ff,#00b451);}
+
+  /* ═════════ ③ 金牌国牌 ═════════ */
+  .d3 .k{background:#f7eedd;color:#9a7428;border:1px solid #e6cf9c;}
+  .p3{background:#fbfaf5;}
+  .p3 .topbar{height:6px;background:linear-gradient(90deg,#00b451 0 62%,#e60012 62% 78%,#c6a15b 78% 100%);}
+  .p3 .bar{display:flex;align-items:center;gap:11px;padding:20px 20px 0;}
+  .p3 .logo{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#1cc866,#009a48);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px rgba(0,140,70,.3);}
+  .p3 .bar b{font-size:19px;font-weight:900;color:#14241b;letter-spacing:1px;font-family:"STKaiti","KaiTi","Songti SC",serif;}
+  .p3 .bar span{display:block;font-size:8px;color:#9a7428;font-weight:800;letter-spacing:3px;margin-top:2px;}
+  .p3 .seal{margin-left:auto;width:34px;height:34px;border-radius:8px;background:#e60012;color:#fff;font-family:"STKaiti","KaiTi",serif;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;transform:rotate(-6deg);box-shadow:0 4px 10px rgba(230,0,18,.3);line-height:1.05;text-align:center;}
+  .p3 .band{margin:16px 16px 0;border-radius:16px;padding:16px 16px 14px;background:linear-gradient(135deg,#0c9e4c,#087a3d);position:relative;overflow:hidden;color:#fff;}
+  .p3 .band::before{content:"";position:absolute;right:-24px;bottom:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);}
+  .p3 .band .cap{font-size:9px;letter-spacing:3px;color:#bff0d4;font-weight:700;}
+  .p3 .band h3{font-size:18px;font-weight:900;margin-top:6px;letter-spacing:.5px;}
+  .p3 .band p{font-size:10.5px;opacity:.9;margin-top:4px;}
+  .p3 .bd-gold{display:inline-flex;align-items:center;gap:4px;margin-top:9px;font-size:8.5px;font-weight:900;color:#3a2a07;background:linear-gradient(90deg,#f6dfa2,#d8b15f);border-radius:6px;padding:3px 8px;}
+  .p3 .cards{margin:12px 16px 0;display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+  .p3 .c{background:#fff;border-radius:14px;padding:12px;border:1px solid #eee7d8;box-shadow:0 4px 12px rgba(90,70,20,.05);}
+  .p3 .c .l{font-size:9px;color:#8a8270;letter-spacing:.5px;}
+  .p3 .c .v{font-size:20px;font-weight:900;margin-top:4px;font-family:Georgia,"Songti SC",serif;}
+  .p3 .c .v.green{color:#00934a;} .p3 .c .v.red{color:#e60012;} .p3 .c .v.gold{color:#b08a34;} .p3 .c .v.blue{color:#0b74b8;}
+  .p3 .c .s{font-size:8.5px;margin-top:2px;font-weight:700;}
+  .p3 .report{margin:12px 16px 0;background:#fff;border-radius:14px;padding:13px 15px;border:1px solid #eee7d8;}
+  .p3 .report h4{font-size:11px;letter-spacing:2px;color:#14241b;display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .p3 .report h4::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,#e3d6b4,transparent);}
+  .p3 .rr{display:flex;justify-content:space-between;font-size:10.5px;padding:6.5px 0;border-bottom:1px solid #f4efe2;color:#4a4638;}
+  .p3 .rr:last-child{border:none;}
+  .p3 .rr b{font-family:Georgia,serif;}
+  .p3 .btn{margin:13px 16px 0;height:45px;border-radius:12px;background:#14241b;color:#f2dca6;font-size:13.5px;letter-spacing:2px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 18px rgba(20,36,27,.25);}
+  .p3 .btn span{color:#00b451;}
+
+  /* 色板 */
+  .sw.t1{background:#00b451;color:#fff;} .sw.t2{background:#17c964;color:#fff;} .sw.t3{background:#e8faf0;color:#007a3e;}
+  .sw.t4{background:#2fa7e0;color:#fff;} .sw.t5{background:#ff8a1e;color:#fff;} .sw.t6{background:#e60012;color:#fff;}
+  .sw.t7{background:#c6a15b;color:#fff;} .sw.t8{background:#fbfaf5;color:#7a6a44;border:1px solid #e4dcc6;}
+
+  .tokens{max-width:1280px;margin:36px auto 0;background:#fff;border:1px solid #dce7e0;border-radius:18px;padding:22px 26px;}
+  .tokens h3{font-size:15px;font-weight:900;margin-bottom:4px;}
+  .tokens .sub{font-size:12px;color:#6d8377;margin-bottom:16px;line-height:1.8;}
+  .tgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;}
+  .tok{border-radius:12px;overflow:hidden;border:1px solid #e7eee9;}
+  .tok .c{height:52px;}
+  .tok .n{padding:7px 8px;font-size:9.5px;line-height:1.5;}
+  .tok .n b{display:block;font-size:10.5px;}
+  .tok .n span{color:#7d9186;}
+  .note{max-width:1280px;margin:18px auto 0;font-size:12.5px;color:#5b7164;line-height:2;text-align:center;}
+  .note b{color:#00934a;}
+</style>
+</head>
+<body>
+<div class="head">
+  <div>
+    <h1>店小C · 品牌视觉 <em>V2 · 蒙牛本色</em></h1>
+    <p>色值取自蒙牛官网线上 CSS 与 Pantone 7481C 官方标准；元素取自蒙牛视觉资产：草原弧线、奶滴、书法字、纯牛奶红、特仑苏金、蓝天碧草。</p>
+  </div>
+  <div class="src">
+    <b>取色来源</b><br>
+    品牌绿 Pantone 7481C = #00B552（LOGO 焕新官方口径）<br>
+    官网实测：rgb(0,180,81)/rgb(0,179,79)、浅绿档 #CFF1DA、橙 #EF9A38、金 #FFCC66、蓝 #66A8CC；包装红取自纯牛奶竖排题字。
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- ① -->
+  <div class="dir d1">
+    <div class="lab"><span class="k">方向 ①</span><h2>鲜萃活力</h2>
+      <p>翠绿主调 + 多彩点缀（橙=缺货 / 蓝=信息 / 红=风险），草原坡地与白云<br>年轻、鲜活、信息层次分明</p></div>
+    <div class="phone p1">
+      <div class="sky"><div class="cloud c1"></div><div class="sun"></div></div>
+      <svg class="hills" viewBox="0 0 390 110" preserveAspectRatio="none"><path d="M0 70 Q90 20 190 55 T390 45 V110 H0Z" fill="#8fe0ab" opacity=".55"/><path d="M0 88 Q110 45 220 78 T390 70 V110 H0Z" fill="#17c964" opacity=".85"/><path d="M0 100 Q120 68 240 95 T390 90 V110 H0Z" fill="#00a64d"/></svg>
+      <div class="bar">
+        <div class="logo"><svg class="drop" viewBox="0 0 24 24"><path d="M12 2C12 2 5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13z" fill="#fff"/></svg></div>
+        <div><b>店小C</b><span>MENGNIU AI</span></div>
+      </div>
+      <div class="hello"><h3>下午好，李强</h3><p>10月14日 周三 · 今日 5 家门店 · 晴 22℃</p></div>
+      <div class="sheet">
+        <div class="kpis">
+          <div class="kpi kg2"><div class="ic kg" style="background:#00b451;color:#fff">✓</div><div class="v" style="color:#00a04d">2/5</div><div class="l" style="color:#4e8a67">已完成</div></div>
+          <div class="kpi ko"><div class="ic">!</div><div class="v">3</div><div class="l">待巡门店</div></div>
+          <div class="kpi kb"><div class="ic">↗</div><div class="v">85.5</div><div class="l">平均健康分</div></div>
+        </div>
+        <div class="ai">
+          <span class="bd">✦ AI 晨报</span>
+          <p>优益C 断货 3 天为最大失分项，优先整改中央公园店，预计健康分 +9。</p>
+        </div>
+      </div>
+      <div class="btn"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 2C12 2 5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13z" fill="#fff"/></svg>开始今日巡店</div>
+      <div class="list">
+        <div class="row"><span><i style="background:#e60012"></i>永辉生活·中央公园店<span class="tag t-r">缺货</span></span><b style="color:#e0392b">46</b></div>
+        <div class="row"><span><i style="background:#ff8a1e"></i>美宜佳·城建学院店<span class="tag t-o">陈列</span></span><b style="color:#d96b00">62</b></div>
+        <div class="row"><span><i style="background:#00b451"></i>全家·科技园店<span class="tag t-g">良好</span></span><b style="color:#00a04d">88</b></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw t1">翠绿</div><div class="sw t2">亮绿</div><div class="sw t3">奶绿</div>
+      <div class="sw t4">天空蓝</div><div class="sw t5">晨光橙</div><div class="sw t6">中国红</div>
+    </div>
+    <div class="fit">气质：<b>鲜活、亲切、有食欲感</b>　|　最适合业代/店主高频场景</div>
+  </div>
+
+  <!-- ② -->
+  <div class="dir d2">
+    <div class="lab"><span class="k">方向 ②</span><h2>蓝天碧草</h2>
+      <p>蓝天白云 + 碧草，蓝绿双主色，玻璃质感卡片<br>通透、干净、科技与自然平衡</p></div>
+    <div class="phone p2">
+      <div class="sky2"><div class="cloud2 z1"></div><div class="cloud2 z2"></div></div>
+      <div class="bar">
+        <div class="logo"><svg class="drop" viewBox="0 0 24 24"><path d="M12 2C12 2 5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13z" fill="#fff"/></svg></div>
+        <div><b>店小C</b><span>CLOUD PRAIRIE</span></div>
+      </div>
+      <div class="hello"><h3>下午好，李强</h3><p>今日线路完成 40%，再巡 3 家收工</p></div>
+      <svg class="grass" viewBox="0 0 390 96" preserveAspectRatio="none"><path d="M0 50 Q100 10 200 42 T390 36 V96 H0Z" fill="#59d188" opacity=".7"/><path d="M0 72 Q120 40 240 66 T390 60 V96 H0Z" fill="#00b451"/></svg>
+      <div class="sheet">
+        <div class="kpis">
+          <div class="kpi kg"><div class="ic">巡</div><div class="v">5</div><div class="l">今日门店</div></div>
+          <div class="kpi kb"><div class="ic">货</div><div class="v">7.1%</div><div class="l">缺货率</div></div>
+          <div class="kpi kc"><div class="ic">AI</div><div class="v">12</div><div class="l">AI 助手调用</div></div>
+        </div>
+        <div class="chart">
+          <div class="tt"><span>近 8 周健康分</span><b>81.8 ▲2.4</b></div>
+          <svg viewBox="0 0 320 48" style="width:100%;height:48px" preserveAspectRatio="none">
+            <defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fa7e0" stop-opacity=".3"/><stop offset="1" stop-color="#2fa7e0" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0 40 L46 36 L92 30 L138 26 L184 21 L230 14 L276 10 L320 7 L320 48 L0 48Z" fill="url(#g2)"/>
+            <path d="M0 40 L46 36 L92 30 L138 26 L184 21 L230 14 L276 10 L320 7" fill="none" stroke="#1aa2e3" stroke-width="2.2"/>
+            <circle cx="320" cy="7" r="3.2" fill="#00b451"/>
+          </svg>
+        </div>
+        <div class="ai">
+          <span class="bd">✦ AI 经营问答</span>
+          <p>本周下滑主因：冷柜缺货 -1.8 分、竞品占位 -0.9 分，建议优先巡中央公园店。</p>
+        </div>
+      </div>
+      <div class="btn">向 AI 追问经营问题</div>
+      <div class="prog">
+        <div class="t"><span>今日巡店进度</span><b>2 / 5</b></div>
+        <div class="bar2"><i></i></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw t4">天空蓝</div><div class="sw t1">翠绿</div><div class="sw t2">亮绿</div>
+      <div class="sw t3">奶绿</div><div class="sw" style="background:#7c6cf0;color:#fff">智紫</div><div class="sw t8">云白</div>
+    </div>
+    <div class="fit">气质：<b>通透、干净、数据感</b>　|　经理驾驶舱/科技叙事</div>
+  </div>
+
+  <!-- ③ -->
+  <div class="dir d3">
+    <div class="lab"><span class="k">方向 ③</span><h2>金牌国牌</h2>
+      <p>奶白宣纸底 + 翠绿 + 纯牛奶红 + 特仑苏金，书法字与朱印<br>国家级品牌的厚重、品质感、仪式感</p></div>
+    <div class="phone p3">
+      <div class="topbar"></div>
+      <div class="bar">
+        <div class="logo"><svg class="drop" viewBox="0 0 24 24"><path d="M12 2C12 2 5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13z" fill="#fff"/></svg></div>
+        <div><b>店小C</b><span>MENGNIU · QUALITY</span></div>
+        <div class="seal">AI<br>报告</div>
+      </div>
+      <div class="band">
+        <div class="cap">REGION DAILY BRIEF · 城东片区</div>
+        <h3>今日风险与拟派任务</h3>
+        <p>4 家红灯门店需 24h 内处理，AI 已按收益排序</p>
+        <span class="bd-gold">✦ 生成今日晨报</span>
+      </div>
+      <div class="cards">
+        <div class="c"><div class="l">区域平均健康分</div><div class="v green">81.8</div><div class="s" style="color:#00a04d">▲ 2.4</div></div>
+        <div class="c"><div class="l">红灯门店</div><div class="v red">4</div><div class="s" style="color:#e0392b">需 24h 处理</div></div>
+        <div class="c"><div class="l">本周缺货率</div><div class="v blue">7.1%</div><div class="s" style="color:#0b74b8">▼ 11.3pt</div></div>
+        <div class="c"><div class="l">蒙牛铺货率</div><div class="v gold">84.3%</div><div class="s" style="color:#b08a34">▲ 13.1pt</div></div>
+      </div>
+      <div class="report">
+        <h4>体检摘要</h4>
+        <div class="rr"><span>优益C 冷柜断货 3 天</span><b style="color:#e60012">高风险</b></div>
+        <div class="rr"><span>竞品占 2 个黄金陈列位</span><b style="color:#e60012">高风险</b></div>
+        <div class="rr"><span>7 天建议补货</span><b>96 瓶</b></div>
+      </div>
+      <div class="btn"><span>❖</span>导 出 体 检 报 告</div>
+    </div>
+    <div class="swatches">
+      <div class="sw t1">翠绿</div><div class="sw t6">国潮红</div><div class="sw t7">特仑金</div>
+      <div class="sw t8">宣纸白</div><div class="sw" style="background:#14241b;color:#fff">墨玉</div><div class="sw t4">天蓝</div>
+    </div>
+    <div class="fit">气质：<b>厚重、高级、可信</b>　|　报告/导出/正式时刻</div>
+  </div>
+</div>
+
+<div class="tokens">
+  <h3>统一设计令牌（三种方向共用，只是配比不同）</h3>
+  <div class="sub">主色只有一个（7481C 翠绿），其余全部是语义配角：红=风险/品牌印、橙=缺货/提醒、蓝=信息/低温、金=品质/报告时刻、绿=健康/AI。多而不乱。</div>
+  <div class="tgrid">
+    <div class="tok"><div class="c" style="background:#00b451"></div><div class="n"><b>品牌翠绿</b><span>#00B451 · 主按钮/品牌</span></div></div>
+    <div class="tok"><div class="c" style="background:#17c964"></div><div class="n"><b>鲜萃亮绿</b><span>#17C964 · 渐变高光</span></div></div>
+    <div class="tok"><div class="c" style="background:#e8faf0;border-bottom:1px solid #e0eee5"></div><div class="n"><b>奶绿底</b><span>#E8FAF0 · 浅底</span></div></div>
+    <div class="tok"><div class="c" style="background:#2fa7e0"></div><div class="n"><b>天空蓝</b><span>#2FA7E0 · 信息/低温</span></div></div>
+    <div class="tok"><div class="c" style="background:#ff8a1e"></div><div class="n"><b>晨光橙</b><span>#FF8A1E · 缺货/提醒</span></div></div>
+    <div class="tok"><div class="c" style="background:#e60012"></div><div class="n"><b>中国红</b><span>#E60012 · 风险/印章</span></div></div>
+    <div class="tok"><div class="c" style="background:#c6a15b"></div><div class="n"><b>特仑金</b><span>#C6A15B · 品质/报告</span></div></div>
+    <div class="tok"><div class="c" style="background:#fbfaf5;border-bottom:1px solid #e4dcc6"></div><div class="n"><b>奶白</b><span>#FBFAF5 · 页面底</span></div></div>
+  </div>
+</div>
+
+<div class="note">
+  我的推荐仍然是<b>「一套体系、分端配比」</b>：业代/店主 ①鲜萃活力、经理/管理员 ②蓝天碧草、报告与导出 ③金牌国牌——主色和组件完全统一，只是色彩配比与元素密度不同。<br>
+  你也可以指定：「全站都用 ①」或「①的布局 + ③的配色」等任意组合。
+</div>
+</body>
+</html>
