@@ -189,8 +189,44 @@ const filteredStoreRows = computed<StoreRow[]>(() => {
 
 const totalPages = computed<number>(() => Math.max(1, Math.ceil(filteredStoreRows.value.length / PAGE_SIZE)))
 
+/* 表头本地排序（纯前端，不改接口）：默认健康分升序，与表题「按健康分升序」口径一致。
+   仅对数值列开放（健康分 / 周变化），门店名与问题列不排序。 */
+type StoreSortKey = 'score' | 'weekDelta'
+const sortKey = ref<StoreSortKey>('score')
+const sortAsc = ref<boolean>(true)
+
+/** 点击排序表头：同列切换升降序，换列时健康分默认升序（差→好）、周变化默认降序（涨幅优先） */
+function toggleSort(key: StoreSortKey): void {
+  if (sortKey.value === key) {
+    sortAsc.value = !sortAsc.value
+  } else {
+    sortKey.value = key
+    sortAsc.value = key === 'score'
+  }
+}
+
+/** th[aria-sort] 读屏值（升序/降序/不参与排序） */
+function ariaSortFor(key: StoreSortKey): 'ascending' | 'descending' | 'none' {
+  if (sortKey.value !== key) return 'none'
+  return sortAsc.value ? 'ascending' : 'descending'
+}
+
+/** 排序方向指示符：非激活列给中性双向箭头占位，避免激活时表头文字横向跳动 */
+function sortIconFor(key: StoreSortKey): string {
+  if (sortKey.value !== key) return '↕'
+  return sortAsc.value ? '↑' : '↓'
+}
+
+/** 筛选结果先排序再分页，排序不丢任何行、不改变筛选口径 */
+const sortedStoreRows = computed<StoreRow[]>(() => {
+  const rows = [...filteredStoreRows.value]
+  const factor = sortAsc.value ? 1 : -1
+  rows.sort((a, b) => (a[sortKey.value] - b[sortKey.value]) * factor)
+  return rows
+})
+
 const pagedStoreRows = computed<StoreRow[]>(() =>
-  filteredStoreRows.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE),
+  sortedStoreRows.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE),
 )
 
 /** 筛选条件变化回第 1 页 */
@@ -384,11 +420,23 @@ const taskSummary = computed(() => {
               <table class="p5__table">
                 <thead>
                   <tr>
-                    <th>门店</th>
-                    <th>健康分</th>
+                    <th class="p5__col-store">门店</th>
+                    <th class="p5__col-sortable p5__col-score" :aria-sort="ariaSortFor('score')">
+                      <button type="button" class="p5__sort" :class="{ 'is-active': sortKey === 'score' }" @click="toggleSort('score')">
+                        健康分
+                        <span class="p5__sort-icon" aria-hidden="true">{{ sortIconFor('score') }}</span>
+                        <span class="u-sr-only">{{ sortKey === 'score' ? (sortAsc ? '升序' : '降序') : '点击按健康分排序' }}</span>
+                      </button>
+                    </th>
                     <th>主要问题</th>
-                    <th>周变化</th>
-                    <th />
+                    <th class="p5__col-sortable p5__col-week" :aria-sort="ariaSortFor('weekDelta')">
+                      <button type="button" class="p5__sort" :class="{ 'is-active': sortKey === 'weekDelta' }" @click="toggleSort('weekDelta')">
+                        周变化
+                        <span class="p5__sort-icon" aria-hidden="true">{{ sortIconFor('weekDelta') }}</span>
+                        <span class="u-sr-only">{{ sortKey === 'weekDelta' ? (sortAsc ? '升序' : '降序') : '点击按周变化排序' }}</span>
+                      </button>
+                    </th>
+                    <th class="p5__col-action" />
                   </tr>
                 </thead>
                 <tbody>
@@ -400,16 +448,32 @@ const taskSummary = computed(() => {
                     @click="goDetail(r.storeId)"
                     @keydown.enter="goDetail(r.storeId)"
                   >
-                    <td>{{ r.storeName }}</td>
-                    <td>
+                    <td class="p5__col-store">
+                      <span
+                        class="p5__store-name"
+                        :title="`${r.storeName}（周变化 ${r.weekDelta > 0 ? '+' : ''}${r.weekDelta}）`"
+                        >{{ r.storeName }}</span
+                      >
+                      <!-- <1280 时「周变化」列收起，数据以次行保留（不丢数据），≥1280 隐藏 -->
+                      <span
+                        class="p5__week-inline"
+                        :class="r.weekDelta > 0 ? 'is-up' : r.weekDelta < 0 ? 'is-down' : ''"
+                      >
+                        周变化 {{ r.weekDelta > 0 ? '+' : '' }}{{ r.weekDelta }}
+                      </span>
+                    </td>
+                    <td class="p5__col-score">
                       <span class="p5__score" :style="{ color: `var(--level-${r.level})` }">{{ r.score }}</span>
                       <HealthBadge :level="r.level" />
                     </td>
-                    <td>{{ r.mainIssue }}</td>
-                    <td :class="r.weekDelta > 0 ? 'is-up' : r.weekDelta < 0 ? 'is-down' : ''">
+                    <td :title="r.mainIssue">{{ r.mainIssue }}</td>
+                    <td
+                      class="p5__col-week"
+                      :class="r.weekDelta > 0 ? 'is-up' : r.weekDelta < 0 ? 'is-down' : ''"
+                    >
                       {{ r.weekDelta > 0 ? '+' : '' }}{{ r.weekDelta }}
                     </td>
-                    <td>
+                    <td class="p5__col-action">
                       <button
                         v-if="canViewDetail(r.storeId)"
                         type="button"
@@ -569,11 +633,12 @@ const taskSummary = computed(() => {
   background: var(--bg-page);
 }
 
-/* 企业级内容容器：4K 不拉宽，窄屏自适应 */
+/* 企业级内容容器：4K 不拉宽（max-width 锁定 1760 居中），窄屏自适应。
+   纵向内边距随视口高度轻微伸缩：13 寸 800p 矮屏自动收紧，给首屏信息让位。 */
 .p5__body {
   max-width: 1760px;
   margin: 0 auto;
-  padding: 16px 24px 24px;
+  padding: clamp(12px, 1.7vh, 16px) 24px 24px;
 }
 
 /* ── 三区分段控件 ── */
@@ -617,18 +682,20 @@ const taskSummary = computed(() => {
 .p5__panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  /* 区块间距随高度轻微收紧：800p 矮屏 10px，常规屏封顶 12px（不随 4K 拉大） */
+  gap: clamp(10px, 1.4vh, 12px);
 }
 
 /* KPI */
 .p5__kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  /* 大屏间距轻微放宽、封顶；13 寸保持紧凑密度 */
+  gap: clamp(10px, 0.85vw, 16px);
 }
 
 .p5__kpi {
-  padding: 14px 16px;
+  padding: clamp(10px, 1.5vh, 14px) clamp(13px, 1vw, 16px);
   border-radius: var(--radius-card);
   background: #fff;
   box-shadow: var(--shadow-card);
@@ -650,7 +717,7 @@ const taskSummary = computed(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12.5px;
+  font-size: clamp(12px, 0.88vw, 13px);
   color: var(--text-3);
 }
 
@@ -675,7 +742,9 @@ const taskSummary = computed(() => {
 
 .p5__kpi-value {
   margin-top: 4px;
-  font-size: 30px;
+  /* 大数字：1280 约 27px（13 寸略收紧保密度），1440 基准 30px 保持不变，
+     1536 起封顶 32px；2K/4K 停在 32px，不等比放大成方块字 */
+  font-size: clamp(26px, 2.08vw, 32px);
   font-weight: 700;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -715,7 +784,7 @@ const taskSummary = computed(() => {
 .p5__loop {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  gap: clamp(10px, 0.85vw, 16px);
 }
 
 .p5__loop-stats {
@@ -817,7 +886,7 @@ const taskSummary = computed(() => {
 .p5__charts {
   display: grid;
   grid-template-columns: 0.9fr 1.6fr;
-  gap: 12px;
+  gap: clamp(10px, 0.85vw, 14px);
 }
 
 .p5__trend-hint {
@@ -848,7 +917,7 @@ const taskSummary = computed(() => {
 }
 
 .p5__card {
-  padding: 14px 16px;
+  padding: clamp(11px, 1.5vh, 14px) clamp(14px, 1vw, 16px);
   border-radius: var(--radius-card);
   background: #fff;
   box-shadow: var(--shadow-card);
@@ -860,7 +929,7 @@ const taskSummary = computed(() => {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: clamp(8px, 1.2vh, 10px);
   font-size: 13.5px;
 }
 
@@ -869,13 +938,13 @@ const taskSummary = computed(() => {
   color: var(--text-3);
 }
 
-/* 区块主标题（h2，视觉沿用原 <b> 字号） */
+/* 区块主标题（h2，视觉沿用原 <b> 字号）：1440 基准 13.5px 保持，clamp 封顶 15px，4K 不放大 */
 .p5__card-title {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   margin: 0;
-  font-size: 13.5px;
+  font-size: clamp(13px, 0.94vw, 15px);
   font-weight: 700;
   color: var(--text-1);
 }
@@ -924,9 +993,101 @@ const taskSummary = computed(() => {
 
 .p5__table {
   width: 100%;
+  /* 5 列全显示时的保底宽度：1280 视口下卡片内容宽约 1200px，无需横向滚动；
+     更窄时外层 overflow-x 兜底，列不挤压 */
   min-width: 640px;
   border-collapse: collapse;
   font-size: 12.5px;
+}
+
+/* 列宽口径：固定列定宽、问题列吃剩余空间，1280 下各列不互相抢 */
+.p5__col-store {
+  width: 190px;
+  max-width: 220px;
+}
+
+.p5__col-score {
+  width: 128px;
+  white-space: nowrap;
+}
+
+.p5__col-week {
+  width: 88px;
+  white-space: nowrap;
+}
+
+.p5__col-action {
+  width: 116px;
+  white-space: nowrap;
+}
+
+/* 门店名单行省略（完整名与周变化在 title 里可悬停查看） */
+.p5__store-name {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 窄屏（<1280）「周变化」列收起后，数据在门店名下方以次行保留，默认隐藏 */
+.p5__week-inline {
+  display: none;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.p5__week-inline.is-up {
+  color: var(--mn-green);
+}
+
+.p5__week-inline.is-down {
+  color: var(--level-risk);
+}
+
+/* 可排序表头：按钮铺满单元格、与原表头视觉一致；方向箭头常驻避免跳动 */
+.p5__table th.p5__col-sortable {
+  padding: 0;
+}
+
+.p5__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.p5__sort:hover {
+  color: var(--text-1);
+  background: #f7f9f7;
+}
+
+.p5__sort:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.p5__sort-icon {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-4);
+}
+
+.p5__sort.is-active {
+  color: var(--text-1);
+}
+
+.p5__sort.is-active .p5__sort-icon {
+  color: var(--mn-green);
 }
 
 .p5__table th {
@@ -1140,6 +1301,33 @@ const taskSummary = computed(() => {
   outline-offset: var(--focus-offset);
 }
 
+/* ═══════════════ 响应式：宽度 × 高度 矩阵 ═══════════════ */
+
+/* 13 寸档（≤1366，覆盖 1280×800 评委机与 1366×768）：两侧留白收到 16px，把宽度让给内容 */
+@media (max-width: 1366px) {
+  .p5__body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* <1280：次要列「周变化」收起（display:none 仍在 DOM，不丢数据），
+   同值以次行形式保留在门店名下方（含涨跌色），悬停门店名 title 也可查看；
+   表格保底宽度同步收窄，避免被迫横滚 */
+@media (max-width: 1279px) {
+  .p5__table {
+    min-width: 560px;
+  }
+
+  .p5__col-week {
+    display: none;
+  }
+
+  .p5__week-inline {
+    display: block;
+  }
+}
+
 /* 窄屏降列：1024 图表/明细单列；768 KPI 与闭环单列 */
 @media (max-width: 1024px) {
   .p5__kpis {
@@ -1170,6 +1358,99 @@ const taskSummary = computed(() => {
 
   .p5__search {
     width: 100%;
+  }
+}
+
+/* 矮屏（≤860p，含 13 寸 800p）：再压一档纵向间距，
+   保证首屏 KPI → AI 晨报/关键动作 → 图表标题可见，风险 Top5 尽量露头 */
+@media (max-height: 860px) {
+  .p5__tabs {
+    margin-bottom: 8px;
+  }
+
+  .p5__panel {
+    gap: 10px;
+  }
+
+  .p5__card-head {
+    margin-bottom: 8px;
+  }
+
+  .p5__risk {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
+/* 无障碍：系统开启「减少动态效果」时，本页悬浮位移/脉冲/过渡全部降级
+   （motion.css 只兜底 .mot-* 工具类，scoped 动效需在此收口） */
+@media (prefers-reduced-motion: reduce) {
+  .p5__kpi,
+  .p5__risk,
+  .p5__table tbody tr,
+  .p5__tab,
+  .p5__dispatch,
+  .p5__risk-dispatch,
+  .p5__page-btn,
+  .p5__link,
+  .p5__sort,
+  .p5__bar-fill {
+    transition-duration: 0.01ms !important;
+  }
+
+  .p5__kpi:hover,
+  .p5__risk:hover {
+    transform: none;
+  }
+
+  .p5__kpi-dot {
+    animation: none;
+  }
+}
+
+/* 打印 / PDF / 大屏演示导出：只留 KPI、卡片、图表与表格内容。
+   Tab、筛选、分页、下派按钮与操作列不输出；卡片去投影改细边框，避免大面积灰底。
+   注意：仅打印当前激活的 Tab（v-show 隐藏面板不输出）。
+   DesktopHeader 在本组件作用域外，未在此隐藏（见交付报告说明）。 */
+@media print {
+  .p5 {
+    background: var(--bg-card);
+  }
+
+  .p5__body {
+    max-width: none;
+    padding: 0;
+  }
+
+  .p5__tabs,
+  .p5__dispatch,
+  .p5__risk-dispatch,
+  .p5__filters,
+  .p5__pager,
+  .p5__col-action {
+    display: none;
+  }
+
+  .p5__kpi,
+  .p5__card {
+    box-shadow: none;
+    border: 1px solid var(--border-color);
+    break-inside: avoid;
+  }
+
+  .p5__kpi:hover,
+  .p5__risk:hover {
+    transform: none;
+    background: var(--bg-card);
+  }
+
+  .p5__charts {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .p5__table td,
+  .p5__table th {
+    padding: 4px 6px;
   }
 }
 </style>

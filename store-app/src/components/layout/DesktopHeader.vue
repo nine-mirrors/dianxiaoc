@@ -165,4 +165,57 @@ onBeforeUnmount(() => {
   color: #fff;
   font-size: 13px;
 }
+
+/* ── 窄窗口兜底（<900px，--bp-md:1024px 内的更窄子集） ──
+ * 仅保证品牌区 / 区域选择 / 角色按钮不互相压叠：允许折行并收紧间距。
+ * 看板主体的完整响应式由其他任务负责；≥1024px（含 1440 设计视口）
+ * 本规则不触发，桌面视觉零回归。 */
+@media (max-width: 900px) {
+  .desk-header {
+    flex-wrap: wrap;
+    align-items: center;
+    height: auto;
+    min-height: 60px;
+    padding: 8px 16px;
+    row-gap: 6px;
+  }
+
+  .desk-header__brand {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .desk-header__title {
+    font-size: 15px;
+    white-space: nowrap;
+  }
+
+  .desk-header__right {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: auto;
+  }
+}
+
+/* 极窄窗口（≤560px，真机退化线 480px 附近）：隐藏纯装饰副标题，
+   功能信息（标题、区域、角色按钮文字）全部保留，只收紧不删减。 */
+@media (max-width: 560px) {
+  .desk-header {
+    padding: 8px 12px;
+  }
+
+  .desk-header__sub {
+    display: none;
+  }
+
+  .desk-header__region select,
+  .desk-header__role {
+    font-size: 12px;
+  }
+
+  .desk-header__role {
+    padding: 5px 10px;
+  }
+}
 </style>

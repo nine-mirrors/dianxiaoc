@@ -1442,7 +1442,8 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
   z-index: 60;
   display: flex;
   gap: 8px;
-  padding: 10px 12px 12px;
+  /* 底部安全区：全面屏手势条不压按钮（env 桌面机壳内为 0，不影响演示） */
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(245, 247, 245, 0) 0%, var(--bg-page) 42%);
 }
 

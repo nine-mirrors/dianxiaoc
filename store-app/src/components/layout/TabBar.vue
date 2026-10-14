@@ -59,16 +59,23 @@ function go(tab: TabItem): void {
 .tabbar {
   display: flex;
   flex: none;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* 底部安全区（全面屏手势条）与左右安全区（横屏侧边刘海）直接吃在导航栏
+     自身上：白色背景与上边框随 padding 一起延伸进安全区，不会留白边。
+     桌面机壳 / 非全面屏 env=0，与原视觉完全一致。 */
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
   background: #fff;
   border-top: 1px solid var(--border-color);
 }
 
 .tabbar__item {
   flex: 1;
+  /* min-width:0 允许在超窄屏内收缩，不把相邻项挤出换行 */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   padding: 7px 0 6px;
   border: none;
@@ -80,5 +87,46 @@ function go(tab: TabItem): void {
 .tabbar__item--on {
   color: var(--mn-green);
   font-weight: 700;
+}
+
+/* 真机全屏（≤480px = 真机退化线，--bp-sm:640px 内子集）：
+   图标与字号随视口宽度小幅弹性，320px 窄屏不挤；clamp 上下限保证
+   390 以上视觉不变，桌面机壳（>480px）整条规则不触发。 */
+@media (max-width: 480px) {
+  .tabbar__item {
+    gap: 1px;
+    font-size: clamp(10px, 3.2vw, 11px);
+  }
+
+  /* 文字不换行、行高收紧：320px 下 4 个 4 字标签仍可一行等宽排列；
+     仅真机分支生效，桌面机壳内栏高与原设计一致 */
+  .tabbar__item span {
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+
+  /* AppIcon 的 svg 是本组件的子根节点，携带本组件作用域属性，可直接命中；
+     宽高等比缩放，避免只缩文字不缩图标导致的视觉失衡 */
+  .tabbar__item .app-icon {
+    width: clamp(19px, 6.4vw, 21px);
+    height: clamp(19px, 6.4vw, 21px);
+  }
+}
+
+/* 超小屏（≤360px）再收半档间距，触控热区仍约 ≥40px 高 */
+@media (max-width: 360px) {
+  .tabbar__item {
+    padding-top: 6px;
+    padding-bottom: 5px;
+  }
+}
+
+/* 横屏矮高度（≤480px 高且 landscape）：压缩上下内边距，保证内容区与
+   TabBar 在矮视口内同时可见、主操作不被挤出屏幕 */
+@media (max-height: 480px) and (orientation: landscape) {
+  .tabbar__item {
+    padding-top: 4px;
+    padding-bottom: 3px;
+  }
 }
 </style>

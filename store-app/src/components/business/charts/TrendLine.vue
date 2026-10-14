@@ -26,8 +26,36 @@ const activeKey = ref<TrendKey>('score')
 const el = ref<HTMLDivElement | null>(null)
 let chart: echarts.ECharts | null = null
 
+/** 容器尺寸观察（Tab v-show 切换 / 断点切换 / 窗口拖拽都靠它），卸载时断开 */
+let resizeObserver: ResizeObserver | null = null
+/** resize 合并到下一帧执行，拖拽窗口时每帧最多重绘一次 */
+let resizeRaf = 0
+/** 上一次字号档：仅跨档时才整图 setOption，同档拖拽只走廉价的 resize */
+let lastFontScale = 1
+
 /** 当前选中的序列 */
 const active = computed<TrendSeries | undefined>(() => props.series.find((s) => s.key === activeKey.value))
+
+/** 系统开启「减少动态效果」时关闭 ECharts 入场/补间动画（语义不依赖动画传达） */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+/**
+ * 坐标轴字号档随容器宽度轻微变化并封顶：
+ * 窄卡（≤360px）0.92 档（约 10px）、常规 1 档（11px）、超宽（≥900px）1.08 档（约 12px）。
+ * 趋势卡在 max-width:1760 内容器里最宽约 1090px，2K/4K 也只到 12px，不会变成大字报。
+ */
+function fontScale(): number {
+  const w = el.value?.clientWidth ?? 0
+  if (w > 0 && w <= 360) return 0.92
+  if (w >= 900) return 1.08
+  return 1
+}
 
 /** 读屏替代文本：当前指标 + 周数 + 最新值（全部来自现有 props，不编造口径） */
 const ariaLabel = computed<string>(() => {
@@ -48,10 +76,19 @@ const LINE_COLORS: Record<TrendKey, string> = {
 
 function render(): void {
   if (!el.value || !active.value) return
+  // 容器尚无布局（如组件挂在 v-show 隐藏面板里，宽高为 0）：不 init。
+  // 等 ResizeObserver 在面板显示、容器拿到真实尺寸后回调里再建图，
+  // 避免 ECharts 把画布钉死在 0×0（Tab 切回后图表空白的根因）。
+  const w = el.value.clientWidth
+  const h = el.value.clientHeight
+  if (!w || !h) return
   if (!chart) chart = echarts.init(el.value)
   const s = active.value
+  const axisFont = Math.round(11 * fontScale())
+  lastFontScale = fontScale()
   chart.setOption(
     {
+      animation: !prefersReducedMotion(),
       color: [LINE_COLORS[s.key]],
       tooltip: {
         trigger: 'axis',
@@ -67,7 +104,7 @@ function render(): void {
         boundaryGap: false,
         axisLine: { lineStyle: { color: '#e5e7eb' } },
         axisTick: { show: false },
-        axisLabel: { color: '#6b7280', fontSize: 11 },
+        axisLabel: { color: '#6b7280', fontSize: axisFont },
       },
       yAxis: {
         type: 'value',
@@ -75,7 +112,7 @@ function render(): void {
         axisLine: { show: false },
         axisTick: { show: false },
         splitLine: { lineStyle: { color: '#f0f2f0', type: 'dashed' } },
-        axisLabel: { color: '#6b7280', fontSize: 11, formatter: `{value}${s.unit}` },
+        axisLabel: { color: '#6b7280', fontSize: axisFont, formatter: `{value}${s.unit}` },
       },
       series: [
         {
@@ -94,17 +131,60 @@ function render(): void {
   )
 }
 
+/** 窗口 resize 兜底入口（主路径是 ResizeObserver，这里只统一并入下一帧） */
 function onResize(): void {
-  chart?.resize()
+  scheduleSync()
+}
+
+/**
+ * 容器尺寸同步：
+ * - 宽高为 0（面板被 v-show 隐藏）：直接跳过，不 resize 也不报错；
+ * - 图未建（挂载在隐藏态 / 初次还没布局）：补建并渲染；
+ * - 仅字号跨档：整图 setOption 更新文字尺寸；
+ * - 其余情况（拖拽 / 断点 / Tab 切回）：走廉价 chart.resize()。
+ */
+function syncSize(): void {
+  resizeRaf = 0
+  if (!el.value) return
+  const w = el.value.clientWidth
+  const h = el.value.clientHeight
+  if (!w || !h) return
+  if (!chart) {
+    render()
+    return
+  }
+  if (fontScale() !== lastFontScale) {
+    render()
+    return
+  }
+  chart.resize()
+}
+
+/** rAF 节流：一帧内无论收多少回调（窗口 + RO）只同步一次 */
+function scheduleSync(): void {
+  if (resizeRaf) return
+  resizeRaf = requestAnimationFrame(syncSize)
 }
 
 onMounted(() => {
   render()
+  // 直接观察容器本身：窗口拖拽、CSS 断点换列、Tab v-show 隐藏再显示，
+  // 凡容器尺寸变化都能收到（window resize 只在窗口本身变化时触发，覆盖不到后两者）。
+  if (el.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(scheduleSync)
+    resizeObserver.observe(el.value)
+  }
   window.addEventListener('resize', onResize)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  if (resizeRaf) {
+    cancelAnimationFrame(resizeRaf)
+    resizeRaf = 0
+  }
   chart?.dispose()
   chart = null
 })
@@ -163,6 +243,25 @@ watch([() => props.series, activeKey], render, { deep: true })
 
 .trend__chart {
   width: 100%;
-  height: 220px;
+  /* 高度随视口高度轻微伸缩并双向封顶：
+     800px 矮屏约 196px（为首屏让垂直空间），1440×900 基准约 220px 与原版一致，
+     约 950p 起封顶 232px；2K/4K 不随高度拉长，折线不会被压成扁线。 */
+  height: clamp(180px, 24.5vh, 232px);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* 系统开启「减少动态效果」：指标切换只保留瞬时颜色变化，不做过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .trend__tab {
+    transition: none;
+  }
+}
+
+/* 打印：vh 在分页媒体里口径不稳定，改用固定高度 */
+@media print {
+  .trend__chart {
+    height: 200px;
+  }
 }
 </style>

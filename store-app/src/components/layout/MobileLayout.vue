@@ -68,7 +68,13 @@ const emit = defineEmits<{ (e: 'back'): void }>()
 
     <!-- 底部 Tab -->
     <TabBar v-if="showTabBar" />
-    <slot name="footer" />
+
+    <!-- footer 插槽宿主：页面自带的吸底/悬浮 CTA 栏渲染于此。
+         宿主本身不加安全区内边距（页面栏位已使用 .u-safe-bottom
+         或 var(--u-safe-bottom) 自行处理），避免底距被叠加两次。 -->
+    <footer v-if="$slots.footer" class="ml-foot">
+      <slot name="footer" />
+    </footer>
   </div>
 </template>
 
@@ -76,6 +82,8 @@ const emit = defineEmits<{ (e: 'back'): void }>()
 .mobile-layout {
   display: flex;
   flex-direction: column;
+  /* 高度只依赖父盒：桌面机壳内为 844 设计高度，真机全屏下父链最终取
+     100dvh（见 PhoneFrame），不硬编码 844，矮屏/横屏自然适应 */
   height: 100%;
   background: var(--bg-page);
 }
@@ -84,9 +92,12 @@ const emit = defineEmits<{ (e: 'back'): void }>()
   display: flex;
   align-items: center;
   gap: 8px;
+  /* 头部高度固定基线（flex:none 不参与压缩），顶部安全区让内容避开
+     刘海/灵动岛；头部背景延伸到屏幕边缘，env 内边距只推内容不推底色。
+     左右 env 为横屏侧边刘海预留：竖屏/桌面机壳 env=0，视觉不变。 */
   min-height: 52px;
-  padding: 8px 14px;
-  padding-top: max(14px, env(safe-area-inset-top));
+  padding: 8px max(14px, env(safe-area-inset-right, 0px)) 8px max(14px, env(safe-area-inset-left, 0px));
+  padding-top: max(14px, env(safe-area-inset-top, 0px));
   background: #fff;
   border-bottom: 1px solid var(--border-color);
   flex: none;
@@ -141,7 +152,49 @@ const emit = defineEmits<{ (e: 'back'): void }>()
 }
 
 .ml-body {
+  /* 内容滚动区：flex 撑满头部与底部栏之间的剩余高度（min-height:0 允许收缩），
+     高度由 flex 计算而非固定 844；真机全屏下父链为 100dvh。 */
   flex: 1;
   min-height: 0;
+  /* 横向溢出兜底：任何卡片/表格都不允许顶出横向滚动（overflow-y 仍由
+     .u-scroll-y 接管为 auto）；position:fixed 的地图全屏以 .phone 为
+     包含块，不受本容器裁切。 */
+  overflow-x: hidden;
+  /* 长英文单词 / 数字串（订单号、URL 等）可断行，不撑破卡片 */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  /* 横屏侧边刘海：竖屏与桌面机壳 env=0，视觉零变化 */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* footer 插槽宿主：不自带内边距与定位，吸底栏的定位上下文仍是页面级
+   定位祖先（与改造前一致）；安全区底距统一用全局 .u-safe-bottom /
+   var(--u-safe-bottom)，由页面栏位按需取用，避免宿主与页面双重留白。 */
+.ml-foot {
+  flex: none;
+}
+
+/* 横屏矮高度（≤480px 高且 landscape，如手机横屏 844×390 / 超宽矮窗口）：
+   压缩头部，把垂直空间让给内容与主操作；桌面常规高度窗口不触发。 */
+@media (max-height: 480px) and (orientation: landscape) {
+  .ml-head {
+    min-height: 40px;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-bottom: 4px;
+  }
+}
+
+/* 超小屏（≤360px，真机退化线 480px 内的子集）：头部间距/字号收敛一档，
+   390 设计稿（>360px）不受任何影响。 */
+@media (max-width: 360px) {
+  .ml-head {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  .ml-head__title {
+    font-size: 15px;
+  }
 }
 </style>

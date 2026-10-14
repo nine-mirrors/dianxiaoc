@@ -236,3 +236,90 @@ a {
   width: 0;
   height: 0;
 }
+
+/* ════════════════════════════════════════════════════════════
+ * 移动端全机型适配（响应式 + 安全区）—— 本段只追加，不改既有规则。
+ *
+ * 断点口径（媒体查询内写像素值，与 tokens.css 令牌对齐）：
+ *   480px  真机全屏退化线（< --bp-sm:640px 的真机子集，PhoneFrame 据此退壳）
+ *   360px / 320px  超小屏收敛档
+ *   480px 高 + landscape  横屏矮高度（手机横屏 844×390 / 超宽矮窗口）
+ *
+ * 安全区单点归属（避免同一方向被两层叠加）：
+ *   顶：MobileLayout .ml-head；底：TabBar / 上文 .u-safe-bottom；
+ *   左右：.ml-head / TabBar / .u-safe-x；
+ *   不套 MobileLayout 的全屏页（登录页）：见本段 .mot-route-host 兜底。
+ * ════════════════════════════════════════════════════════════ */
+
+/* 安全区变量：业务组件/页面可用 var(--u-safe-*) 组合 calc 底距，
+   不必各自重复 env() 声明；未刘海设备解析为 0。 */
+:root {
+  --u-safe-top: env(safe-area-inset-top, 0px);
+  --u-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --u-safe-left: env(safe-area-inset-left, 0px);
+  --u-safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* 顶部安全区工具类（底部 .u-safe-bottom 已在本文上方定义；此处不重复声明） */
+.u-safe-top {
+  padding-top: var(--u-safe-top);
+}
+
+/* 左右安全区工具类：横屏侧边刘海/曲面屏边缘防误触 */
+.u-safe-x {
+  padding-left: var(--u-safe-left);
+  padding-right: var(--u-safe-right);
+}
+
+/* 媒体元素不撑破容器：img 上文已约束 max-width:100%，补齐内联
+   svg / 视频 / canvas（仅在容器更窄时等比收缩，正常尺寸零影响）。 */
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+/* ── 真机全屏（≤480px = 真机退化线，--bp-sm:640px 内的真机子集） ── */
+@media (max-width: 480px) {
+  /* 禁止页面级横向滚动条：机壳内滚动发生在 .ml-body，不受影响；
+     桌面窗口宽度永远 >480，本规则绝不触发（桌面零回归）。 */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* 不使用 MobileLayout 的自定义全屏页（当前为登录页 .login-page）：
+     由路由宿主的直系根节点统一兜住四边安全区。
+     .mobile-layout 的顶/底安全区已由 .ml-head、TabBar 单点处理，
+     用 :not 排除，避免 env 内边距叠加两次。 */
+  .mot-route-host > *:not(.mobile-layout) {
+    padding-top: var(--u-safe-top);
+    padding-right: var(--u-safe-right);
+    padding-bottom: var(--u-safe-bottom);
+    padding-left: var(--u-safe-left);
+  }
+}
+
+/* ── 超小屏收敛（320~360px，真机退化线内子集） ──
+ * 全站尺寸以 px 为主，html 基准字号主要为 rem/em 写法兜底；
+ * 真正的组件级间距/字号收敛在 MobileLayout、TabBar 同断点内完成。
+ * 断点 >360px（含 390 设计稿与真机 390 点）完全不触发，视觉不变。 */
+@media (max-width: 360px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 320px) {
+  html {
+    font-size: 12px;
+  }
+}
+
+/* ── 横屏矮高度（≤480px 高且 landscape：手机横屏 / 超宽矮窗口） ──
+ * 外壳限高与头部/TabBar 压缩分别在 PhoneFrame、MobileLayout、TabBar 内；
+ * 此处兜底禁止矮横屏出现页面级横向滚动，保证吸底主操作始终可达。 */
+@media (max-height: 480px) and (orientation: landscape) {
+  body {
+    overflow-x: hidden;
+  }
+}
