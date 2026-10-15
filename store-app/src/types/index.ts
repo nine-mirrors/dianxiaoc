@@ -8,7 +8,7 @@
 /* ════════════════════ 基础枚举 ════════════════════ */
 
 /** 系统角色 */
-export type Role = 'rep' | 'manager' | 'owner'
+export type Role = 'rep' | 'manager' | 'owner' | 'admin'
 
 /** 门店类型：A连锁超市 / B大卖场·社区生鲜 / C便利店 */
 export type StoreType = 'A' | 'B' | 'C'

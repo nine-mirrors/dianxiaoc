@@ -19,12 +19,15 @@
  * 无障碍：兜底区 role="alert"（隐式 aria-live=assertive，插入即被读屏播报）；
  * 入场仅使用 opacity/translateY，并在 prefers-reduced-motion 下完全关闭。
  */
-import { onErrorCaptured, ref, watch } from 'vue'
+import { computed, onErrorCaptured, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
 import { reportError } from '@/composables/useAppErrorHandler'
 
 const emit = defineEmits<{ (e: 'retry'): void }>()
+
+/** 兜底时间戳（与 ErrorView 的品牌异常页视觉统一） */
+const stamp = computed<string>(() => new Date().toLocaleString('zh-CN', { hour12: false }))
 
 const route = useRoute()
 const router = useRouter()
@@ -82,32 +85,59 @@ function goBack(): void {
   <!-- 正常态：直接渲染默认插槽，不增加任何包裹元素，盒模型 / 转场定位与旧结构完全一致 -->
   <slot v-if="!failed" />
 
-  <!-- 异常态：仅替换内容区 -->
-  <section v-else class="aeb" role="alert">
-    <div class="aeb__brand">
-      <AppIcon name="milk" :size="34" color="var(--mn-green)" title="店小C" />
+  <!-- 异常态：仅替换内容区（品牌化兜底，与 ErrorView 视觉统一） -->
+  <section v-else class="errx errx--boundary" role="alert">
+    <div class="errx__art" aria-hidden="true">
+      <svg width="92" height="92" viewBox="0 0 100 120">
+        <path
+          d="M50 6 C50 6 14 46 14 74 a36 36 0 0 0 72 0 C86 46 50 6 50 6z"
+          fill="none"
+          stroke="var(--mn-green)"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          opacity="0.9"
+        />
+        <path
+          d="M30 70 L44 78 L56 68 L72 76"
+          fill="none"
+          stroke="var(--mn-green)"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path d="M46 96 L54 88 L46 80" fill="none" stroke="var(--mn-green)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
     </div>
-    <h1 class="aeb__title">页面开小差了</h1>
-    <p class="aeb__desc">别担心，内容加载时遇到了一点小问题，你的巡店记录不会受影响。刷新一下，或返回上一页继续。</p>
 
-    <div class="aeb__actions">
-      <button type="button" class="u-btn u-btn--primary aeb__btn" @click="reloadPage">
-        <AppIcon name="refresh" :size="16" color="#ffffff" />
+    <h1 class="errx__title">页面开小差了</h1>
+    <p class="errx__desc">
+      别担心，内容加载时遇到了一点小问题，你的巡店记录不会受影响。刷新一下，或返回上一页继续。
+    </p>
+
+    <div class="errx__actions">
+      <button type="button" class="u-btn u-btn--primary errx__btn" @click="reloadPage">
+        <AppIcon name="refresh" :size="16" color="var(--milk)" />
         <span>刷新页面</span>
       </button>
-      <button type="button" class="u-btn u-btn--ghost aeb__btn" @click="goBack">
-        <AppIcon name="chevron-left" :size="16" color="var(--mn-green)" />
+      <button type="button" class="u-btn u-btn--ghost errx__btn" @click="goBack">
+        <AppIcon name="history" :size="16" color="currentColor" />
         <span>返回上一页</span>
       </button>
     </div>
 
-    <button type="button" class="aeb__retry" @click="retry">重试当前页</button>
+    <p class="errx__foot">
+      <AppIcon name="warning" :size="13" color="var(--text-3)" />
+      {{ stamp }} · 演示环境 · 请联系现场工作人员
+    </p>
+
+    <button type="button" class="errx__retry" @click="retry">重试当前页</button>
   </section>
 </template>
 
 <style scoped>
 /* 兜底区填满内容区：手机壳内由 .mot-route-host 定高，桌面端沿 #app 高度链撑起视口 */
-.aeb {
+.errx {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -120,10 +150,10 @@ function goBack(): void {
   overflow-y: auto;
   text-align: center;
   background: var(--bg-page);
-  animation: aeb-in var(--dur-base, 220ms) var(--ease-decel, ease-out) both;
+  animation: errx-in var(--dur-base, 220ms) var(--ease-decel, ease-out) both;
 }
 
-@keyframes aeb-in {
+@keyframes errx-in {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -135,50 +165,59 @@ function goBack(): void {
   }
 }
 
-.aeb__brand {
+.errx__art {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
+  width: 96px;
+  height: 96px;
   margin-bottom: var(--space-4);
   border-radius: 50%;
   background: var(--mn-green-light);
 }
 
-.aeb__title {
-  font-size: 17px;
-  font-weight: 700;
+.errx__title {
+  font-size: 18px;
+  font-weight: 800;
   line-height: 1.4;
   color: var(--text-1);
 }
 
-.aeb__desc {
-  max-width: 280px;
+.errx__desc {
+  max-width: 282px;
   margin-top: var(--space-2);
   font-size: 13px;
   line-height: 1.7;
   color: var(--text-2);
 }
 
-.aeb__actions {
+.errx__actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   width: 100%;
-  max-width: 280px;
+  max-width: 300px;
   margin-top: var(--space-6);
 }
 
-.aeb__btn {
+.errx__btn {
   width: 100%;
   height: var(--btn-h-lg);
 }
 
+.errx__foot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: var(--space-5) 0 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
 /* 第三选择：文字按钮，弱化但保持 ≥36px 触控热区 */
-.aeb__retry {
+.errx__retry {
   min-height: 36px;
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
   padding: 8px var(--space-4);
   border: 0;
   background: transparent;
@@ -189,7 +228,7 @@ function goBack(): void {
 
 /* 尊重系统「减弱动态效果」：兜底内容直接出现，不做位移淡入 */
 @media (prefers-reduced-motion: reduce) {
-  .aeb {
+  .errx {
     animation: none;
   }
 }

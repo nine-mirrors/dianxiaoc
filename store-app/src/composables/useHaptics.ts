@@ -192,9 +192,9 @@ export function useHaptics(): UseHapticsReturn {
     light: (options?: HapticsOptions) => fire(PATTERNS.light, options),
     medium: (options?: HapticsOptions) => fire(PATTERNS.medium, options),
     select: (options?: HapticsOptions) => fire(PATTERNS.select, options),
-    success: (options?: HapticsOptions) => fire(PATTERNS.success, options),
-    warning: (options?: HapticsOptions) => fire(PATTERNS.warning, options),
-    error: (options?: HapticsOptions) => fire(PATTERNS.error, options),
+    success: (options?: HapticsOptions) => fire([...PATTERNS.success], options),
+    warning: (options?: HapticsOptions) => fire([...PATTERNS.warning], options),
+    error: (options?: HapticsOptions) => fire([...PATTERNS.error], options),
     vibrate: fire,
   }
 }

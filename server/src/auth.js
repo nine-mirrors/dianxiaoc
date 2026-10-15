@@ -52,11 +52,12 @@ if (!process.env.AUTH_SECRET) {
   console.warn('[auth]   请在 server/.env 设置 AUTH_SECRET（参见 server/.env.example）。')
 }
 
-/** 三个演示账号（首次启动时落盘，之后以文件为准） */
+/** 四个演示账号（首次启动时落盘，之后以文件为准） */
 const DEFAULT_ACCOUNTS = [
   { username: 'liqiang', password: '123456', role: 'rep' },
   { username: 'wangmin', password: '123456', role: 'manager' },
   { username: 'zhangdajie', password: '123456', role: 'owner' },
+  { username: 'admin', password: '123456', role: 'admin' },
 ]
 
 /** 账号 → 落地页（服务端裁定，前端不可自选） */
@@ -64,6 +65,7 @@ const ROLE_HOME = {
   rep: '/rep/today',
   manager: '/manager/dashboard',
   owner: '/owner',
+  admin: '/admin',
 }
 
 /** 账号 → 该角色能访问的页面清单（服务端下发，用于前端路由守卫与文案说明） */
@@ -71,6 +73,7 @@ const ROLE_SCOPE = {
   rep: ['今日巡店', '拍照诊断', 'AI 方案', '整改留证'],
   manager: ['区域看板', '风险预警', '下派任务'],
   owner: ['自助诊断', '一键补货'],
+  admin: ['平台总控', '账号派发', '黑名单', '知识库', '公告', '审计日志'],
 }
 
 function loadAccounts() {
@@ -253,7 +256,7 @@ export function demoAccountList() {
       password: a.password,
       role: a.role,
       person: user?.name ?? '',
-      roleLabel: { rep: '业代', manager: '区域经理', owner: '店员/店主' }[a.role] ?? a.role,
+      roleLabel: { rep: '业代', manager: '区域经理', owner: '店员/店主', admin: '平台管理员' }[a.role] ?? a.role,
       scope: ROLE_SCOPE[a.role] ?? [],
       home: ROLE_HOME[a.role] ?? '/rep/today',
     }

@@ -41,6 +41,14 @@ function openVisit(v: Visit): void {
   }
   router.push(`/rep/diagnosis/${v.id}?readonly=1`)
 }
+
+/**
+ * 该店「再巡一次」→ 标准巡店八步骤（VisitStepsView 由 :taskId 解析出门店）。
+ * 历史留证之外，给业代一条马上接着做的执行路径。
+ */
+function startSteps(v: Visit): void {
+  router.push(`/rep/steps/${v.storeId}`)
+}
 </script>
 
 <template>
@@ -60,30 +68,41 @@ function openVisit(v: Visit): void {
       />
 
       <div v-else class="hist__list">
-        <button
-          v-for="v in visits"
-          :key="v.id"
-          type="button"
-          class="hist__item mot-tap"
-          @click="openVisit(v)"
-        >
-          <span class="hist__thumb">
-            <img v-if="thumbOf(v.storeId)" :src="thumbOf(v.storeId)" :alt="v.storeName" />
-            <AppIcon v-else name="package" :size="18" color="var(--text-4)" />
-          </span>
+        <div v-for="v in visits" :key="v.id" class="hist__row">
+          <button
+            type="button"
+            class="hist__item mot-tap"
+            @click="openVisit(v)"
+          >
+            <span class="hist__thumb">
+              <img v-if="thumbOf(v.storeId)" :src="thumbOf(v.storeId)" :alt="v.storeName" />
+              <AppIcon v-else name="package" :size="18" color="var(--text-4)" />
+            </span>
 
-          <span class="hist__main">
-            <span class="hist__store u-ellipsis">{{ v.storeName }}</span>
-            <span class="hist__meta">{{ formatShortTime(v.visitedAt) }} · 第 {{ v.visitNo }} 次</span>
-          </span>
+            <span class="hist__main">
+              <span class="hist__store u-ellipsis">{{ v.storeName }}</span>
+              <span class="hist__meta">{{ formatShortTime(v.visitedAt) }} · 第 {{ v.visitNo }} 次</span>
+            </span>
 
-          <span class="hist__score">
-            <b :style="{ color: `var(--level-${levelOf(v.score)})` }">{{ v.score }}</b>
-            <HealthBadge :level="levelOf(v.score)" />
-          </span>
+            <span class="hist__score">
+              <b :style="{ color: `var(--level-${levelOf(v.score)})` }">{{ v.score }}</b>
+              <HealthBadge :level="levelOf(v.score)" />
+            </span>
 
-          <AppIcon name="chevron-right" :size="16" color="var(--text-3)" />
-        </button>
+            <AppIcon name="chevron-right" :size="16" color="var(--text-3)" />
+          </button>
+
+          <!-- 再巡一次 → 标准巡店八步骤（与「查看历史」并列的第二动作） -->
+          <button
+            type="button"
+            class="hist__steps u-tap"
+            :aria-label="`再巡一次：${v.storeName}`"
+            @click="startSteps(v)"
+          >
+            <AppIcon name="clipboard" :size="17" color="var(--mn-green-dark)" />
+            <span>再巡</span>
+          </button>
+        </div>
       </div>
 
       <p class="hist__foot">✦ 历史诊断进入只读态，可留证对比整改前后</p>
@@ -102,7 +121,16 @@ function openVisit(v: Visit): void {
   gap: 8px;
 }
 
+/* 记录行 + 「再巡」动作横向并排 */
+.hist__row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
 .hist__item {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -120,6 +148,30 @@ function openVisit(v: Visit): void {
   transition:
     transform var(--dur-fast) var(--ease-standard),
     box-shadow var(--dur-fast) var(--ease-standard);
+}
+
+/* 「再巡一次（八步骤）」第二动作：竖向紧凑按钮 */
+.hist__steps {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 54px;
+  padding: 0;
+  border: 1px solid var(--mn-green);
+  border-radius: var(--radius-card);
+  background: var(--mn-green-light);
+  color: var(--mn-green-dark);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hist__steps:active {
+  transform: scale(0.96);
 }
 
 .hist__item:hover {

@@ -27,6 +27,19 @@ import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
 import type { DashboardOverview, Kpi, StoreRow, Task, TaskType } from '@/types'
 
+/**
+ * 后端 buildDashboardOverview 实际比共享类型多返回 taskSummary / regionName / regionStoreTotal，
+ * 且 kpis 会产出 trend:'flat'。共享 types/index.ts 不在本代理独占清单内，故在本地做结构扩展，
+ * 仅用于本页渲染，避免改动全局类型定义。
+ */
+type KpiExt = Omit<Kpi, 'trend'> & { trend: 'up' | 'down' | 'flat' }
+type DashboardOverviewExt = Omit<DashboardOverview, 'kpis'> & {
+  kpis: KpiExt[]
+  taskSummary?: { total: number; done: number; open: number; overdue: number; completionRate: number | null }
+  regionName?: string
+  regionStoreTotal?: number
+}
+
 const router = useRouter()
 const session = useSessionStore()
 const toast = useToast()
@@ -37,7 +50,9 @@ const regionId = ref<string>('R_EAST')
 const { data, loading, run } = useApi(() => getDashboardOverview(regionId.value), {
   initial: null as unknown as { overview: DashboardOverview },
 })
-const overview = computed<DashboardOverview | null>(() => data.value?.overview ?? null)
+const overview = computed<DashboardOverviewExt | null>(
+  () => (data.value?.overview as unknown as DashboardOverviewExt | undefined) ?? null,
+)
 
 /** 切换区域后同步刷新看板（订货汇总随 overview 一并带回） */
 async function changeRegion(id: string): Promise<void> {
@@ -49,11 +64,12 @@ async function changeRegion(id: string): Promise<void> {
 /**
  * 切换账号（身份由后端账号决定，前端不允许自选角色）。
  * 原实现调 session.login('rep') 只传一个参数，与新签名 (username, password) 不匹配 → 必失败。
+ * router.push 的返回（Promise<void | NavigationFailure>）不作为业务结果返回，避免类型不匹配。
  */
-function switchAccount(): Promise<void> {
+function switchAccount(): void {
   session.logout()
   toast.info('请重新登录目标账号')
-  return router.push('/login')
+  void router.push('/login')
 }
 
 /* ═══════════════ 米勒分块：看板三区（纯前端分段切换，不打接口） ═══════════════ */
@@ -128,22 +144,11 @@ const dispatchStores = computed(() =>
 /** AI 晨报组件实例：下派成功后令其重新生成（已派门店不再重复出草稿） */
 const briefRef = ref<InstanceType<typeof ManagerAiBrief> | null>(null)
 
-/** 预置诊断数据的门店（S1–S5）。
- *  diagnoses.json 只覆盖这 5 家，其余 123 家点「查看详情」会走到后端 404，
- *  并弹出与「点错行」无关的报错文案（"未检测到蒙牛陈列区域，请重拍"）。
- *  演示期间随手点一行就穿帮，因此对无诊断数据的门店隐藏该入口 ——
- *  不用后端 fallback 兜，因为那等于为 123 家店编造诊断内容，与项目
- *  「数字可追问、不编造」的核心原则冲突。*/
-const DIAGNOSIS_READY = new Set(['S1', 'S2', 'S3', 'S4', 'S5'])
-function canViewDetail(storeId: string): boolean {
-  return DIAGNOSIS_READY.has(storeId)
-}
-
-/** S1–S5 行点击 / 键盘 Enter 跳转只读诊断（保持既有跳转不变） */
+/** 门店行点击 / 键盘 Enter → 经理端「AI 门店体检报告」（/manager/store/:storeId）。
+ *  新 profile 接口对所有门店可用：有诊断走真实诊断，无诊断以门店档案 lastScore 兜底并显式标注，
+ *  因此不再按 S1–S5 设入口闸门 —— 全量门店均可点，且不会出现后端 404 穿帮。*/
 function goDetail(storeId: string): void {
-  if (canViewDetail(storeId)) {
-    void router.push(`/rep/diagnosis/D_${storeId}?readonly=1`)
-  }
+  void router.push(`/manager/store/${storeId}`)
 }
 
 /**
@@ -163,7 +168,7 @@ function onDispatched(task: Task): void {
 /** 计数型指标：数值上升才算恶化（红灯门店、缺货率）；其余指标无恶化口径不亮红点 */
 const COUNT_METRICS_WORSE_WHEN_UP = new Set(['redStores', 'oosRate'])
 
-function kpiWorsening(k: Kpi): boolean {
+function kpiWorsening(k: KpiExt): boolean {
   if (!k.danger) return false
   if (COUNT_METRICS_WORSE_WHEN_UP.has(k.key)) return k.trend === 'up'
   return false
@@ -443,8 +448,8 @@ const taskSummary = computed(() => {
                   <tr
                     v-for="r in pagedStoreRows"
                     :key="r.storeId"
-                    :class="{ 'is-clickable': canViewDetail(r.storeId) }"
-                    :tabindex="canViewDetail(r.storeId) ? 0 : undefined"
+                    class="is-clickable"
+                    tabindex="0"
                     @click="goDetail(r.storeId)"
                     @keydown.enter="goDetail(r.storeId)"
                   >
@@ -475,16 +480,12 @@ const taskSummary = computed(() => {
                     </td>
                     <td class="p5__col-action">
                       <button
-                        v-if="canViewDetail(r.storeId)"
                         type="button"
                         class="p5__link"
                         @click.stop="goDetail(r.storeId)"
                       >
                         查看详情
                       </button>
-                      <span v-else class="p5__link-disabled" title="该门店仅有看板汇总数据，未采集货架实拍诊断">
-                        仅看板数据
-                      </span>
                     </td>
                   </tr>
                   <tr v-if="!pagedStoreRows.length">
@@ -648,7 +649,8 @@ const taskSummary = computed(() => {
   margin-bottom: var(--space-3, 12px);
   padding: 3px;
   border-radius: 999px;
-  background: #e9ede9;
+  /* 轨道用边框令牌：日间浅灰、夜间比卡片略亮的墨绿，激活块浮在轨道上 */
+  background: var(--border-color);
 }
 
 .p5__tab {
@@ -669,9 +671,9 @@ const taskSummary = computed(() => {
 }
 
 .p5__tab.is-active {
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-1);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--sh-1);
 }
 
 .p5__tab:focus-visible {
@@ -697,7 +699,7 @@ const taskSummary = computed(() => {
 .p5__kpi {
   padding: clamp(10px, 1.5vh, 14px) clamp(13px, 1vw, 16px);
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
   cursor: pointer;
   transition: transform var(--dur-fast) ease, background var(--dur-fast) ease;
@@ -705,7 +707,7 @@ const taskSummary = computed(() => {
 
 .p5__kpi:hover {
   transform: translateY(-2px);
-  background: #f7f9f7;
+  background: var(--bg-page);
 }
 
 .p5__kpi:focus-visible {
@@ -748,6 +750,7 @@ const taskSummary = computed(() => {
   font-weight: 700;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
+  color: var(--text-1);
 }
 
 .p5__kpi-value.is-danger {
@@ -854,7 +857,7 @@ const taskSummary = computed(() => {
   height: 6px;
   margin: 10px 0 6px;
   border-radius: 999px;
-  background: #eef1ef;
+  background: var(--border-color);
   overflow: hidden;
 }
 
@@ -905,7 +908,8 @@ const taskSummary = computed(() => {
   border: none;
   border-radius: 999px;
   background: var(--ai-purple);
-  color: #fff;
+  /* 日间奶白、夜间反转为深字（夜间 AI 紫提亮），与全局 u-btn--ai 同惯例 */
+  color: var(--milk);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -919,7 +923,7 @@ const taskSummary = computed(() => {
 .p5__card {
   padding: clamp(11px, 1.5vh, 14px) clamp(14px, 1vw, 16px);
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
 }
 
@@ -964,7 +968,7 @@ const taskSummary = computed(() => {
   padding: 0 10px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-1);
   /* ≥14px：避免输入聚焦时 iOS 自动放大 */
   font-size: 14px;
@@ -1068,7 +1072,7 @@ const taskSummary = computed(() => {
 
 .p5__sort:hover {
   color: var(--text-1);
-  background: #f7f9f7;
+  background: var(--bg-page);
 }
 
 .p5__sort:focus-visible {
@@ -1109,7 +1113,7 @@ const taskSummary = computed(() => {
 }
 
 .p5__table tbody tr:hover td {
-  background: #f7f9f7;
+  background: var(--bg-page);
 }
 
 .p5__table tbody tr.is-clickable {
@@ -1149,7 +1153,7 @@ const taskSummary = computed(() => {
   padding: 4px 12px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-2);
   font-size: 12px;
   cursor: pointer;
@@ -1207,15 +1211,6 @@ const taskSummary = computed(() => {
   outline-offset: var(--focus-offset);
 }
 
-/* 无诊断数据门店的占位说明：弱化样式，表明「此处不可点」而非可点入口 */
-.p5__link-disabled {
-  display: inline-block;
-  padding: 6px 8px;
-  color: var(--text-3);
-  font-size: 12px;
-  cursor: not-allowed;
-}
-
 /* 风险行：hover 底色 + 轻微上浮，可键盘聚焦 */
 .p5__risk {
   display: flex;
@@ -1229,7 +1224,7 @@ const taskSummary = computed(() => {
 
 .p5__risk:hover {
   transform: translateY(-1px);
-  background: #f7f9f7;
+  background: var(--bg-page);
 }
 
 .p5__risk:focus-visible {
@@ -1260,6 +1255,7 @@ const taskSummary = computed(() => {
 .p5__risk-name {
   font-size: 13px;
   font-weight: 600;
+  color: var(--text-1);
 }
 
 .p5__risk-reason {
@@ -1293,7 +1289,7 @@ const taskSummary = computed(() => {
 
 .p5__risk-dispatch:hover {
   background: var(--ai-purple);
-  color: #fff;
+  color: var(--milk);
 }
 
 .p5__risk-dispatch:focus-visible {

@@ -446,8 +446,8 @@ async function submit(): Promise<void> {
   max-height: 90dvh;
   overflow-y: auto;
   border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  background: var(--bg-elevated);
+  box-shadow: var(--sh-3);
 }
 
 .dlg__head {
@@ -513,7 +513,7 @@ async function submit(): Promise<void> {
   /* ≥14px：避免输入框聚焦时 iOS 自动放大页面 */
   font-size: 14px;
   color: var(--text-1);
-  background: #fff;
+  background: var(--bg-card);
   outline: none;
   transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
@@ -524,7 +524,7 @@ async function submit(): Promise<void> {
 }
 
 .combo__input:disabled {
-  background: var(--bg-2, #f5f6f8);
+  background: var(--bg-page);
   color: var(--text-3);
   cursor: not-allowed;
 }
@@ -563,8 +563,8 @@ async function submit(): Promise<void> {
   list-style: none;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  background: var(--bg-elevated);
+  box-shadow: var(--sh-3);
 }
 
 .combo__opt {
@@ -621,7 +621,7 @@ async function submit(): Promise<void> {
 }
 
 .dlg__hint--warn {
-  color: var(--warning-fg, #ba7517);
+  color: var(--warning-fg);
 }
 
 .dlg__types {
@@ -634,7 +634,7 @@ async function submit(): Promise<void> {
   padding: 5px 12px;
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-2);
   font-size: 12px;
   cursor: pointer;

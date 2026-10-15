@@ -28,12 +28,18 @@ import PhoneFrame from '@/components/common/PhoneFrame.vue'
 import ToastHost from '@/components/common/ToastHost.vue'
 import AppErrorBoundary from '@/components/common/AppErrorBoundary.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
+import AiFab from '@/components/common/AiFab.vue'
+import BootCover from '@/components/platform/BootCover.vue'
+import AppTour from '@/components/platform/AppTour.vue'
+import OnboardingGuide from '@/components/platform/OnboardingGuide.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-/** 经理看板走桌面宽屏形态，其余页面内嵌手机壳 */
-const usePhoneFrame = computed<boolean>(() => !route.path.startsWith('/manager'))
+/** 经理看板（/manager/**）与总控后台（/admin/**）走桌面宽屏形态，其余页面内嵌手机壳 */
+const usePhoneFrame = computed<boolean>(
+  () => !route.path.startsWith('/manager') && !route.path.startsWith('/admin'),
+)
 
 /**
  * 转场方向：只依据 history.state.position 的增减。
@@ -45,12 +51,38 @@ const historyPosition = ref<number>(
   (window.history.state as { position?: number } | null)?.position ?? 0,
 )
 const routeDirection = ref<'forward' | 'back'>('forward')
+
+/**
+ * 路由转场「看门狗」—— 防 Vue <transition> 的 rAF 链断裂导致页面永久卡死。
+ *
+ * 背景：Vue 的 enter/leave 在挂载/卸载类名之间用双 requestAnimationFrame 切帧。
+ * 当浏览器标签非激活、窗口最小化、手机息屏或 WebView 被宿主节流时，rAF 回调
+ * 可能被无限推迟且事后不补跑 —— 现象是 URL 已变、旧组件永远停在
+ * `*-leave-from`、新组件停在 `*-enter-from`（白屏或旧页不换）。
+ * 评委演示切窗口、手机锁屏后回到页面都可能触发，属高危，必须自愈。
+ *
+ * 策略：每次路由切换后 900ms（正常转场最长约 320ms，留足余量）扫描 DOM，
+ * 若仍有转场起止帧类名残留，说明转场已死，bump retrySeed 强制重挂载
+ * RouterView 内容（AppErrorBoundary 内 :key="retrySeed"），一次恢复。
+ */
+const STUCK_FROM_RE = /(?:mot-route-desk|mot-route-mob|mot-route-mob-back)-(?:enter|leave)-from\b/
+let watchdogTimer: number | undefined
+
 router.afterEach(() => {
   const position = (window.history.state as { position?: number } | null)?.position
   if (typeof position === 'number') {
     routeDirection.value = position < historyPosition.value ? 'back' : 'forward'
     historyPosition.value = position
   }
+
+  if (watchdogTimer !== undefined) window.clearTimeout(watchdogTimer)
+  watchdogTimer = window.setTimeout(() => {
+    watchdogTimer = undefined
+    const stuck = Array.from(document.querySelectorAll<HTMLElement>('[class*="mot-route-"]')).some(
+      (el) => STUCK_FROM_RE.test(el.className),
+    )
+    if (stuck) retrySeed.value += 1
+  }, 900)
 })
 
 /** 移动端转场名（前进 / 返回两套方向） */
@@ -104,6 +136,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (splashTimer !== undefined) window.clearTimeout(splashTimer)
+  if (watchdogTimer !== undefined) window.clearTimeout(watchdogTimer)
 })
 </script>
 
@@ -125,6 +158,8 @@ onBeforeUnmount(() => {
     <!-- Toast 收在手机壳覆盖层内，桌面演示不漂出机壳 -->
     <template #overlay>
       <ToastHost confined />
+      <!-- AI 悬浮球 + 抽屉：与 Toast 同处壳内覆盖层，自身按路由/角色决定是否显示 -->
+      <AiFab />
     </template>
   </PhoneFrame>
   <AppErrorBoundary v-else @retry="retryRouteContent">
@@ -137,6 +172,14 @@ onBeforeUnmount(() => {
 
   <!-- 桌面看板 Toast（手机壳分支已在壳内渲染，互斥只挂一份） -->
   <ToastHost v-if="!usePhoneFrame" />
+
+  <!-- ══ 平台层浮层：与 splash / ToastHost 平级，显示条件均由组件内部按路由/角色判断 ══ -->
+  <!-- 开场战报层（?boot=1 或本次会话未播过） -->
+  <BootCover />
+  <!-- ?tour=1 聚光灯导览 -->
+  <AppTour />
+  <!-- 角色化新手引导（每角色一次，仅手机形态） -->
+  <OnboardingGuide />
 
   <!-- ══ 启动品牌闪屏：整页加载一次，独立 fixed 层（z 1300 高于 Toast），
        与 PhoneFrame / RouterView / ToastHost 完全平级，不包裹任何既有结构，

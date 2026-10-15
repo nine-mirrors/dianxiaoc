@@ -14,6 +14,7 @@ import type { MapMarker } from '@/components/business/MapView.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import PullRefresh from '@/components/platform/PullRefresh.vue'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { getTodayRoute, updateTaskStatus, getTickets, updateTicketStatus } from '@/api'
@@ -269,11 +270,18 @@ function initJustDone(): void {
 }
 initJustDone()
 
+/** 下拉刷新：重新拉取今日线路，完成后回弹并轻提示 */
+async function onRefresh(done: (ok?: boolean) => void): Promise<void> {
+  await reloadRoute()
+  done(true)
+  toast.info('已更新')
+}
+
 /** 切换账号：身份由账号决定，回登录页重新登录（不再自选角色） */
-function switchAccount(): Promise<void> {
+function switchAccount(): void {
   session.logout()
   toast.info('请重新登录目标账号')
-  return router.push('/login')
+  void router.push('/login')
 }
 </script>
 
@@ -313,6 +321,8 @@ function switchAccount(): Promise<void> {
     <!-- 读屏地标：本页用 #nav 插槽自绘渐变顶栏，MobileLayout 不会渲染 h1（视觉不可见） -->
     <h1 class="u-sr-only">今日巡店</h1>
 
+    <!-- 下拉刷新容器：只做包裹层，滚动仍由 .ml-body 负责（不改变既有盒模型） -->
+    <PullRefresh @refresh="onRefresh">
     <!-- 三格数据概览 -->
     <div class="p2-summary">
       <div v-if="showSkeleton" class="p2-summary__inner">
@@ -453,6 +463,7 @@ function switchAccount(): Promise<void> {
         </div>
       </div>
     </div>
+    </PullRefresh>
   </MobileLayout>
 </template>
 

@@ -55,9 +55,57 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/rep/me',
     name: 'rep-me',
-    component: () => import('@/views/PlaceholderView.vue'),
+    component: () => import('@/views/rep/MeView.vue'),
     meta: { title: '我的', tab: 'me', roles: ['rep'] },
   },
+
+  /* ── W5 业代端：八步骤 / 签到水印 / 价签冰柜 / 盘点临期 / 排线 / 知识 ── */
+  {
+    path: '/rep/steps/:taskId?',
+    name: 'rep-steps',
+    component: () => import('@/views/rep/VisitStepsView.vue'),
+    meta: { title: '标准巡店八步骤', roles: ['rep'] },
+  },
+  {
+    path: '/rep/checkin/:storeId?',
+    name: 'rep-checkin',
+    component: () => import('@/views/rep/CheckinView.vue'),
+    meta: { title: '门店签到', roles: ['rep'] },
+  },
+  {
+    path: '/rep/shelf/:storeId?',
+    name: 'rep-shelf',
+    component: () => import('@/views/rep/ShelfAuditView.vue'),
+    meta: { title: '价签与冰柜审核', roles: ['rep'] },
+  },
+  {
+    path: '/rep/inventory/:storeId?',
+    name: 'rep-inventory',
+    component: () => import('@/views/rep/InventoryView.vue'),
+    meta: { title: '盘点与临期', roles: ['rep'] },
+  },
+  {
+    path: '/rep/route',
+    name: 'rep-route',
+    component: () => import('@/views/rep/RoutePlanView.vue'),
+    meta: { title: '智能排线', roles: ['rep'] },
+  },
+  {
+    path: '/rep/knowledge',
+    name: 'rep-knowledge',
+    component: () => import('@/views/rep/KnowledgeView.vue'),
+    meta: { title: '知识库', roles: ['rep'] },
+  },
+
+  /* ── 消息中心（四端共用手机形态；经理 / 管理端各自有桌面包装）── */
+  {
+    path: '/messages',
+    name: 'messages',
+    component: () => import('@/views/common/MessagesView.vue'),
+    meta: { title: '消息中心', roles: ['rep', 'manager', 'owner', 'admin'] },
+  },
+
+  /* ── W3 经理端（桌面宽屏形态，不套手机壳）── */
   {
     path: '/manager/dashboard',
     name: 'manager-dashboard',
@@ -65,11 +113,138 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '区域经营看板', roles: ['manager'] },
   },
   {
+    path: '/manager/ask',
+    name: 'manager-ask',
+    component: () => import('@/views/manager/AiAskView.vue'),
+    meta: { title: 'AI 经营问答', roles: ['manager'] },
+  },
+  {
+    path: '/manager/store/:storeId',
+    name: 'manager-store',
+    component: () => import('@/views/manager/StoreProfileView.vue'),
+    meta: { title: '门店体检报告', roles: ['manager'] },
+  },
+  {
+    path: '/manager/report',
+    name: 'manager-report',
+    component: () => import('@/views/manager/WeeklyReportView.vue'),
+    meta: { title: 'AI 周报', roles: ['manager'] },
+  },
+  {
+    path: '/manager/leaderboard',
+    name: 'manager-leaderboard',
+    component: () => import('@/views/manager/LeaderboardView.vue'),
+    meta: { title: '业代排行榜', roles: ['manager'] },
+  },
+  {
+    path: '/manager/value',
+    name: 'manager-value',
+    component: () => import('@/views/manager/ValueBoardView.vue'),
+    meta: { title: 'AI 价值看板', roles: ['manager'] },
+  },
+  {
+    path: '/manager/blacklist',
+    name: 'manager-blacklist',
+    component: () => import('@/views/manager/BlacklistView.vue'),
+    meta: { title: '门店黑名单', roles: ['manager'] },
+  },
+  {
+    path: '/manager/screen',
+    name: 'manager-screen',
+    component: () => import('@/views/manager/ScreenView.vue'),
+    meta: { title: '大屏投屏模式', roles: ['manager'] },
+  },
+  {
+    path: '/manager/messages',
+    name: 'manager-messages',
+    component: () => import('@/views/manager/MessagesView.vue'),
+    meta: { title: '消息中心', roles: ['manager'] },
+  },
+
+  /* ── W4 管理员端（全新桌面控制台；演示期由经理账号进入）── */
+  {
+    path: '/admin',
+    name: 'admin-overview',
+    component: () => import('@/views/admin/AdminOverviewView.vue'),
+    meta: { title: '运营总览', roles: ['manager', 'admin'] },
+  },
+  {
+    path: '/admin/accounts',
+    name: 'admin-accounts',
+    component: () => import('@/views/admin/AdminAccountsView.vue'),
+    meta: { title: '账号派发', roles: ['manager', 'admin'] },
+  },
+  {
+    path: '/admin/blacklist',
+    name: 'admin-blacklist',
+    component: () => import('@/views/admin/AdminBlacklistView.vue'),
+    meta: { title: '黑名单管理', roles: ['manager', 'admin'] },
+  },
+  {
+    path: '/admin/knowledge',
+    name: 'admin-knowledge',
+    component: () => import('@/views/admin/AdminKnowledgeView.vue'),
+    meta: { title: 'FAQ 知识库', roles: ['manager', 'admin'] },
+  },
+  {
+    path: '/admin/announcements',
+    name: 'admin-announcements',
+    component: () => import('@/views/admin/AdminAnnouncementView.vue'),
+    meta: { title: '公告发布', roles: ['manager', 'admin'] },
+  },
+  {
+    path: '/admin/audit',
+    name: 'admin-audit',
+    component: () => import('@/views/admin/AdminAuditView.vue'),
+    meta: { title: '审计日志', roles: ['manager', 'admin'] },
+  },
+  {
+    path: '/admin/messages',
+    name: 'admin-messages',
+    component: () => import('@/views/admin/AdminMessagesView.vue'),
+    meta: { title: '消息中心', roles: ['manager', 'admin'] },
+  },
+
+  /* ── W6 店主端 ── */
+  {
     path: '/owner',
     name: 'owner',
     component: () => import('@/views/owner/OwnerFlowView.vue'),
     meta: { title: '店主自助诊断', roles: ['owner', 'rep'] },
   },
+  {
+    path: '/owner/restock',
+    name: 'owner-restock',
+    component: () => import('@/views/owner/RestockSimView.vue'),
+    meta: { title: '智能补货模拟器', roles: ['owner'] },
+  },
+  {
+    path: '/owner/orders',
+    name: 'owner-orders',
+    component: () => import('@/views/owner/OrderView.vue'),
+    meta: { title: '我的订单', roles: ['owner'] },
+  },
+  {
+    path: '/owner/report',
+    name: 'owner-report',
+    component: () => import('@/views/owner/ReportView.vue'),
+    meta: { title: '经营报告', roles: ['owner'] },
+  },
+  {
+    path: '/owner/knowledge',
+    name: 'owner-knowledge',
+    component: () => import('@/views/owner/OwnerKnowledgeView.vue'),
+    meta: { title: '知识库', roles: ['owner'] },
+  },
+
+  /* ── W7 平台页 ── */
+  {
+    path: '/error',
+    name: 'error',
+    component: () => import('@/views/ErrorView.vue'),
+    meta: { title: '服务异常' },
+  },
+
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
@@ -108,6 +283,7 @@ const ROLE_HOME: Record<string, string> = {
   rep: '/rep/today',
   manager: '/manager/dashboard',
   owner: '/owner',
+  admin: '/admin',
 }
 function roleHome(role: string): string {
   return ROLE_HOME[role] ?? '/rep/today'

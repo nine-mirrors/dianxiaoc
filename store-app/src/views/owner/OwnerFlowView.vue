@@ -271,7 +271,11 @@ async function confirmOrder(): Promise<void> {
  * O-4 菲茨定律：拍照页 / 结果页主 CTA 固定在手机壳底部，
  * 内容滚动区（ml-body）底部相应留白，避免最后一张卡片贴着主按钮。
  */
-const bodyPad = computed<number>(() => (stage.value === 'capture' || stage.value === 'result' ? 88 : 20))
+const bodyPad = computed<number>(() => {
+  // 拍照 / 结果阶段为吸底 CTA 留白；引导阶段挂着底部 TabBar（约 60px），也要避让
+  if (stage.value === 'capture' || stage.value === 'result') return 88
+  return 72
+})
 
 /** 重来一次 */
 function restart(): void {
@@ -291,9 +295,14 @@ function restart(): void {
   ownerTyping.value = false
 }
 
-/** 返回角色选择 */
+/**
+ * 引导页顶栏「返回」：退出当前店主账号回登录页换账号。
+ * 旧实现推 /role（角色自选页），该页已废弃并重定向到 /login，
+ * 而已登录访问 /login 又会守卫弹回 /owner，形成原地死循环，故直接 logout。
+ */
 function backToRole(): void {
-  router.push('/role')
+  session.logout()
+  void router.push('/login')
 }
 /* ═══════════════ 我的订单（店主端补齐：订了什么、接了没） ═══════════════ */
 
@@ -366,7 +375,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  offRealtime<{ id?: string; status?: string }>('ticket:status', onTicketStatus)
+  offRealtime('ticket:status', onTicketStatus)
 })
 
 </script>
@@ -375,6 +384,7 @@ onUnmounted(() => {
   <MobileLayout
     :title="stage === 'guide' ? '店主自助服务' : '货架小助手'"
     :back="true"
+    :show-tab-bar="stage === 'guide'"
     :content-padding-bottom="bodyPad"
     @back="stage === 'guide' ? backToRole() : stage = 'guide'"
   >
@@ -414,6 +424,31 @@ onUnmounted(() => {
           <AppIcon name="clipboard" :size="16" />
           我的订单<span v-if="myOrders.length">（{{ myOrders.length }}）</span>
         </button>
+
+        <!-- 快捷入口：补货模拟 / 经营报告 / 懂行知识库 -->
+        <div class="p6__quick">
+          <button
+            type="button"
+            class="p6__quick-item u-tap"
+            @click="router.push('/owner/restock')"
+          >
+            <span class="p6__quick-icon"><AppIcon name="package" :size="18" /></span>
+            <span class="p6__quick-label">补货模拟</span>
+          </button>
+          <button type="button" class="p6__quick-item u-tap" @click="router.push('/owner/report')">
+            <span class="p6__quick-icon"><AppIcon name="layers" :size="18" /></span>
+            <span class="p6__quick-label">经营报告</span>
+          </button>
+          <button
+            type="button"
+            class="p6__quick-item u-tap"
+            @click="router.push('/owner/knowledge')"
+          >
+            <span class="p6__quick-icon"><AppIcon name="clipboard" :size="18" /></span>
+            <span class="p6__quick-label">懂行知识库</span>
+          </button>
+        </div>
+
         <p class="p6__trust">蒙牛业代 <b>李强</b> 邀请你免费体验</p>
       </div>
     </div>
@@ -578,7 +613,7 @@ onUnmounted(() => {
 
       <div class="p6-ok__btns">
         <button type="button" class="u-btn u-btn--ghost" @click="restart">再诊断一次</button>
-        <button type="button" class="u-btn u-btn--primary" @click="backToRole">完成</button>
+        <button type="button" class="u-btn u-btn--primary" @click="stage = 'guide'">完成</button>
       </div>
     </div>
 
@@ -750,6 +785,46 @@ onUnmounted(() => {
 
 .p6__trust b {
   color: var(--mn-green);
+}
+
+/* ── 快捷入口（补货模拟 / 经营报告 / 懂行知识库） ── */
+.p6__quick {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.p6__quick-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-card);
+}
+
+.p6__quick-item:active {
+  transform: scale(0.97);
+}
+
+.p6__quick-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--mn-green-light);
+  color: var(--mn-green-dark);
+}
+
+.p6__quick-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-1);
 }
 
 .p6-res__foot {

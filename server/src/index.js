@@ -1001,7 +1001,7 @@ app.use('/api/v1', (req, res, next) => {
  * 都在 src/routes/*.js 内实现并默认导出 { base, router }；此处一次性挂载，
  * 已在上方 /api/v1 闸门之后 → 自动需要登录，管理类再在文件内 requireRole。*/
 import { registerExtRoutes } from './routes/index.js'
-import { seedExtData } from './ext.js'
+import { seedExtData, resetExtData } from './ext.js'
 seedExtData()
 const extRouter = await registerExtRoutes()
 app.use('/api/v1', extRouter)
@@ -1779,6 +1779,8 @@ async function askMorningLLM(stats, drafts) {
 //   演示中误触就会全场数据清空。
 app.post('/api/v1/demo/reset', requireRole('manager'), wrap(async () => {
   resetDemo()
+  // 扩展层独立库（ext.db）：随主库一并重置，避免重置后公告/知识库/会话消息/盘点仍是旧数据
+  resetExtData()
   // ⚠ P1-8：AI 文案缓存 TTL 1 小时，只清 SQLite 不清缓存 → 重置后页面仍显示重置前的
   //   健康分与补货量文案。cacheClear 此前全项目零调用点，就落在这里。
   await cacheClear()

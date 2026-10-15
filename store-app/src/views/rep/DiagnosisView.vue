@@ -513,6 +513,19 @@ function reCapture(): void {
   router.push(`/rep/capture/${diagnosis.value?.storeId ?? 'S3'}`)
 }
 
+/**
+ * 配套现场作业入口（行动方案的落地动作）：
+ * 去盘点（库存/临期核录）、去价签冰柜审核（价签核对 + 冰柜冷链）。
+ * storeId 缺省时路由可选参数会由目标页回退到今日线路首站。
+ */
+function goInventory(): void {
+  router.push(`/rep/inventory/${diagnosis.value?.storeId ?? ''}`)
+}
+
+function goShelf(): void {
+  router.push(`/rep/shelf/${diagnosis.value?.storeId ?? ''}`)
+}
+
 /* ═══════════════ 展示用计算属性 ═══════════════ */
 
 const health = computed(() => diagnosis.value?.health ?? null)
@@ -799,6 +812,21 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
           <span class="p4-card__hint">{{ diagnosis.plan.storeTypeLabel }}</span>
         </template>
         <ActionPlan :plan="diagnosis.plan" :show-actions="!readonly" @adjust="openTicket('order')" @order="openTicket('order')" />
+
+        <!-- 配套现场作业入口：把「方案」接到真实现场动作（盘点 / 价签冰柜审核） -->
+        <div v-if="!readonly" class="p4-exec">
+          <p class="p4-exec__cap">配套现场作业</p>
+          <div class="p4-exec__btns">
+            <button type="button" class="p4-exec__btn u-tap" @click="goInventory">
+              <AppIcon name="package" :size="15" color="var(--mn-green-dark)" />
+              去盘点
+            </button>
+            <button type="button" class="p4-exec__btn u-tap" @click="goShelf">
+              <AppIcon name="tag" :size="15" color="var(--mn-green-dark)" />
+              去价签冰柜审核
+            </button>
+          </div>
+        </div>
       </SectionCard>
 
       <!-- ══ F AI 追问对话（锚点：追问；放在方案之后，追问回答引用方案时上下文连贯） ══ -->
@@ -1171,6 +1199,46 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
 .p4-card__hint {
   font-size: 11px;
   color: var(--text-3);
+}
+
+/* 配套现场作业入口（行动方案 → 真实现场动作） */
+.p4-exec {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.p4-exec__cap {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.p4-exec__btns {
+  display: flex;
+  gap: 8px;
+}
+
+.p4-exec__btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--mn-green);
+  border-radius: 12px;
+  background: var(--mn-green-light);
+  color: var(--mn-green-dark);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.p4-exec__btn:active {
+  transform: scale(0.97);
 }
 
 /* A 摘要条 */

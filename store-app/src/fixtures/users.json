@@ -27,6 +27,15 @@
       "duty": "自助诊断 / 订货",
       "sub": "好邻居 · 地铁口店店主",
       "regionId": "R_EAST"
+    },
+    {
+      "id": "U_ADMIN",
+      "name": "总部运营",
+      "role": "admin",
+      "avatarText": "运",
+      "duty": "账号 / 知识库 / 公告 / 审计",
+      "sub": "店小C 运营管理后台",
+      "regionId": null
     }
   ]
 }

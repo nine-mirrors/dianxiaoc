@@ -35,9 +35,14 @@ let resizeRaf = 0
 /** 上一次字号档：仅跨档时才整图 setOption，同档拖拽只走廉价的 resize */
 let lastFontScale = 1
 
-/** 读取 :root / [data-theme] 上当前生效的设计令牌（去空白；取不到时回退空串） */
+/**
+ * 读取当前生效的设计令牌（去空白；取不到时回退空串）。
+ * 从图表容器自身读取而非 <html>：自定义属性沿 DOM 继承，手机壳
+ * （.dxc-phone-light 重新声明日令牌）内会自动读到壳上的日间值，无需手机端特例。
+ */
 function css(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  const node = el.value ?? document.documentElement
+  return getComputedStyle(node).getPropertyValue(name).trim()
 }
 
 /** 给 #rgb / #rrggbb 令牌色附加透明度（面积填充用）；非 hex 输入原样返回 */

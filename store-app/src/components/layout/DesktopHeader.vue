@@ -4,6 +4,7 @@
  * 包含 Logo / 产品名 / 区域下拉 / 角色切换；数据由外部 props 注入，不直接调接口。
  */
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useSessionStore } from '@/stores/session'
 
@@ -21,6 +22,29 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{ (e: 'change-region', id: string): void; (e: 'switch-role'): void }>()
+
+/**
+ * 经理端桌面导航（W3 新增）——本头部是全部 /manager/** 页面共用的桌面外壳，
+ * 在此统一挂导航项，各页面只需正常挂本组件即自带导航。
+ */
+const route = useRoute()
+const NAV: { to: string; label: string; icon: string }[] = [
+  { to: '/manager/dashboard', label: '经营看板', icon: 'home' },
+  { to: '/manager/ask', label: 'AI 问答', icon: 'sparkles' },
+  { to: '/manager/store/S1', label: '门店体检', icon: 'store' },
+  { to: '/manager/report', label: 'AI 周报', icon: 'clipboard' },
+  { to: '/manager/leaderboard', label: '排行榜', icon: 'layers' },
+  { to: '/manager/value', label: '价值看板', icon: 'zap' },
+  { to: '/manager/blacklist', label: '黑名单', icon: 'shield' },
+  { to: '/manager/screen', label: '投屏', icon: 'compare' },
+  { to: '/manager/messages', label: '消息中心', icon: 'message' },
+]
+
+/** 命中的导航项（门店体检是动态路径，用前缀匹配） */
+function isActive(to: string): boolean {
+  if (to.startsWith('/manager/store')) return route.path.startsWith('/manager/store')
+  return route.path === to
+}
 
 /**
  * 后端不可用提示（测评报告发现：桌面端没有断网提示，经理看板会整页空白）。
@@ -56,30 +80,46 @@ onBeforeUnmount(() => {
   <header class="desk-header">
     <!-- 后端未连接提示：避免看板整页空白却毫无说明 -->
     <p v-if="offline" class="desk-header__offline">
-      <AppIcon name="warning" :size="13" color="#b26a00" />
+      <AppIcon name="warning" :size="13" color="var(--warning-fg)" />
       服务暂不可用 · 页面数据暂时无法更新，请稍后重试
     </p>
-    <div class="desk-header__brand">
-      <span class="desk-header__logo"><AppIcon name="milk" :size="20" color="#fff" /></span>
-      <div>
-        <p class="desk-header__title">一眼千店 · 区域经营看板</p>
-        <p class="desk-header__sub">店小C · 蒙牛 AI 巡店助手</p>
+    <div class="desk-header__top">
+      <div class="desk-header__brand">
+        <span class="desk-header__logo"><AppIcon name="milk" :size="20" color="#fff" /></span>
+        <div>
+          <p class="desk-header__title">一眼千店 · 区域经营看板</p>
+          <p class="desk-header__sub">店小C · 蒙牛 AI 巡店助手</p>
+        </div>
+      </div>
+
+      <div class="desk-header__right">
+        <label v-if="props.regionIds.length" class="desk-header__region">
+          区域：
+          <select :value="props.regionId" @change="emit('change-region', ($event.target as HTMLSelectElement).value)">
+            <option v-for="r in props.regionIds" :key="r.id" :value="r.id">{{ r.name }}</option>
+          </select>
+        </label>
+        <button class="desk-header__role" @click="emit('switch-role')">
+          <AppIcon name="user" :size="15" />
+          <span>{{ props.roleLabel }} · {{ props.userName }}</span>
+          <AppIcon name="refresh" :size="13" />
+        </button>
       </div>
     </div>
 
-    <div class="desk-header__right">
-      <label class="desk-header__region">
-        区域：
-        <select :value="props.regionId" @change="emit('change-region', ($event.target as HTMLSelectElement).value)">
-          <option v-for="r in props.regionIds" :key="r.id" :value="r.id">{{ r.name }}</option>
-        </select>
-      </label>
-      <button class="desk-header__role" @click="emit('switch-role')">
-        <AppIcon name="user" :size="15" />
-        <span>{{ props.roleLabel }} · {{ props.userName }}</span>
-        <AppIcon name="refresh" :size="13" />
-      </button>
-    </div>
+    <!-- 经理端导航：全部 /manager/** 页面共用 -->
+    <nav class="desk-header__nav" aria-label="经理端导航">
+      <RouterLink
+        v-for="n in NAV"
+        :key="n.to"
+        :to="n.to"
+        class="desk-header__nav-item"
+        :class="{ 'is-active': isActive(n.to) }"
+      >
+        <AppIcon :name="n.icon" :size="15" />
+        <span>{{ n.label }}</span>
+      </RouterLink>
+    </nav>
   </header>
 </template>
 
@@ -88,12 +128,56 @@ onBeforeUnmount(() => {
   /* 定位上下文：断网提示条要挂在 header 下沿 */
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 60px;
-  padding: 0 24px;
+  flex-direction: column;
   background: linear-gradient(135deg, var(--mn-green) 0%, var(--mn-green-dark) 100%);
   color: #fff;
+}
+
+/* 品牌 + 区域 / 角色 行（原 60px 单行头部改为列布局中的第一行） */
+.desk-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 60px;
+  padding: 0 24px;
+}
+
+/* ── 经理端导航行 ── */
+.desk-header__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 0 18px 8px;
+}
+
+.desk-header__nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.desk-header__nav-item:hover {
+  background: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+.desk-header__nav-item.is-active {
+  background: var(--bg-card);
+  color: var(--mn-green-dark);
+}
+
+.desk-header__nav-item:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .desk-header__offline {
@@ -108,9 +192,10 @@ onBeforeUnmount(() => {
   gap: 6px;
   margin: 0;
   padding: 7px 14px;
-  background: #fff8e6;
-  border-bottom: 1px solid #ffe0a3;
-  color: #b26a00;
+  /* 断网提示走警示语义令牌对：日间浅橙底深橙字，夜间自动提亮 */
+  background: var(--warning-bg);
+  border-bottom: 1px solid var(--color-warning);
+  color: var(--warning-fg);
   font-size: 12px;
   font-weight: 600;
 }
@@ -171,7 +256,7 @@ onBeforeUnmount(() => {
  * 看板主体的完整响应式由其他任务负责；≥1024px（含 1440 设计视口）
  * 本规则不触发，桌面视觉零回归。 */
 @media (max-width: 900px) {
-  .desk-header {
+  .desk-header__top {
     flex-wrap: wrap;
     align-items: center;
     height: auto;
@@ -201,8 +286,12 @@ onBeforeUnmount(() => {
 /* 极窄窗口（≤560px，真机退化线 480px 附近）：隐藏纯装饰副标题，
    功能信息（标题、区域、角色按钮文字）全部保留，只收紧不删减。 */
 @media (max-width: 560px) {
-  .desk-header {
+  .desk-header__top {
     padding: 8px 12px;
+  }
+
+  .desk-header__nav {
+    padding: 0 12px 8px;
   }
 
   .desk-header__sub {

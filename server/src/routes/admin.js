@@ -24,6 +24,7 @@ import { randomBytes } from 'node:crypto'
 import { newRouter, wrap, ApiError, accountOf } from './_kit.js'
 import { extDb, insert, newId, nowIso, writeAudit, rowToCamel } from '../ext.js'
 import { users, stores, diagnosesRaw } from '../db.js'
+import { broadcast } from '../realtime.js'
 
 const router = newRouter()
 
@@ -547,15 +548,18 @@ router.post(
       created_by: actorOf(req).id,
     })
     audit(req, 'admin.announcement.create', id, { title: b.title, audience: b.audience || 'all' })
-    return {
-      item: rowToCamel(
-        one(
-          `SELECT a.*, (SELECT COUNT(*) FROM ext_announce_reads r WHERE r.ann_id = a.id) AS read_count
-           FROM ext_announcements a WHERE a.id=?`,
-          [id],
-        ),
+    const item = rowToCamel(
+      one(
+        `SELECT a.*, (SELECT COUNT(*) FROM ext_announce_reads r WHERE r.ann_id = a.id) AS read_count
+         FROM ext_announcements a WHERE a.id=?`,
+        [id],
       ),
-    }
+    )
+    // ★ 实时送达三端：audience='all' 时广播全体；否则定向该角色（message center 角标据此 +1）
+    const audience = b.audience || 'all'
+    if (audience === 'all') broadcast('announcement:new', { announcement: item })
+    else broadcast('announcement:new', { toRole: audience, announcement: item })
+    return { item }
   }),
 )
 

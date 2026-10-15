@@ -49,7 +49,7 @@ export const useSessionStore = defineStore('session', () => {
   const avatarText = computed<string>(() => user.value?.avatarText ?? '—')
   /** 角色中文名 */
   const roleLabel = computed<string>(() => {
-    const map: Record<Role, string> = { rep: '业代', manager: '区域经理', owner: '店员/店主' }
+    const map: Record<Role, string> = { rep: '业代', manager: '区域经理', owner: '店员/店主', admin: '平台管理员' }
     return map[role.value] ?? '业代'
   })
   /** 当前身份应去的页面（登录后由服务端裁定） */

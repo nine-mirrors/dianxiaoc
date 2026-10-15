@@ -11,10 +11,13 @@
  *   30 3 * * * cd /opt/dianxiaoc/server && /usr/bin/node ../deploy/scripts/reset-data.mjs >> ../deploy/logs/reset.log 2>&1
  */
 import { resetDemo } from '../../server/src/db.js'
+import { resetExtData } from '../../server/src/ext.js'
 
 try {
   resetDemo()
-  console.log(`[${new Date().toISOString()}] 演示数据已重置（任务/单据/巡店/诊断/整改/上传图片已清空并重新播种）`)
+  // 扩展层（ext.db）为独立库：账号/黑名单/知识库/公告/会话消息/盘点/签到/审计一并重置并重播种
+  resetExtData()
+  console.log(`[${new Date().toISOString()}] 演示数据已重置（任务/单据/巡店/诊断/整改/上传图片/扩展数据已清空并重新播种）`)
 } catch (e) {
   console.error(`[${new Date().toISOString()}] 重置失败：`, e)
   process.exitCode = 1

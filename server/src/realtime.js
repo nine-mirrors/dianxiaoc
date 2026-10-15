@@ -37,7 +37,8 @@ let heartbeatTimer = null
  * 这与 SSE / `<img src>` 是同一套浏览器限制，不是鉴权绕过（token 本身仍需验签）。
  *
  * @param {string | undefined} url 形如 `/ws?token=<signed>&role=rep&name=李强`
- * @returns {{role: string, name: string, authorized: boolean}} authorized=false 表示应拒绝握手
+ * @returns {{role: string, name: string, username: string, authorized: boolean}}
+ *          authorized=false 表示应拒绝握手
  */
 function parseMeta(url) {
   const raw = String(url ?? '')
@@ -47,13 +48,15 @@ function parseMeta(url) {
   const account = accountFromToken(qs.get('token'))
   if (!account) {
     // 未授权：role 用不可冒充的哨兵值，authorized=false 让调用方直接关连接
-    return { role: 'guest', name: '', authorized: false }
+    return { role: 'guest', name: '', username: '', authorized: false }
   }
   const user = findUserByRole(account.role)
   return {
     role: String(account.role),
     // 姓名同样取自账号绑定的 user，而不是 query 自报
     name: user?.name ?? String(account.username),
+    // ★ 消息中心需要按「具体账号」定向投递（IM 会话成员），故同样取自验签账号
+    username: String(account.username),
     authorized: true,
   }
 }
@@ -70,7 +73,7 @@ export function registerClient(ws, meta = {}) {
     try { ws.close(1008, '未授权') } catch { /* 已断开 */ }
     return
   }
-  ws.meta = { role: meta.role || 'guest', name: meta.name || '' }
+  ws.meta = { role: meta.role || 'guest', name: meta.name || '', username: meta.username || '' }
   ws.isAlive = true
   clients.add(ws)
 
@@ -105,15 +108,38 @@ export function registerClient(ws, meta = {}) {
 /**
  * 广播一个事件给所有（可选定向）客户端。
  *
+ * 定向规则（两者可同时给，取交集之外任一命中即投递 — 即「角色 ∪ 账号」）：
+ *  - `toRole`  只投给该角色的连接（如 task:new → 全体业代）
+ *  - `toUser`  只投给指定**账号**（username，字符串或数组）的连接
+ *               （消息中心 IM 按会话成员定向投递用；成员按角色登记时用 toRole）
+ *
+ * ⚠ toRole / toUser 是投递控制字段，不会出现在客户端收到的 payload 里。
+ *
  * @param {string} event 事件名：task:new / diagnosis:new / ticket:new / chat:reply
- * @param {object} [payload] 事件体；带 toRole 时只投递给该角色
+ *                               / message:new / announcement:new
+ * @param {object} [payload] 事件体
  */
 export function broadcast(event, payload = {}) {
   if (!clients.size) return
-  const { toRole, ...rest } = payload && typeof payload === 'object' ? payload : {}
+  const { toRole, toUser, ...rest } = payload && typeof payload === 'object' ? payload : {}
+  const userSet = toUser == null ? null : new Set(Array.isArray(toUser) ? toUser.map(String) : [String(toUser)])
+  // 无任何定向条件 → 广播给所有连接
+  if (!toRole && !userSet) {
+    const frame = JSON.stringify({ event, payload: rest, ts: Date.now() })
+    for (const ws of Array.from(clients)) {
+      try {
+        if (ws.readyState === 1) ws.send(frame)
+      } catch {
+        clients.delete(ws)
+      }
+    }
+    return
+  }
   const frame = JSON.stringify({ event, payload: rest, ts: Date.now() })
   for (const ws of Array.from(clients)) {
-    if (toRole && ws.meta?.role && ws.meta.role !== toRole) continue
+    const hitRole = !!toRole && ws.meta?.role === toRole
+    const hitUser = !!userSet && userSet.has(String(ws.meta?.username ?? ''))
+    if (!hitRole && !hitUser) continue
     try {
       if (ws.readyState === 1) ws.send(frame)
     } catch {

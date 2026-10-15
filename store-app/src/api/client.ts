@@ -15,8 +15,8 @@ import type { ApiEnvelope } from '@/types'
 import { ApiError } from './error'
 export { ApiError }
 
-/** HTTP 方法 */
-export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
+/** HTTP 方法（PUT 供管理员端账号/SKU 规则/知识库整条更新使用） */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 /** 请求选项 */
 export interface RequestOptions {
