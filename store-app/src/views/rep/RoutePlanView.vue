@@ -92,14 +92,28 @@ function move(index: number, delta: number): void {
 
 const orderCn = (n: number): string => '①②③④⑤⑥⑦⑧⑨⑩'[n - 1] ?? String(n)
 
-/** 导航：优先用真实坐标拉起高德网页版，无坐标则提示 */
-function navigate(r: RouteStore): void {
-  const { lat, lng } = r.store ?? {}
-  if (lat == null || lng == null) {
-    toast.info('该门店暂无坐标，无法导航')
-    return
-  }
-  const url = `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(r.store.name)}`
+/** 可导航目标的最小结构（与 Store 的 name/lat/lng 兼容） */
+interface NavTarget {
+  name?: string
+  lat?: number | null
+  lng?: number | null
+}
+
+/** 仅当门店同时具备 lat / lng 时才提供导航入口 */
+function hasLatLng(target: NavTarget | null | undefined): boolean {
+  return !!target && target.lat != null && target.lng != null
+}
+
+/**
+ * 一键导航：新标签调起高德地图驾车导航。fixture 坐标为 WGS84，coordinate=wgs84
+ * 让高德自动转 GCJ02；手机端 callnative=1 唤起高德 App，桌面端打开网页地图。
+ */
+function openStoreNav(target: NavTarget | null | undefined): void {
+  if (!hasLatLng(target)) return
+  const name = target.name || '门店'
+  const url = `https://uri.amap.com/navigation?to=${target.lng},${target.lat},${encodeURIComponent(
+    name,
+  )}&mode=car&coordinate=wgs84&callnative=1`
   window.open(url, '_blank', 'noopener')
 }
 
@@ -197,7 +211,13 @@ function statusLabel(s: RouteStore['status']): string {
           </div>
 
           <div class="rp-store__acts">
-            <button type="button" class="rp-act u-tap" @click="navigate(r)">
+            <button
+              v-if="hasLatLng(r.store)"
+              type="button"
+              class="u-btn u-btn--ghost rp-act rp-act--nav u-tap"
+              aria-label="高德地图导航到该门店"
+              @click="openStoreNav(r.store)"
+            >
               <AppIcon name="map-pin" :size="13" /> 导航
             </button>
             <button v-if="r.status === 'done'" type="button" class="rp-act rp-act--ghost u-tap" @click="viewHistory(r)">
@@ -458,6 +478,16 @@ function statusLabel(s: RouteStore['status']): string {
   color: var(--text-2);
   font-size: 13px;
   font-weight: 600;
+}
+
+/* 导航：ghost 小尺寸（不占等宽），与「开始巡店 / 查看」并列 */
+.rp-act--nav {
+  flex: none;
+  align-self: center;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 12.5px;
 }
 
 .rp-act--primary {

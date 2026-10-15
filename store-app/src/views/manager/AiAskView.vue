@@ -9,13 +9,14 @@
  *
  * 支持 `?q=` 预填并自动提问（便于从看板跳转提问）。
  */
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DesktopHeader from '@/components/layout/DesktopHeader.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useToast } from '@/composables/useToast'
+import { useSpeech } from '@/composables/useSpeech'
 import { useSessionStore } from '@/stores/session'
 import { getAskSuggestions, streamAiAsk } from '@/api/insights'
 
@@ -39,6 +40,20 @@ const sending = ref<boolean>(false)
 const suggestions = ref<string[]>([])
 const scrollRef = ref<HTMLElement | null>(null)
 let controller: AbortController | null = null
+
+/* ── 语音播报（能听会说闭环；不支持的浏览器 supported=false，按钮整颗隐藏） ── */
+const {
+  supported: speechSupported,
+  speaking: speechSpeaking,
+  speak: speakText,
+  cancel: cancelSpeech,
+} = useSpeech()
+/** 当前正在朗读的消息 id（单例：同一时间只有一条在念） */
+const speakingId = ref<number | null>(null)
+// 队列自然播完 / 出错收尾后复位高亮；手动 cancel 走 toggleSpeak，同样会触发
+watch(speechSpeaking, (on) => {
+  if (!on) speakingId.value = null
+})
 
 /** 来源角标文案（如实标注，不夸大） */
 function sourceLabel(m: Msg): string {
@@ -104,6 +119,7 @@ async function ask(raw: string): Promise<void> {
 
 /** 清空对话 */
 function clearChat(): void {
+  cancelSpeech()
   if (sending.value) controller?.abort()
   messages.value = []
   info('对话已清空')
@@ -131,6 +147,16 @@ function onKeydown(e: KeyboardEvent): void {
   }
 }
 
+/** 朗读 / 停止某条 AI 回答（单例：点新条时 speak 内部会先 cancel 旧条） */
+function toggleSpeak(m: Msg): void {
+  if (speakingId.value === m.id) {
+    cancelSpeech()
+    return
+  }
+  speakText(m.text)
+  speakingId.value = m.id
+}
+
 onMounted(async () => {
   try {
     suggestions.value = await getAskSuggestions()
@@ -139,6 +165,11 @@ onMounted(async () => {
   }
   const q = route.query.q
   if (q) void ask(String(q))
+  // ?focus=1：落地后聚焦主输入框，供键盘快捷键直接打字
+  if (route.query.focus === '1') {
+    await nextTick()
+    document.querySelector<HTMLTextAreaElement>('.ask__input')?.focus()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -227,6 +258,17 @@ onBeforeUnmount(() => {
             <p v-if="m.role === 'ai' && !m.streaming" class="ask__source">
               {{ sourceLabel(m) }}
             </p>
+            <button
+              v-if="m.role === 'ai' && !m.streaming && m.text.trim() && speechSupported"
+              type="button"
+              class="ask__mini-btn ask__read-btn"
+              :class="{ 'is-on': speakingId === m.id }"
+              :aria-pressed="speakingId === m.id"
+              @click="toggleSpeak(m)"
+            >
+              <AppIcon :name="speakingId === m.id ? 'close' : 'zap'" :size="13" />
+              {{ speakingId === m.id ? '停止' : '朗读' }}
+            </button>
           </div>
         </div>
 
@@ -458,6 +500,16 @@ onBeforeUnmount(() => {
   margin-top: 5px;
   font-size: 11px;
   color: var(--text-3);
+}
+
+/* AI 回答的「朗读 / 停止」小按钮：沿用 ask__mini-btn，播放中用 AI 紫提示 */
+.ask__read-btn {
+  margin-top: 6px;
+}
+
+.ask__read-btn.is-on {
+  border-color: var(--ai-purple);
+  color: var(--ai-purple);
 }
 
 /* ── 输入区 ── */

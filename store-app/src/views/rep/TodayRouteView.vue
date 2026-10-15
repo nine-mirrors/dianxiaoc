@@ -283,6 +283,33 @@ function switchAccount(): void {
   toast.info('请重新登录目标账号')
   void router.push('/login')
 }
+
+/* ═══════════════ 门店一键导航（调起高德地图） ═══════════════ */
+
+/** 可导航目标的最小结构（与 Store 的 name/lat/lng 兼容） */
+interface NavTarget {
+  name?: string
+  lat?: number | null
+  lng?: number | null
+}
+
+/** 仅当门店同时具备 lat / lng 时才提供导航入口 */
+function hasLatLng(target: NavTarget | null | undefined): boolean {
+  return !!target && target.lat != null && target.lng != null
+}
+
+/**
+ * 新标签调起高德地图驾车导航：fixture 坐标为 WGS84，coordinate=wgs84 让高德自动转 GCJ02；
+ * 手机端 callnative=1 唤起高德 App，桌面端打开网页地图。无坐标时静默不动作（按钮本就不渲染）。
+ */
+function openStoreNav(target: NavTarget | null | undefined): void {
+  if (!hasLatLng(target)) return
+  const name = target.name || '门店'
+  const url = `https://uri.amap.com/navigation?to=${target.lng},${target.lat},${encodeURIComponent(
+    name,
+  )}&mode=car&coordinate=wgs84&callnative=1`
+  window.open(url, '_blank', 'noopener')
+}
 </script>
 
 <template>
@@ -416,20 +443,33 @@ function switchAccount(): void {
 
     <!-- 巡店地图（默认 110px 路线概览条：下一站 + 距离 + 展开入口；展开后 240px） -->
     <div v-if="!showSkeleton && mapMarkers.length" class="p2-map">
-      <button
-        v-if="!mapExpanded"
-        type="button"
-        class="p2-map__bar mot-tap"
-        :aria-expanded="false"
-        @click="mapExpanded = true"
-      >
-        <AppIcon name="map-pin" :size="16" color="var(--mn-green)" />
-        <span class="p2-map__next">
-          下一站<b>{{ nextStore?.store?.name ?? '—' }}</b>
-          <em>{{ nextKm }}km</em>
-        </span>
-        <span class="p2-map__go">展开地图 <AppIcon name="chevron-right" :size="13" color="var(--mn-green)" /></span>
-      </button>
+      <!-- 外层改为 div：导航与展开是并列按钮，HTML 不允许 button 内嵌套 button -->
+      <div v-if="!mapExpanded" class="p2-map__bar">
+        <button
+          type="button"
+          class="p2-map__bar-main mot-tap"
+          :aria-expanded="false"
+          @click="mapExpanded = true"
+        >
+          <AppIcon name="map-pin" :size="16" color="var(--mn-green)" />
+          <span class="p2-map__next">
+            下一站<b>{{ nextStore?.store?.name ?? '—' }}</b>
+            <em>{{ nextKm }}km</em>
+          </span>
+        </button>
+        <button
+          v-if="hasLatLng(nextStore?.store)"
+          type="button"
+          class="u-btn u-btn--ghost p2-map__nav u-tap"
+          aria-label="导航到下一站门店"
+          @click="openStoreNav(nextStore?.store)"
+        >
+          <AppIcon name="map-pin" :size="13" /> 导航
+        </button>
+        <button type="button" class="p2-map__go u-tap" @click="mapExpanded = true">
+          展开地图 <AppIcon name="chevron-right" :size="13" color="var(--mn-green)" />
+        </button>
+      </div>
 
       <template v-else>
         <MapView :markers="mapMarkers" :height="240" />
@@ -458,8 +498,24 @@ function switchAccount(): void {
       />
 
       <div v-else class="p2-route__list">
-        <div v-for="r in routeStores" :id="`store-card-${r.store.id}`" :key="r.store.id">
+        <div
+          v-for="r in routeStores"
+          :id="`store-card-${r.store.id}`"
+          :key="r.store.id"
+          class="p2-route__cell"
+        >
           <StoreCard :item="r" :origin="routeOrigin" :just-done="justDone.includes(r.store.id)" @patrol="goCapture" @view="viewHistory" />
+          <!-- 一键导航：StoreCard 不改动，以浮贴在卡片右上角的圆钮作为并列入口 -->
+          <button
+            v-if="hasLatLng(r.store)"
+            type="button"
+            class="u-btn u-btn--ghost p2-route__nav u-tap"
+            title="高德地图导航"
+            :aria-label="`高德地图导航到${r.store.name}`"
+            @click="openStoreNav(r.store)"
+          >
+            <AppIcon name="map-pin" :size="14" />
+          </button>
         </div>
       </div>
     </div>
@@ -803,8 +859,6 @@ function switchAccount(): void {
   box-shadow: var(--shadow-card);
   font-size: 12.5px;
   color: var(--text-2);
-  text-align: left;
-  cursor: pointer;
   transition:
     transform var(--dur-fast) var(--ease-standard),
     box-shadow var(--dur-fast) var(--ease-standard);
@@ -813,6 +867,32 @@ function switchAccount(): void {
 .p2-map__bar:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+/* 左侧主体（原整条 button 的可点区域，视觉与交互保持原样） */
+.p2-map__bar-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12.5px;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 导航小按钮：ghost 小尺寸，与「展开地图」并列 */
+.p2-map__nav {
+  flex: none;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 12px;
 }
 
 .p2-map__next {
@@ -845,9 +925,13 @@ function switchAccount(): void {
   display: inline-flex;
   align-items: center;
   gap: 1px;
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--mn-green);
   font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .p2-map__collapse {
@@ -891,5 +975,24 @@ function switchAccount(): void {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* 门店卡承载单元：定位上下文给右上角浮贴导航圆钮 */
+.p2-route__cell {
+  position: relative;
+}
+
+/* 导航圆钮：ghost 小尺寸，浮贴卡片右上沿，与「去巡店 / 查看」并列、互不遮挡 */
+.p2-route__nav {
+  position: absolute;
+  top: -9px;
+  right: 12px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  box-shadow: var(--shadow-card);
 }
 </style>

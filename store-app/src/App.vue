@@ -32,9 +32,51 @@ import AiFab from '@/components/common/AiFab.vue'
 import BootCover from '@/components/platform/BootCover.vue'
 import AppTour from '@/components/platform/AppTour.vue'
 import OnboardingGuide from '@/components/platform/OnboardingGuide.vue'
+import { useDocumentBadge } from '@/composables/useDocumentBadge'
 
 const route = useRoute()
 const router = useRouter()
+
+/**
+ * 后台标签新消息标题角标：切走页面收到 message:new / announcement:new 时
+ * 标题变 `(n) 店小C`，回页面清零恢复；纯副作用，不渲染任何 UI。
+ */
+useDocumentBadge()
+
+/* ═══════════════ 经理桌面端：全局键盘快捷键 ═══════════════ */
+
+/**
+ * 当前焦点是否落在可编辑控件内（input / textarea / select / contenteditable）。
+ * 聚焦中按 "/" 应原样输入到控件，不触发跳转。
+ */
+function isEditableFocused(): boolean {
+  const el = document.activeElement
+  if (!el || el === document.body) return false
+  const tag = el.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  return (el as HTMLElement).isContentEditable === true
+}
+
+/** 当前是否有弹窗 / 对话框打开（全站弹层统一 role="dialog"，v-if 挂载即为打开） */
+function hasOpenDialog(): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).some(
+    (el) => el.getClientRects().length > 0,
+  )
+}
+
+/**
+ * 经理桌面形态（route.path 以 /manager 开头）下：
+ * 按 "/" → 跳转 AI 问答并要求自动聚焦输入（?focus=1 由 AiAskView 自行处理）。
+ * Escape 不在此处理（保持各弹窗 / 既有逻辑原样）。
+ */
+function onManagerKeydown(event: KeyboardEvent): void {
+  if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return
+  if (!route.path.startsWith('/manager')) return
+  if (event.key !== '/') return
+  if (isEditableFocused() || hasOpenDialog()) return
+  event.preventDefault()
+  void router.push({ path: '/manager/ask', query: { focus: '1' } })
+}
 
 /** 经理看板（/manager/**）与总控后台（/admin/**）走桌面宽屏形态，其余页面内嵌手机壳 */
 const usePhoneFrame = computed<boolean>(
@@ -132,11 +174,14 @@ onMounted(() => {
     splashRouteReady = true
     dismissSplash()
   })
+  // 经理端全局快捷键（处理器内部按 route.path 判定，仅 /manager 生效）
+  document.addEventListener('keydown', onManagerKeydown)
 })
 
 onBeforeUnmount(() => {
   if (splashTimer !== undefined) window.clearTimeout(splashTimer)
   if (watchdogTimer !== undefined) window.clearTimeout(watchdogTimer)
+  document.removeEventListener('keydown', onManagerKeydown)
 })
 </script>
 

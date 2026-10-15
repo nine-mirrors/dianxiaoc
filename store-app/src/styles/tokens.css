@@ -298,6 +298,11 @@
  * ════════════════════════════════════════════════════════════════ */
 .dxc-phone-light {
   color-scheme: light;
+  /* 建立壳内颜色/背景继承起点：仅重声明变量不够——壳内不显式使用
+     var(--text-x) 的裸文字会沿继承链穿透到 <body>，取到全局夜间色值，
+     在日间质里几乎不可见。壳根显式着色后，裸元素默认继承日间墨玉色。 */
+  color: var(--text-1);
+  background: var(--bg-page);
   --mn-green: #00b451;
   --mn-green-dark: #00934a;
   --mn-green-light: #e8faf0;

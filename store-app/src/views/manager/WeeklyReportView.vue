@@ -15,6 +15,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useToast } from '@/composables/useToast'
+import { useSpeech } from '@/composables/useSpeech'
 import { useSessionStore } from '@/stores/session'
 import { streamWeeklyReport } from '@/api/insights'
 import { getDashboardOverview } from '@/api'
@@ -33,6 +34,14 @@ type OverviewExt = Omit<DashboardOverview, 'kpis'> & {
 
 const session = useSessionStore()
 const { success, info, error: toastError } = useToast()
+
+/* ── 语音播报周报（不支持的浏览器 supported=false，按钮整颗隐藏） ── */
+const {
+  supported: speechSupported,
+  speaking: speechSpeaking,
+  speak: speakText,
+  cancel: cancelSpeech,
+} = useSpeech()
 
 const regionId = ref<string>('R_EAST')
 const overview = ref<OverviewExt | null>(null)
@@ -101,6 +110,8 @@ async function loadOverview(): Promise<void> {
 /** 生成周报（SSE 流式） */
 async function generate(): Promise<void> {
   if (streaming.value) return
+  // 正文即将整体替换，先停止正在朗读的旧周报
+  cancelSpeech()
   streaming.value = true
   generated.value = false
   report.value = ''
@@ -146,6 +157,16 @@ async function copyAll(): Promise<void> {
   }
 }
 
+/** 朗读整篇周报 / 停止（长文由 useSpeech 自动按句切队列） */
+function toggleReportSpeech(): void {
+  if (speechSpeaking.value) {
+    cancelSpeech()
+    return
+  }
+  if (!report.value) return
+  speakText(report.value)
+}
+
 /** 下载为 .md */
 function downloadMd(): void {
   if (!report.value) return
@@ -161,6 +182,12 @@ function downloadMd(): void {
   a.remove()
   window.setTimeout(() => URL.revokeObjectURL(url), 2000)
   success('已下载为 Markdown 文件')
+}
+
+/** 打印 / 另存为 PDF（配合本文件底部 @media print 只保留周报正文） */
+function printReport(): void {
+  if (!report.value) return
+  window.print()
 }
 
 onMounted(() => {
@@ -243,11 +270,26 @@ onBeforeUnmount(() => {
 
           <!-- 底部动作 -->
           <footer class="wr__actions">
+            <button
+              v-if="speechSupported"
+              type="button"
+              class="wr__mini-btn wr__read-btn"
+              :class="{ 'is-on': speechSpeaking }"
+              :disabled="!report || streaming"
+              :aria-pressed="speechSpeaking"
+              @click="toggleReportSpeech"
+            >
+              <AppIcon :name="speechSpeaking ? 'close' : 'zap'" :size="13" />
+              {{ speechSpeaking ? '停止' : '朗读周报' }}
+            </button>
             <button type="button" class="wr__mini-btn" :disabled="!report" @click="copyAll">
               <AppIcon name="clipboard" :size="13" /> 复制全文
             </button>
             <button type="button" class="wr__mini-btn" :disabled="!report" @click="downloadMd">
               <AppIcon name="download" :size="13" /> 下载 .md
+            </button>
+            <button type="button" class="wr__mini-btn" :disabled="!report" @click="printReport">
+              <AppIcon name="download" :size="13" /> 打印 / PDF
             </button>
             <button type="button" class="wr__mini-btn" :disabled="streaming" @click="generate">
               <AppIcon name="refresh" :size="13" /> 重新生成
@@ -471,10 +513,62 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
+/* 「朗读周报 / 停止」：播放中用 AI 紫提示当前状态 */
+.wr__read-btn.is-on {
+  border-color: var(--ai-purple);
+  color: var(--ai-purple);
+}
+
 .wr__actions-hint {
   margin-left: auto;
   font-size: 11px;
   color: var(--text-3);
+}
+
+/* ══ 打印 / 另存 PDF：只保留周报正文，A4 友好 ══ */
+@media print {
+  :global(.desk-header),
+  :global(.aifab),
+  :global(.toast-host),
+  :global([class*='boot-cover']),
+  .wr__bar,
+  .wr__side,
+  .wr__actions,
+  .wr__caret {
+    display: none !important;
+  }
+
+  .wr__body {
+    padding: 0;
+  }
+
+  .wr__grid {
+    display: block;
+  }
+
+  .wr__main {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+    color: #000;
+  }
+
+  .wr__main-title,
+  .wr__source,
+  .wr__content,
+  .wr__content h3,
+  .wr__content p,
+  .wr__lead,
+  .wr__raw {
+    color: #000 !important;
+  }
+
+  .wr__main-head {
+    border-bottom: 1px solid #999;
+  }
 }
 
 /* ── 侧栏 ── */

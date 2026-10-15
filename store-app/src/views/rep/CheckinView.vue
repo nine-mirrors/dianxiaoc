@@ -349,6 +349,33 @@ function goBack(): void {
   router.push('/rep/today')
 }
 
+/* ─────────────── 门店一键导航（调起高德地图） ─────────────── */
+
+/** 可导航目标的最小结构（与 Store 的 name/lat/lng 兼容） */
+interface NavTarget {
+  name?: string
+  lat?: number | null
+  lng?: number | null
+}
+
+/** 仅当门店同时具备 lat / lng 时才提供导航入口 */
+function hasLatLng(target: NavTarget | null | undefined): boolean {
+  return !!target && target.lat != null && target.lng != null
+}
+
+/**
+ * 新标签调起高德地图驾车导航：fixture 坐标为 WGS84，coordinate=wgs84 让高德自动转 GCJ02；
+ * 手机端 callnative=1 唤起高德 App，桌面端打开网页地图。无坐标时静默不动作（按钮本就不渲染）。
+ */
+function openStoreNav(target: NavTarget | null | undefined): void {
+  if (!hasLatLng(target)) return
+  const name = target.name || '门店'
+  const url = `https://uri.amap.com/navigation?to=${target.lng},${target.lat},${encodeURIComponent(
+    name,
+  )}&mode=car&coordinate=wgs84&callnative=1`
+  window.open(url, '_blank', 'noopener')
+}
+
 onMounted(async () => {
   store.value = await resolveStore()
   loading.value = false
@@ -368,7 +395,18 @@ onMounted(async () => {
             <AppIcon name="store" :size="15" color="var(--mn-green)" />
             {{ store.name }}
           </p>
-          <span class="ck-store__type">{{ store.typeLabel }}</span>
+          <span class="ck-store__ops">
+            <button
+              v-if="hasLatLng(store)"
+              type="button"
+              class="u-btn u-btn--ghost ck-store__nav u-tap"
+              aria-label="高德地图导航到当前门店"
+              @click="openStoreNav(store)"
+            >
+              <AppIcon name="map-pin" :size="12" /> 导航
+            </button>
+            <span class="ck-store__type">{{ store.typeLabel }}</span>
+          </span>
         </div>
         <p class="ck-store__meta">
           <AppIcon name="map-pin" :size="13" color="var(--text-3)" />
@@ -508,6 +546,22 @@ onMounted(async () => {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-1);
+}
+
+.ck-store__ops {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 导航小按钮：ghost 小尺寸，与门店类型标签并列 */
+.ck-store__nav {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 12px;
 }
 
 .ck-store__type {
