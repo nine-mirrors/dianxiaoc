@@ -17,13 +17,14 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { score: 0, color: '', size: 108 })
 
 /**
- * 分档文字深色档（白底 ≥4.5:1）：中间分数属于信息文字，不随浅色弧着色。
+ * 分档文字深色档（浅底 ≥4.5:1）：中间分数属于信息文字，不随浅色弧着色。
  * 装饰弧仍可用 colorOf() 的亮色（良好 #8bc34a / 预警 #ff9800）。
- * 良好档 #558b2f 白底对比 ≈5.1:1。
+ * 良好档用 color-mix 将 --level-good 压向主文字色：浅色下≈深橄榄绿，
+ * 深色下自动提亮为亮柠绿，两个主题下均保持 AA 对比。
  */
 const LEVEL_FG: Record<HealthLevelKey, string> = {
   excellent: 'var(--mn-green-dark)',
-  good: '#558b2f',
+  good: 'color-mix(in srgb, var(--level-good) 45%, var(--text-1))',
   warning: 'var(--warning-fg)',
   risk: 'var(--danger-fg)',
 }
@@ -51,13 +52,13 @@ const ariaLabel = computed<string>(() => `AI健康分 ${props.score} 分${levelL
     :style="{ width: `${size}px`, height: `${size}px` }"
   >
     <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`">
-      <!-- 轨道 -->
+      <!-- 轨道：描边跟随边框令牌（日间浅灰、夜间墨绿灰），避免深色卡上出现亮白轨道 -->
       <circle
         :cx="size / 2"
         :cy="size / 2"
         :r="radius"
         fill="none"
-        stroke="#EDEFF0"
+        :style="{ stroke: 'var(--border-color)' }"
         :stroke-width="stroke"
       />
       <!-- 进度弧（-90° 起点在 12 点方向） -->

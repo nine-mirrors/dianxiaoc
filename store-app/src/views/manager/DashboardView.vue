@@ -170,8 +170,86 @@ const COUNT_METRICS_WORSE_WHEN_UP = new Set(['redStores', 'oosRate'])
 
 function kpiWorsening(k: KpiExt): boolean {
   if (!k.danger) return false
+
   if (COUNT_METRICS_WORSE_WHEN_UP.has(k.key)) return k.trend === 'up'
   return false
+}
+
+/* ═══════════════ KPI 说人话：把百分比/目标线换算成一线秒懂的一句话（纯前端推导） ═══════════════ */
+
+/** 各 KPI 标题右侧 ⓘ 的一句话口径（只用原生 title，不做弹层）；未配置的 key 不渲染图标 */
+const KPI_HINTS: Record<string, string> = {
+  avgScore: '辖区门店 AI 体检健康分的平均值',
+  redStores: '健康分低于 60、需 24h 处理的门店',
+  oosRate: '当周缺货 SKU 占在架 SKU 的比例',
+  coverage: '蒙牛产品在应有排面位上的有货比例',
+}
+
+function kpiHint(key: string): string {
+  return KPI_HINTS[key] ?? ''
+}
+
+/**
+ * 从 KPI value 解析数值。百分比（oosRate/coverage）要求字符串确实带 '%'，
+ * 避免把「红灯门店 12」之类整数误判成比率；解析失败一律返回 null（模板据此不渲染人话行）。
+ */
+function parseKpiNumber(value: string, requirePercent = false): number | null {
+  if (value == null) return null
+  const text = String(value).trim()
+  if (!text || (requirePercent && !text.includes('%'))) return null
+  const n = Number.parseFloat(text.replace('%', ''))
+  return Number.isFinite(n) ? n : null
+}
+
+/** 消除浮点尾差（如 80 - 74.3 = 5.700000000000003），最多保留 1 位小数 */
+function trim1(n: number): number {
+  return Math.round(n * 10) / 10
+}
+
+/**
+ * KPI 数值下方的人话换算，只依据 overview.kpis 真实值推导，取不到返回 ''：
+ * - oosRate：0% 报平安；0<x<50% 换算「约每 N 瓶有 1 瓶缺货」；≥50% 不换算；
+ * - coverage：仅 0<y≤100 时换算「100 个排面位里约 N 个有货」；
+ * - avgScore：以目标线 80 为参照说清超过 / 还差几分；
+ * - redStores：按需求保留原样，不加文案。
+ */
+function kpiPlainText(k: KpiExt): string {
+  if (k.key === 'oosRate') {
+    const x = parseKpiNumber(k.value, true)
+    if (x === null) return ''
+    if (x === 0) return '暂时没发现缺货'
+    if (x > 0 && x < 50) return `约每 ${Math.round(100 / x)} 瓶里有 1 瓶缺货`
+    return ''
+  }
+  if (k.key === 'coverage') {
+    const y = parseKpiNumber(k.value, true)
+    if (y === null || !(y > 0 && y <= 100)) return ''
+    return `100 个排面位里约 ${Math.round(y)} 个有货`
+  }
+  if (k.key === 'avgScore') {
+    const v = parseKpiNumber(k.value)
+    if (v === null) return ''
+    const gap = trim1(Math.abs(v - 80))
+    return v >= 80 ? `超过目标线 ${gap} 分` : `距目标 80 还差 ${gap} 分`
+  }
+  return ''
+}
+
+/* ═══════════════ 晨报聚焦「今天先做这 1 件事」：取风险榜第 1 名，纯展示不打接口 ═══════════════ */
+
+/** riskTop5 为空时为 null → 整张聚焦卡不渲染 */
+const topRisk = computed(() => overview.value?.riskTop5?.[0] ?? null)
+
+/**
+ * 「下派任务」：平滑滚动定位到页内已有的「风险预警 Top5」列表，
+ * 该列表行内即有下派按钮（openDispatch 全局弹层），不新写任何后端请求；
+ * 系统偏好减少动态效果时降级为即时跳转。
+ */
+function goToRiskTop(): void {
+  const el = document.getElementById('manager-risk-top5')
+  if (!el) return
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
 }
 
 /* ═══════════════ 门店明细：搜索 + 健康档筛选 + 本地分页（明细区专用） ═══════════════ */
@@ -330,14 +408,34 @@ const taskSummary = computed(() => {
               <p class="p5__kpi-label">
                 {{ k.label }}
                 <span v-if="kpiWorsening(k)" class="p5__kpi-dot" aria-label="指标恶化" />
+                <!-- 口径解释：原生 title 悬停一句话，不做弹层；无配置的 key 不渲染 -->
+                <span v-if="kpiHint(k.key)" class="p5__kpi-info" :title="kpiHint(k.key)">
+                  <AppIcon name="info" :size="13" />
+                </span>
               </p>
               <p class="p5__kpi-value" :class="{ 'is-danger': k.danger }">
                 {{ k.value }}
                 <em :class="k.trend === 'up' ? 'is-up' : k.trend === 'flat' ? 'is-flat' : 'is-down'">{{ k.delta }}</em>
               </p>
+              <!-- 数值下方人话换算（取不到真实值时该行不渲染） -->
+              <p v-if="kpiPlainText(k)" class="p5__kpi-plain">{{ kpiPlainText(k) }}</p>
               <p v-if="k.target" class="p5__kpi-target">{{ k.target }}</p>
             </div>
           </div>
+
+          <!-- 晨报聚焦：风险榜第 1 名 = 今天先做的 1 件事（riskTop5 为空时整卡不渲染，纯前端、零新请求） -->
+          <section v-if="topRisk" class="p5__focus" aria-labelledby="p5-focus-title">
+            <h2 class="p5__focus-title" id="p5-focus-title">
+              <AppIcon name="sparkles" :size="13" /> 今天先做这 1 件事
+            </h2>
+            <p class="p5__focus-text">
+              先去「<span class="p5__focus-store">{{ topRisk.storeName }}</span
+              >」，健康分{{ topRisk.score }}，{{ topRisk.reason || '优先完成缺货与排面整改' }}
+            </p>
+            <button type="button" class="p5__focus-btn" @click="goToRiskTop">
+              <AppIcon name="send" :size="12" /> 下派任务
+            </button>
+          </section>
 
           <!-- AI 晨报：主动预警 + 一键拟派（下派打开看板唯一弹层，成功后刷新看板与晨报） -->
           <ManagerAiBrief ref="briefRef" :region-id="regionId" @dispatch="openDraftDispatch" />
@@ -361,8 +459,8 @@ const taskSummary = computed(() => {
             </section>
           </div>
 
-          <!-- 风险 Top5（行内即可下派，按钮带预选 storeId） -->
-          <section class="p5__card">
+          <!-- 风险 Top5（行内即可下派，按钮带预选 storeId；id 供「今天先做这 1 件事」卡平滑滚动定位） -->
+          <section class="p5__card" id="manager-risk-top5">
             <header class="p5__card-head">
               <h2 class="p5__card-title">
                 <AppIcon name="alert-triangle" :size="14" /> 风险预警 Top5
@@ -781,6 +879,101 @@ const taskSummary = computed(() => {
   margin-top: 2px;
   font-size: 11.5px;
   color: var(--text-3);
+}
+
+/* KPI 标题右侧 ⓘ：margin-left:auto 贴到卡右缘；口径走原生 title，不做弹层 */
+.p5__kpi-info {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-4);
+  cursor: help;
+  transition: color var(--dur-fast) ease;
+}
+
+.p5__kpi-info:hover {
+  color: var(--ai-purple);
+}
+
+/* 数值下方的人话换算小字 */
+.p5__kpi-plain {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-3);
+}
+
+/* 晨报聚焦卡「今天先做这 1 件事」：AI 紫描边 + 紫雾底，颜色全部走令牌（深色模式自动反转） */
+.p5__focus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 6px;
+  padding: clamp(9px, 1.3vh, 12px) clamp(12px, 1vw, 16px);
+  border: 1px solid var(--ai-purple);
+  border-radius: var(--radius-card);
+  background: var(--ai-mist);
+}
+
+.p5__focus-title {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ai-purple);
+}
+
+.p5__focus-text {
+  /* 240px 弹性基底：宽屏吃剩余空间把按钮顶到右侧，窄屏自动换行不溢出 */
+  flex: 1 1 240px;
+  min-width: 0;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.p5__focus-store {
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+/* 下派任务小按钮：实心 AI 紫（文字色夜间自动反转为深字，与 .p5__dispatch 同惯例） */
+.p5__focus-btn {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: 1px solid var(--ai-purple);
+  border-radius: 999px;
+  background: var(--ai-purple);
+  color: var(--milk);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.p5__focus-btn:hover {
+  background: var(--ai-purple-2);
+  border-color: var(--ai-purple-2);
+}
+
+.p5__focus-btn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* 滚动定位「风险预警 Top5」时留出一点顶部呼吸距离 */
+#manager-risk-top5 {
+  scroll-margin-block-start: var(--space-3, 12px);
 }
 
 /* 整改闭环三卡：auto-fit 修复三卡孤儿（窄屏自动降列） */

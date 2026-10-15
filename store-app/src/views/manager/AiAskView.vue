@@ -41,6 +41,39 @@ const suggestions = ref<string[]>([])
 const scrollRef = ref<HTMLElement | null>(null)
 let controller: AbortController | null = null
 
+/* ── 等待首字期间的分阶段拟人话术：提问后每 900ms 换一句，
+   首字到达 / 请求结束 / 失败 / 清空 / 切页时立即清除定时器与文案 ── */
+const WAIT_PHRASES = [
+  '正在翻看今天片区里的门店…',
+  '在比对近 8 周的趋势数据…',
+  '核对缺货率、铺货率这些底稿数字…',
+  '把结论整理成你能直接执行的话…',
+]
+const waitPhrase = ref<string>('')
+let waitTimer: number | undefined
+let waitIndex = 0
+
+function startWaitPhrases(): void {
+  stopWaitPhrases()
+  waitIndex = 0
+  waitPhrase.value = WAIT_PHRASES[0]
+  // 尊重系统「减弱动态效果」：只静态显示首条，不做轮换
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  waitTimer = window.setInterval(() => {
+    if (waitIndex >= WAIT_PHRASES.length - 1) return
+    waitIndex += 1
+    waitPhrase.value = WAIT_PHRASES[waitIndex]
+  }, 900)
+}
+
+function stopWaitPhrases(): void {
+  if (waitTimer !== undefined) {
+    window.clearInterval(waitTimer)
+    waitTimer = undefined
+  }
+  waitPhrase.value = ''
+}
+
 /* ── 语音播报（能听会说闭环；不支持的浏览器 supported=false，按钮整颗隐藏） ── */
 const {
   supported: speechSupported,
@@ -55,11 +88,11 @@ watch(speechSpeaking, (on) => {
   if (!on) speakingId.value = null
 })
 
-/** 来源角标文案（如实标注，不夸大） */
+/** 来源角标文案（如实标注，不夸大；fallback 是知识库里的标准答案，不是大模型生成） */
 function sourceLabel(m: Msg): string {
   if (m.source === 'llm') return 'AI 生成 · qwen'
-  if (m.source === 'fallback') return '规则兜底（未配置大模型 Key）'
-  return '未获取来源标注'
+  if (m.source === 'fallback') return '来自标准答案库（本次未调用大模型）'
+  return '暂未标注来源'
 }
 
 /** 滚到最新一条 */
@@ -88,6 +121,7 @@ async function ask(raw: string): Promise<void> {
   const aiMsg: Msg = { id: ++seq, role: 'ai', text: '', source: null, streaming: true }
   messages.value.push(aiMsg)
   sending.value = true
+  startWaitPhrases()
   scrollToBottom()
 
   controller = new AbortController()
@@ -95,6 +129,8 @@ async function ask(raw: string): Promise<void> {
     const res = await streamAiAsk(
       question,
       (delta) => {
+        // 首字到达：话术与定时器立刻退场
+        if (waitPhrase.value) stopWaitPhrases()
         aiMsg.text += delta
         scrollToBottom()
       },
@@ -111,6 +147,7 @@ async function ask(raw: string): Promise<void> {
     aiMsg.text = aiMsg.text || '请求被中断或失败，请重试。'
     toastError('AI 问答失败，请稍后重试')
   } finally {
+    stopWaitPhrases()
     sending.value = false
     controller = null
     scrollToBottom()
@@ -121,6 +158,7 @@ async function ask(raw: string): Promise<void> {
 function clearChat(): void {
   cancelSpeech()
   if (sending.value) controller?.abort()
+  stopWaitPhrases()
   messages.value = []
   info('对话已清空')
 }
@@ -174,6 +212,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   controller?.abort()
+  stopWaitPhrases()
 })
 </script>
 
@@ -221,7 +260,7 @@ onBeforeUnmount(() => {
           </header>
           <p class="ask__side-hint">
             所有数字来自区域看板与作业数据的真实底稿；模型只能引用底稿数字，不编造、不估算。
-            未配置大模型 Key 时走规则兜底，页面会如实标注来源。
+            暂时连不上大模型时，会用知识库里的标准答案回答，并在每条回答下方如实标注来源。
           </p>
         </section>
       </aside>
@@ -252,7 +291,17 @@ onBeforeUnmount(() => {
           />
 
           <div v-for="m in messages" :key="m.id" class="ask__turn" :class="`ask__turn--${m.role}`">
-            <div class="ask__bubble" :class="`ask__bubble--${m.role}`">
+            <!-- 提问后 ~ 首字流出：用户气泡下方、AI 气泡出现前的一行分阶段等待话术 -->
+            <div
+              v-if="m.role === 'ai' && m.streaming && !m.text && waitPhrase"
+              class="ask__wait"
+              role="status"
+              aria-label="AI 正在准备回答"
+            >
+              <span class="ask__wait-dot" aria-hidden="true" />
+              <span :key="waitPhrase" class="ask__wait-text" aria-hidden="true">{{ waitPhrase }}</span>
+            </div>
+            <div v-if="m.text || !m.streaming" class="ask__bubble" :class="`ask__bubble--${m.role}`">
               <p class="ask__text">{{ m.text }}<span v-if="m.streaming" class="ask__caret" /></p>
             </div>
             <p v-if="m.role === 'ai' && !m.streaming" class="ask__source">
@@ -480,6 +529,49 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
+/* 首字流出前的分阶段等待话术（用户气泡下方一行轻提示） */
+.ask__wait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 4px;
+}
+
+.ask__wait-dot {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--ai-purple);
+  animation: ask-wait-spin 0.8s linear infinite;
+}
+
+.ask__wait-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
+  animation: ask-wait-in var(--dur-fast) var(--ease-standard) both;
+}
+
+@keyframes ask-wait-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ask-wait-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* 流式光标 */
 .ask__caret {
   display: inline-block;
@@ -559,6 +651,14 @@ onBeforeUnmount(() => {
 
   .ask__aside {
     flex-direction: row;
+  }
+}
+
+/* 减弱动效：等待点静止、话术不做入场动效（JS 侧同样不轮换） */
+@media (prefers-reduced-motion: reduce) {
+  .ask__wait-dot,
+  .ask__wait-text {
+    animation: none;
   }
 }
 </style>

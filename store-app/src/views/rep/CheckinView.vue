@@ -24,6 +24,7 @@ import { useSessionStore } from '@/stores/session'
 import { getStore, getTodayRoute, getTasks, uploadPhoto } from '@/api'
 import { createCheckin, getCheckins, type CheckinRecord } from '@/api/ops'
 import { formatShortTime } from '@/utils/format'
+import { haversineKm, fmtKm } from '@/domain/geo'
 import type { Store } from '@/types'
 
 const route = useRoute()
@@ -69,6 +70,16 @@ async function resolveStore(): Promise<Store | null> {
   }
   return null
 }
+
+/** 距起点距离（km）：由线路首店坐标与当前门店坐标现算；无坐标显 — */
+const distanceText = computed<string>(() => {
+  const s = store.value
+  if (!s || s.lat == null || s.lng == null || !originCoord.value) return '—'
+  return fmtKm(haversineKm(originCoord.value, { lat: Number(s.lat), lng: Number(s.lng) }))
+})
+
+/** 今日线路首店坐标（距离基准） */
+const originCoord = ref<{ lat: number; lng: number } | null>(null)
 
 /* ─────────────── 定位 ─────────────── */
 
@@ -377,6 +388,14 @@ function openStoreNav(target: NavTarget | null | undefined): void {
 }
 
 onMounted(async () => {
+  // 距离基准：今日线路首店坐标（独立获取，门店解析失败也不影响）
+  try {
+    const today = await getTodayRoute(repId.value)
+    const first = today.routeStores?.find((r) => r.store.lat != null && r.store.lng != null)
+    if (first) originCoord.value = { lat: Number(first.store.lat), lng: Number(first.store.lng) }
+  } catch {
+    /* 无线路数据时距离显 — */
+  }
   store.value = await resolveStore()
   loading.value = false
   await locate()
@@ -385,7 +404,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <MobileLayout title="到店签到" :back="true" :content-padding-bottom="92" @back="goBack">
+  <MobileLayout title="到店签到" :back="true" :content-padding-bottom="118" @back="goBack">
     <!-- 门店卡 -->
     <div class="ck-pad">
       <SkeletonBlock v-if="loading" height="80px" radius="12px" />
@@ -395,24 +414,24 @@ onMounted(async () => {
             <AppIcon name="store" :size="15" color="var(--mn-green)" />
             {{ store.name }}
           </p>
-          <span class="ck-store__ops">
-            <button
-              v-if="hasLatLng(store)"
-              type="button"
-              class="u-btn u-btn--ghost ck-store__nav u-tap"
-              aria-label="高德地图导航到当前门店"
-              @click="openStoreNav(store)"
-            >
-              <AppIcon name="map-pin" :size="12" /> 导航
-            </button>
-            <span class="ck-store__type">{{ store.typeLabel }}</span>
-          </span>
+          <span class="ck-store__type">{{ store.typeLabel }}</span>
         </div>
-        <p class="ck-store__meta">
-          <AppIcon name="map-pin" :size="13" color="var(--text-3)" />
-          {{ store.address }}
+        <p class="ck-store__meta ck-store__meta--nav">
+          <span class="ck-store__addr">
+            <AppIcon name="map-pin" :size="13" color="var(--text-3)" />
+            {{ store.address }}
+          </span>
+          <button
+            v-if="hasLatLng(store)"
+            type="button"
+            class="u-btn u-btn--ghost ck-store__nav u-tap"
+            aria-label="高德地图导航到当前门店"
+            @click="openStoreNav(store)"
+          >
+            <AppIcon name="map-pin" :size="12" /> 导航
+          </button>
         </p>
-        <p class="ck-store__meta">负责人：{{ store.ownerName }} · 距离 {{ store.distanceKm }}km</p>
+        <p class="ck-store__meta">负责人：{{ store.ownerName }} · 距起点 {{ distanceText }}km</p>
       </div>
       <EmptyState v-else icon="store" title="未匹配到门店" desc="请从今日巡店列表进入签到" />
     </div>
@@ -468,7 +487,7 @@ onMounted(async () => {
             {{ cameraProbing ? '检测相机…' : '拍照' }}
           </button>
           <button type="button" class="ck-entry__btn u-tap" :disabled="processing" @click="pickFromAlbum">
-            <AppIcon name="layers" :size="15" /> 相册上传
+            <AppIcon name="image" :size="15" /> 相册上传
           </button>
           <button v-if="shot" type="button" class="ck-entry__btn ck-entry__btn--ghost u-tap" @click="clearShot">
             <AppIcon name="trash" :size="15" /> 重拍
@@ -548,15 +567,22 @@ onMounted(async () => {
   color: var(--text-1);
 }
 
-.ck-store__ops {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* 地址 + 导航同一行：地址占满，导航在右端不挤店名 */
+.ck-store__meta--nav {
+  justify-content: space-between;
+  gap: 10px;
 }
 
-/* 导航小按钮：ghost 小尺寸，与门店类型标签并列 */
+.ck-store__addr {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 导航小按钮：ghost 小尺寸，贴在地址行右端 */
 .ck-store__nav {
+  flex: none;
   height: 28px;
   min-height: 28px;
   padding: 0 10px;
@@ -835,7 +861,7 @@ onMounted(async () => {
   padding-top: 14px;
   padding-right: 12px;
   padding-left: 12px;
-  background: linear-gradient(180deg, rgba(245, 247, 245, 0) 0%, var(--bg-page) 42%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-page) 0%, transparent) 0%, var(--bg-page) 42%);
 }
 
 .ck-submit {

@@ -449,7 +449,7 @@ function goBack(): void {
           {{ cameraProbing ? '检测相机…' : '拍照' }}
         </button>
         <button type="button" class="p3-entry__btn mot-tap" @click="pickFromAlbum">
-          <AppIcon name="layers" :size="15" /> 从相册上传
+          <AppIcon name="image" :size="15" /> 从相册上传
         </button>
       </div>
       <button type="button" class="p3-rotate u-tap" :disabled="!candidates.length" @click="rotatePhoto">
@@ -550,7 +550,7 @@ function goBack(): void {
 .p3-store__card {
   padding: 12px;
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
   border-left: 4px solid var(--mn-green);
 }
@@ -575,7 +575,7 @@ function goBack(): void {
   padding: 3px 10px;
   border: 1px solid var(--mn-green);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--mn-green);
   font-size: 11px;
   font-weight: 600;
@@ -741,7 +741,7 @@ function goBack(): void {
   padding: 0 12px;
   border: 1px solid var(--mn-green);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--mn-green-dark);
   font-size: 13px;
   font-weight: 600;
@@ -836,7 +836,7 @@ function goBack(): void {
   border: none;
   border-radius: 50%;
   background: var(--text-1);
-  color: #fff;
+  color: var(--bg-card);
   font-size: 10px;
   line-height: 20px;
   padding: 0;
@@ -851,7 +851,7 @@ function goBack(): void {
   height: 52px;
   border-radius: 8px;
   border: 1.5px dashed var(--text-4);
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-3);
   font-size: 18px;
 }
@@ -885,7 +885,7 @@ function goBack(): void {
   padding-top: 14px;
   padding-right: 12px;
   padding-left: 12px;
-  background: linear-gradient(180deg, rgba(245, 247, 245, 0) 0%, var(--bg-page) 42%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-page) 0%, transparent) 0%, var(--bg-page) 42%);
 }
 
 .p3-submit__btn {
@@ -984,7 +984,7 @@ function goBack(): void {
   width: 100%;
   padding: 14px 12px 18px;
   border-radius: 16px 16px 0 0;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .p3-sheet__title {

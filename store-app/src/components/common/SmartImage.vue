@@ -73,7 +73,7 @@ const currentSrc = (): string => (stage.value === 0 ? assetUrl(props.src) : FALL
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #f0f2f0;
+  background: var(--bg-page);
 }
 
 .smart-image__img {
@@ -94,7 +94,7 @@ const currentSrc = (): string => (stage.value === 0 ? assetUrl(props.src) : FALL
   height: 100%;
   min-height: 120px;
   padding: 12px;
-  background: linear-gradient(180deg, #f7f9f7 0%, #eef1ee 100%);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-page) 100%);
 }
 
 .shelf {
@@ -110,7 +110,7 @@ const currentSrc = (): string => (stage.value === 0 ? assetUrl(props.src) : FALL
   align-items: flex-end;
   gap: 6px;
   padding-bottom: 2px;
-  border-bottom: 2px solid #d8dee0;
+  border-bottom: 2px solid var(--border-strong);
 }
 
 .shelf__bottle {
@@ -120,13 +120,13 @@ const currentSrc = (): string => (stage.value === 0 ? assetUrl(props.src) : FALL
 }
 
 .shelf__bottle--0 {
-  background: #cfe3d4;
+  background: var(--mn-green-light);
 }
 .shelf__bottle--1 {
-  background: #dde5e9;
+  background: var(--border-strong);
 }
 .shelf__bottle--2 {
-  background: #cfe0ea;
+  background: var(--sky-mist);
 }
 
 .smart-image__tip {

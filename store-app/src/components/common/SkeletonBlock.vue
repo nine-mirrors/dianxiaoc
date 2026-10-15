@@ -45,7 +45,14 @@ const sizeStyle = computed<Record<string, string>>(() => {
 
 <style scoped>
 .skeleton {
-  background: linear-gradient(90deg, #eef0ef 25%, #f6f7f7 37%, #eef0ef 63%);
+  /* 表面=页面灰底（卡内呈现为灰占位块），高光=抬升色；
+     日间壳内为 #f3f8f4→#fff 微光扫过，夜间为 #0c1510→#1a2b22，双主题均有可见流动 */
+  background: linear-gradient(
+    90deg,
+    var(--bg-page) 25%,
+    var(--bg-elevated) 37%,
+    var(--bg-page) 63%
+  );
   background-size: 400% 100%;
   animation: sk-shimmer 1.2s ease infinite;
 }

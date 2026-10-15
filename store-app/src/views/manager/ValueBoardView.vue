@@ -330,8 +330,8 @@ onBeforeUnmount(() => {
             <EmptyState
               v-else
               icon="info"
-              title="暂无分母，不伪造采纳率"
-              desc="当前区域尚无订货单作为分母，后端返回 null，此处不显示 0%。"
+              title="暂时还算不出采纳率"
+              desc="当前区域还没有订货单，等店主开始下单后，这里会展示 AI 建议被采纳的比例"
             />
           </section>
         </div>

@@ -271,8 +271,8 @@ onMounted(() => {
       <EmptyState
         v-else-if="loadError || !items.length"
         icon="shield"
-        title="暂无黑名单数据"
-        desc="当前筛选条件下没有记录，或后端服务未连接。"
+        title="当前筛选下没有黑名单记录"
+        desc="换个筛选条件看看，或点右上角手动新增管控对象"
         action-text="重新加载"
         @action="load"
       />

@@ -12,17 +12,19 @@ initTheme()
 /**
  * 根组件。
  *
- * 职责（ARCHITECTURE §8.8）：
- *  - 业代端 / 店员端：包一层桌面端手机壳（390×844），录屏更专业；
- *  - 经理看板（/manager/**）：桌面 1440 宽屏，不套壳；
+ * 职责（ARCHITECTURE §8.8）：按「设备形态 × 路由分区」呈现三种界面：
+ *  - PC 访问业代/店主端：套桌面端手机壳（390×844），录屏演示更专业；
+ *  - 真机/窄窗访问业代/店主端：全屏移动 App（跟随系统日夜主题与安全区）；
+ *  - 经理/管理员（/manager、/admin）：PC 桌面宽屏；手机由路由守卫分流到移动门户 /m；
  *  - 全站常驻 Toast 容器。
+ *  设备识别见 useDeviceType（UA + 指针 + 视口宽度，?desktop=1 可手动强制桌面形态）。
  *
  * 路由转场（见 styles/motion.css）：
  *  - 手机壳内：新页从右轻推入、浏览器/手势返回向左（方向由 history.state.position
  *    增减判定，仅用于观感，不参与任何业务与守卫逻辑）；
  *  - 桌面看板：out-in 淡入 + ≤8px 上移，不使用绝对定位，避免干扰窗口滚动。
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PhoneFrame from '@/components/common/PhoneFrame.vue'
 import ToastHost from '@/components/common/ToastHost.vue'
@@ -33,9 +35,43 @@ import BootCover from '@/components/platform/BootCover.vue'
 import AppTour from '@/components/platform/AppTour.vue'
 import OnboardingGuide from '@/components/platform/OnboardingGuide.vue'
 import { useDocumentBadge } from '@/composables/useDocumentBadge'
+import { useDeviceType } from '@/composables/useDeviceType'
 
 const route = useRoute()
 const router = useRouter()
+
+/** 设备形态：手机（真机/窄窗） vs 桌面（PC），响应式，旋转/拖窗自动切换 */
+const { isMobile } = useDeviceType()
+
+/** 桌面端路由区：经理宽屏 / 管理员控制台（移动门户 /m 不算桌面区） */
+const isDesktopRouteArea = computed<boolean>(
+  () => route.path.startsWith('/manager') || route.path.startsWith('/admin'),
+)
+
+/**
+ * 三种呈现形态：
+ * - shell：PC + 手机端路由 → 390×844 仿真手机壳（壳内恒日间，演示录屏用）
+ * - full：移动设备/窄窗 + 手机端路由（含移动门户 /m）→ 全屏 App，跟随系统主题
+ * - desktop：PC + 经理/管理员路由 → 宽屏看板
+ */
+const form = computed<'shell' | 'full' | 'desktop'>(() => {
+  if (isDesktopRouteArea.value) return isMobile.value ? 'full' : 'desktop'
+  return isMobile.value ? 'full' : 'shell'
+})
+
+/** 兼容旧引用：是否套手机壳（仅 shell 形态） */
+const usePhoneFrame = computed<boolean>(() => form.value === 'shell')
+
+/**
+ * 拖窄窗口 / 旋转导致形态实时变化时，桌面区页面自动分流：
+ * 变移动态且停留在 /manager、/admin → 进移动门户；变回桌面态且在 /m → 回看板。
+ * （首次进入由路由守卫处理，这里只负责「不刷新页面的形态切换」。）
+ */
+watch(isMobile, (mobile) => {
+  if (route.path === '/login') return
+  if (mobile && isDesktopRouteArea.value) void router.replace('/m')
+  if (!mobile && route.path.startsWith('/m')) void router.replace('/manager/dashboard')
+})
 
 /**
  * 后台标签新消息标题角标：切走页面收到 message:new / announcement:new 时
@@ -77,11 +113,6 @@ function onManagerKeydown(event: KeyboardEvent): void {
   event.preventDefault()
   void router.push({ path: '/manager/ask', query: { focus: '1' } })
 }
-
-/** 经理看板（/manager/**）与总控后台（/admin/**）走桌面宽屏形态，其余页面内嵌手机壳 */
-const usePhoneFrame = computed<boolean>(
-  () => !route.path.startsWith('/manager') && !route.path.startsWith('/admin'),
-)
 
 /**
  * 转场方向：只依据 history.state.position 的增减。
@@ -186,7 +217,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PhoneFrame v-if="usePhoneFrame">
+  <!-- 形态一：PC 上的仿真手机壳（业代/店主端演示形态，壳内恒日间） -->
+  <PhoneFrame v-if="form === 'shell'">
     <!-- 错误边界包在内容区外层、转场外层：渲染异常只替换壳内内容，手机壳/顶栏/Toast 不被炸没。
          注意：边界不能嵌进 <transition> 内（其默认插槽根为 Fragment，会让 Transition
          丢失可动画的元素根），故保持 mot-route-host → RouterView → transition 原结构不动。 -->
@@ -207,6 +239,23 @@ onBeforeUnmount(() => {
       <AiFab />
     </template>
   </PhoneFrame>
+
+  <!-- 形态二：真机 / 窄窗全屏移动 App（跟随系统日夜主题；移动门户 /m 也走这里） -->
+  <div v-else-if="form === 'full'" class="dxc-mobile-full">
+    <AppErrorBoundary @retry="retryRouteContent">
+      <div class="mot-route-host">
+        <RouterView v-slot="{ Component }">
+          <transition :name="mobileTransitionName">
+            <component :is="Component" :key="retrySeed" />
+          </transition>
+        </RouterView>
+      </div>
+    </AppErrorBoundary>
+    <ToastHost />
+    <AiFab />
+  </div>
+
+  <!-- 形态三：PC 经理 / 管理员桌面宽屏 -->
   <AppErrorBoundary v-else @retry="retryRouteContent">
     <RouterView v-slot="{ Component }">
       <transition name="mot-route-desk" mode="out-in">
@@ -215,8 +264,8 @@ onBeforeUnmount(() => {
     </RouterView>
   </AppErrorBoundary>
 
-  <!-- 桌面看板 Toast（手机壳分支已在壳内渲染，互斥只挂一份） -->
-  <ToastHost v-if="!usePhoneFrame" />
+  <!-- 桌面看板 Toast（另两种形态各自挂了 Toast，互斥只挂一份） -->
+  <ToastHost v-if="form === 'desktop'" />
 
   <!-- ══ 平台层浮层：与 splash / ToastHost 平级，显示条件均由组件内部按路由/角色判断 ══ -->
   <!-- 开场战报层（?boot=1 或本次会话未播过） -->
@@ -249,6 +298,19 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* ══ 真机 / 窄窗全屏移动形态 ══
+   fixed 铺满视口（100dvh 跟随 iOS 地址栏伸缩），是内部 fixed/absolute 浮层
+   （AiFab、Toast、地图全屏）的定位上下文；不套手机壳、不强制日间，主题跟随系统。 */
+.dxc-mobile-full {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-page);
+  color: var(--text-1);
+}
+
 /* 深绿品牌底全屏（色值对齐 design-system-v5 定稿 splash 渐变） */
 .app-splash {
   position: fixed;

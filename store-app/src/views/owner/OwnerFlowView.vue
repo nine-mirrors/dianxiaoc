@@ -674,7 +674,7 @@ onUnmounted(() => {
   gap: 14px;
   padding: 16px;
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
 }
 
@@ -878,7 +878,7 @@ onUnmounted(() => {
   padding: 8px 14px;
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-2);
   font-size: 13px;
   cursor: pointer;
@@ -967,7 +967,7 @@ onUnmounted(() => {
 .p6-res__card {
   padding: 14px 16px;
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
   margin-bottom: 12px;
 }
@@ -1111,7 +1111,7 @@ onUnmounted(() => {
   margin-bottom: 10px;
   padding: 11px 12px;
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card, 0 2px 10px rgba(0, 0, 0, 0.05));
 }
 
@@ -1190,7 +1190,7 @@ onUnmounted(() => {
 
 .p6__btn--ghost {
   margin-top: 10px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--mn-green-dark, #0a7d43);
   border: 1px solid var(--mn-green, #009639);
   font-weight: 600;
@@ -1231,7 +1231,7 @@ onUnmounted(() => {
 .p6-ok__card {
   padding: 14px 16px;
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
 }
 

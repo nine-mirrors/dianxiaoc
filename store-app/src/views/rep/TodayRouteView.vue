@@ -5,7 +5,7 @@
  * 三格概览（5 / 2/5 / 85.5↑2.4） + 待办条（★经理下派联动落点）+ 5 张线路卡 + 底部 Tab。
  * 含骨架屏、空态、完成回写后的绿色闪光反馈。
  */
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MobileLayout from '@/components/layout/MobileLayout.vue'
 import StoreCard from '@/components/business/StoreCard.vue'
@@ -17,6 +17,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import PullRefresh from '@/components/platform/PullRefresh.vue'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
+import { useHaptics } from '@/composables/useHaptics'
 import { getTodayRoute, updateTaskStatus, getTickets, updateTicketStatus } from '@/api'
 import { onRealtime } from '@/realtime/client'
 import { useSessionStore } from '@/stores/session'
@@ -47,6 +48,7 @@ const router = useRouter()
 const session = useSessionStore()
 const demo = useDemoStore()
 const toast = useToast()
+const haptics = useHaptics()
 
 /** 问候语按「演示基准日的上午」口径：早上好 */
 const greeting = computed<string>(() => {
@@ -102,10 +104,13 @@ async function markTaskDone(task: Task): Promise<void> {
   markingTaskId.value = task.id
   try {
     await updateTaskStatus(task.id, 'done')
-    toast.success(`已回执：${task.storeName} · ${task.taskTypeLabel} 已完成`)
+    haptics.success()
+    toast.success(`回执已送达经理，${task.storeName} 这单闭环啦`)
     await reloadRoute()
   } catch {
-    toast.error('提交失败，请重试')
+    toast.error('没提交成功，别担心，先保留着', {
+      action: { text: '再试一次', onAction: () => void markTaskDone(task) },
+    })
   } finally {
     markingTaskId.value = ''
   }
@@ -150,9 +155,12 @@ async function acceptTicket(ticket: Ticket): Promise<void> {
   try {
     await updateTicketStatus(ticket.id, 'accepted')
     pendingTickets.value = pendingTickets.value.filter((t) => t.id !== ticket.id)
+    haptics.success()
     toast.success(`已接单：${ticket.storeName} · ${ticket.totalBottles} 瓶，将于 2 小时内送达`)
   } catch {
-    toast.error('接单失败，请重试')
+    toast.error('接单没成功，订单还在', {
+      action: { text: '再试一次', onAction: () => void acceptTicket(ticket) },
+    })
   } finally {
     acceptingId.value = ''
   }
@@ -169,6 +177,7 @@ onUnmounted(() => {
   offTaskNew()
   offTicketNew()
   offTicketStatus()
+  window.clearTimeout(celebrateTimer)
 })
 
 /**
@@ -211,6 +220,54 @@ function taskDueText(t: Task): string {
 }
 /** 概览 */
 const summary = computed(() => route.value.summary ?? EMPTY.summary)
+
+/* ── 今日进度：把「2/5」翻译成一句有人味的进度鼓励（目标梯度效应） ── */
+const progressTotal = computed<number>(() => Math.max(0, summary.value.total || 0))
+const progressDone = computed<number>(() => Math.min(progressTotal.value, Math.max(0, summary.value.done || 0)))
+const progressPercent = computed<number>(() =>
+  progressTotal.value > 0 ? Math.round((progressDone.value / progressTotal.value) * 100) : 0,
+)
+/** 今日是否已全部巡完 */
+const allDoneToday = computed<boolean>(
+  () => progressTotal.value > 0 && progressDone.value >= progressTotal.value,
+)
+/** 剩余家数 */
+const remaining = computed<number>(() => progressTotal.value - progressDone.value)
+
+/** 按完成度给一句贴合当下的鼓励语（空态/加载时不显示） */
+const progressCheer = computed<string>(() => {
+  if (progressTotal.value === 0) return ''
+  const d = progressDone.value
+  if (d === 0) return `今天 ${progressTotal.value} 家，按路线走就行，第一家最近`
+  if (allDoneToday.value) return `${progressTotal.value} 家全部巡完，今天辛苦啦`
+  if (d === 1) return `开门红，还剩 ${remaining.value} 家，节奏不错`
+  if (remaining.value === 1) return `就剩最后 1 家了，一鼓作气`
+  return `已跑完 ${d}/${progressTotal.value}，还剩 ${remaining.value} 家`
+})
+
+/* ── 收工庆祝：从「未全完 → 全完」跨变时弹一次轻量庆祝（峰终效应） ── */
+const showCelebrate = ref<boolean>(false)
+let celebrateTimer: number | undefined
+let prevAllDone = false
+function maybeCelebrate(isAllDone: boolean): void {
+  if (isAllDone && !prevAllDone) {
+    showCelebrate.value = true
+    window.clearTimeout(celebrateTimer)
+    celebrateTimer = window.setTimeout(() => {
+      showCelebrate.value = false
+    }, 2200)
+    haptics.success()
+  }
+  prevAllDone = isAllDone
+}
+watch(
+  allDoneToday,
+  (isAllDone) => {
+    // 数据未就绪（total=0）时不参与判定，避免首帧误触发
+    if (progressTotal.value > 0) maybeCelebrate(isAllDone)
+  },
+  { flush: 'post' },
+)
 /** 是否显示骨架屏 */
 const showSkeleton = computed<boolean>(() => loading.value && demo.skeleton)
 /** 是否空态（演示数据不会触发，防御评委乱操作） */
@@ -378,6 +435,24 @@ function openStoreNav(target: NavTarget | null | undefined): void {
       </div>
     </div>
 
+    <!-- 今日进度：一句进度鼓励 + 进度条（数据就绪且非空态时显示） -->
+    <div v-if="!showSkeleton && progressTotal > 0" class="p2-progress">
+      <div class="p2-progress__row">
+        <span class="p2-progress__cheer" :class="{ 'is-done': allDoneToday }">{{ progressCheer }}</span>
+        <span class="p2-progress__num">{{ progressDone }}/{{ progressTotal }}</span>
+      </div>
+      <div
+        class="p2-progress__track"
+        role="progressbar"
+        :aria-valuenow="progressDone"
+        :aria-valuemin="0"
+        :aria-valuemax="progressTotal"
+        aria-label="今日巡店进度"
+      >
+        <div class="p2-progress__fill" :class="{ 'is-done': allDoneToday }" :style="{ width: progressPercent + '%' }" />
+      </div>
+    </div>
+
     <!-- 待办提醒条（★经理下派 → 业代可见） -->
     <div v-if="todoTasks.length" class="p2-todo">
       <button
@@ -498,28 +573,38 @@ function openStoreNav(target: NavTarget | null | undefined): void {
       />
 
       <div v-else class="p2-route__list">
-        <div
-          v-for="r in routeStores"
-          :id="`store-card-${r.store.id}`"
-          :key="r.store.id"
-          class="p2-route__cell"
-        >
-          <StoreCard :item="r" :origin="routeOrigin" :just-done="justDone.includes(r.store.id)" @patrol="goCapture" @view="viewHistory" />
-          <!-- 一键导航：StoreCard 不改动，以浮贴在卡片右上角的圆钮作为并列入口 -->
-          <button
-            v-if="hasLatLng(r.store)"
-            type="button"
-            class="u-btn u-btn--ghost p2-route__nav u-tap"
-            title="高德地图导航"
-            :aria-label="`高德地图导航到${r.store.name}`"
-            @click="openStoreNav(r.store)"
-          >
-            <AppIcon name="map-pin" :size="14" />
-          </button>
+        <div v-for="r in routeStores" :id="`store-card-${r.store.id}`" :key="r.store.id">
+          <StoreCard :item="r" :origin="routeOrigin" :just-done="justDone.includes(r.store.id)" @patrol="goCapture" @view="viewHistory">
+            <!-- 一键导航：收进卡片操作行，主按钮在最右，不悬出卡片、不与悬浮球打架 -->
+            <template #extra-action>
+              <button
+                v-if="hasLatLng(r.store)"
+                type="button"
+                class="u-btn u-btn--ghost p2-route__nav u-tap"
+                title="高德地图导航"
+                :aria-label="`高德地图导航到${r.store.name}`"
+                @click="openStoreNav(r.store)"
+              >
+                <AppIcon name="map-pin" :size="15" />
+                导航
+              </button>
+            </template>
+          </StoreCard>
         </div>
       </div>
     </div>
     </PullRefresh>
+
+    <!-- 收工庆祝：今日最后一家完成时轻量出现 2.2s（不阻塞操作，纯鼓励） -->
+    <Transition name="celebrate">
+      <div v-if="showCelebrate" class="p2-celebrate" aria-live="polite">
+        <div class="p2-celebrate__badge">
+          <AppIcon name="check-circle" :size="34" color="#fff" />
+        </div>
+        <p class="p2-celebrate__title">今天的门店都跑完啦</p>
+        <p class="p2-celebrate__sub">{{ progressTotal }} 家全部巡完，路上注意安全，辛苦啦</p>
+      </div>
+    </Transition>
   </MobileLayout>
 </template>
 
@@ -601,13 +686,13 @@ function openStoreNav(target: NavTarget | null | undefined): void {
 .p2-stat {
   padding: 10px 6px;
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
   text-align: center;
 }
 
 .p2-stat--wide {
-  background: linear-gradient(135deg, var(--mn-green-light) 0%, #fff 100%);
+  background: linear-gradient(135deg, var(--mn-green-light) 0%, var(--bg-card) 100%);
 }
 
 .p2-stat__num {
@@ -641,6 +726,57 @@ function openStoreNav(target: NavTarget | null | undefined): void {
   margin-top: 2px;
   font-size: 11px;
   color: var(--text-3);
+}
+
+/* ── 今日进度条 ── */
+.p2-progress {
+  padding: 10px 12px 0;
+}
+
+.p2-progress__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.p2-progress__cheer {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.p2-progress__cheer.is-done {
+  color: var(--mn-green);
+}
+
+.p2-progress__num {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.p2-progress__track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: inset 0 0 0 1px var(--border-color);
+  overflow: hidden;
+}
+
+.p2-progress__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--grad-brand);
+  transition: width 0.5s var(--ease-emphasized);
+}
+
+.p2-progress__fill.is-done {
+  background: linear-gradient(90deg, var(--mn-green), var(--brand-bright, var(--mn-green)));
 }
 
 /* 待办 */
@@ -692,7 +828,7 @@ function openStoreNav(target: NavTarget | null | undefined): void {
   padding: 10px 12px;
   border-radius: 10px;
   border-left: 4px solid var(--text-3);
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
 }
 
@@ -756,7 +892,7 @@ function openStoreNav(target: NavTarget | null | undefined): void {
   padding: 4px 12px;
   border: 1px solid var(--warning-fg);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--warning-fg);
   font-size: 11px;
   font-weight: 600;
@@ -798,7 +934,7 @@ function openStoreNav(target: NavTarget | null | undefined): void {
 .p2-order {
   padding: 10px 12px;
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-card);
 }
 
@@ -977,22 +1113,82 @@ function openStoreNav(target: NavTarget | null | undefined): void {
   gap: 10px;
 }
 
-/* 门店卡承载单元：定位上下文给右上角浮贴导航圆钮 */
-.p2-route__cell {
-  position: relative;
+/* 导航按钮：卡片操作行的幽灵小按钮（StoreCard #extra-action 插槽） */
+.p2-route__nav {
+  height: 32px;
+  padding: 0 10px;
+  gap: 3px;
+  font-size: 12px;
 }
 
-/* 导航圆钮：ghost 小尺寸，浮贴卡片右上沿，与「去巡店 / 查看」并列、互不遮挡 */
-.p2-route__nav {
-  position: absolute;
-  top: -9px;
-  right: 12px;
-  z-index: 2;
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
-  padding: 0;
-  border-radius: 999px;
-  box-shadow: var(--shadow-card);
+/* ── 收工庆祝弹层：居中轻卡，不遮全屏、不阻塞操作 ── */
+.p2-celebrate {
+  position: fixed;
+  left: 50%;
+  top: 38%;
+  z-index: var(--z-modal);
+  width: min(300px, 72vw);
+  padding: 22px 20px 20px;
+  border-radius: 18px;
+  background: var(--bg-elevated, var(--bg-card));
+  box-shadow: var(--sh-3, 0 18px 44px rgba(0, 0, 0, 0.35));
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.p2-celebrate__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: var(--grad-brand);
+  box-shadow: var(--sh-brand, 0 10px 22px rgba(0, 180, 81, 0.3));
+}
+
+.p2-celebrate__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.p2-celebrate__sub {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+.celebrate-enter-active {
+  transition:
+    opacity 0.28s var(--ease-entrance, ease),
+    transform 0.32s var(--ease-emphasized, cubic-bezier(0.2, 0, 0, 1.2));
+}
+
+.celebrate-leave-active {
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.celebrate-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(14px) scale(0.92);
+}
+
+.celebrate-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-8px) scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p2-progress__fill,
+  .celebrate-enter-active,
+  .celebrate-leave-active {
+    transition: none;
+  }
 }
 </style>

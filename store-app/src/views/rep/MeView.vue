@@ -34,14 +34,83 @@ const loading = ref<boolean>(true)
 const online = ref<boolean>(false)
 let pollTimer: number | null = null
 
+/* ── 连续巡店打卡（真实依据：getTodayRoute 的 summary.done；仅本地存储，不碰后端） ── */
+const VISIT_DAYS_KEY = 'dxc:visit-days'
+const VISIT_DAYS_LIMIT = 60
+const visitStreak = ref<number>(0)
+
+/** 本地时区 YYYY-MM-DD（不用 toISOString：东八区深夜会被 UTC 偏移写成前一天） */
+function localDateKey(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** 读打卡数组：脏数据 / 解析失败一律当空数组，绝不让坏 localStorage 白屏 */
+function readVisitDays(): string[] {
+  try {
+    const raw = window.localStorage.getItem(VISIT_DAYS_KEY)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((v): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 到今天为止连续有巡店记录的天数：
+ * 今天有记录则从今天往回数；今天还没记录也允许从昨天往回数历史连续（今天完成后会自动续上）。
+ */
+function streakFrom(days: Set<string>): number {
+  const cursor = new Date()
+  if (!days.has(localDateKey(cursor))) cursor.setDate(cursor.getDate() - 1)
+  let n = 0
+  while (days.has(localDateKey(cursor))) {
+    n += 1
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return n
+}
+
+/**
+ * 同步打卡并刷新连续天数。markToday 只在今日 summary.done>0 时为 true；
+ * 接口失败 / done=0 不写今天。数组去重后只保留最近 60 天（YYYY-MM-DD 字典序即时间序）。
+ * 任何异常静默降级，卡片最多停在 X=0，不弹错。
+ */
+function syncVisitStreak(markToday: boolean): void {
+  try {
+    const days = new Set(readVisitDays())
+    if (markToday) days.add(localDateKey(new Date()))
+    const recent = Array.from(days).sort().reverse().slice(0, VISIT_DAYS_LIMIT)
+    window.localStorage.setItem(VISIT_DAYS_KEY, JSON.stringify(recent))
+    visitStreak.value = streakFrom(new Set(recent))
+  } catch {
+    /* localStorage 不可用等：保持当前值（初始 0） */
+  }
+}
+
+/** 连续天数对应的鼓励副文案（不夸收益，只给情绪价值） */
+const streakCheer = computed<string>(() => {
+  const x = visitStreak.value
+  if (x <= 0) return '今天还没开始，跑第一家就点亮'
+  if (x === 1) return '第一天，开个好头'
+  if (x < 7) return '继续保持，已经成习惯了'
+  return '一周全勤，片区有你真稳'
+})
+
 async function loadStats(): Promise<void> {
   loading.value = true
   try {
     const res = await getTodayRoute(repId.value)
     todayDone.value = res.summary?.done ?? 0
     todayTotal.value = res.summary?.total ?? 0
+    // 今日确有完成的巡店才打卡；失败走 catch，不会误写今天
+    syncVisitStreak(todayDone.value > 0)
   } catch {
-    /* 静默降级：单项失败不影响其余卡片 */
+    /* 静默降级：单项失败不影响其余卡片；连续天数仍可展示本地历史，无历史则为 0 */
   }
   try {
     const res = await getVisits({ limit: 300 })
@@ -59,6 +128,8 @@ async function loadStats(): Promise<void> {
 }
 
 onMounted(() => {
+  // 先用本地打卡记录渲染连续天数（接口未返回 / 失败时也有真实历史可看，无记录即 0）
+  syncVisitStreak(false)
   void loadStats()
   online.value = isRealtimeConnected()
   pollTimer = window.setInterval(() => {
@@ -120,6 +191,17 @@ function doLogout(): void {
           </span>
         </p>
       </div>
+    </div>
+
+    <!-- 连续巡店：天数来自本地真实打卡记录（仅今日 summary.done>0 才记入今天） -->
+    <div class="me-streak u-animate-in">
+      <span class="me-streak__icon">
+        <AppIcon name="zap" :size="18" :color="todayDone > 0 ? 'var(--mn-green-dark)' : 'var(--text-4)'" />
+      </span>
+      <span class="me-streak__text">
+        <span class="me-streak__title">连续巡店 <b>{{ visitStreak }}</b> 天</span>
+        <span class="me-streak__sub">{{ streakCheer }}</span>
+      </span>
     </div>
 
     <!-- 数据卡：今日完成 / 累计巡店 / 待办 -->
@@ -263,6 +345,54 @@ function doLogout(): void {
   gap: 3px;
   font-size: 11.5px;
   opacity: 0.9;
+}
+
+/* 连续巡店打卡卡（u-card 风格：与本页其他卡片同一套令牌） */
+.me-streak {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 12px 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.me-streak__icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--mn-green-light);
+}
+
+.me-streak__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.me-streak__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.me-streak__title b {
+  font-size: 17px;
+  color: var(--mn-green-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.me-streak__sub {
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
 /* 数据卡 */

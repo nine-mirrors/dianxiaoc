@@ -89,8 +89,8 @@ const sourceLabel = computed<string>(() =>
   source.value === 'llm'
     ? 'AI 生成 · qwen'
     : source.value === 'fallback'
-      ? '规则兜底（未配置大模型 Key）'
-      : '未获取来源标注',
+      ? '来自标准答案库（本次未调用大模型）'
+      : '暂未标注来源',
 )
 
 /** 取 KPI 摘要（真实数，与经理看板同源） */

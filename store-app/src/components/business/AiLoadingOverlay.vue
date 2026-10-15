@@ -149,7 +149,7 @@ onBeforeUnmount(() => {
           aria-label="关闭等待提示"
           @click="emit('close')"
         >
-          <AppIcon name="close" :size="15" color="#4b5563" />
+          <AppIcon name="close" :size="15" color="var(--text-2)" />
         </button>
 
         <!-- 招牌等待主符号：牛奶注入奶滴（card 规格，文案由标题承担，故不重复显示） -->
@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
   max-width: 320px;
   padding: 22px 20px 16px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: 0 12px 40px rgba(28, 18, 72, 0.22);
   text-align: center;
 }
@@ -289,8 +289,8 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 1.5px solid #c9cfd8;
-  background: #fff;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-card);
   z-index: 1;
 }
 
@@ -334,7 +334,7 @@ onBeforeUnmount(() => {
   bottom: -1px;
   width: 2px;
   border-radius: 1px;
-  background: #e6e9ee;
+  background: var(--border-color);
   overflow: hidden;
   z-index: 0;
 }
@@ -361,7 +361,7 @@ onBeforeUnmount(() => {
 .overlay__bar {
   height: 6px;
   border-radius: 999px;
-  background: #efedf8;
+  background: var(--ai-mist);
   overflow: hidden;
 }
 
@@ -394,7 +394,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   border: none;
   border-radius: 50%;
-  background: #f3f4f6;
+  background: var(--bg-page);
   cursor: pointer;
   transition:
     opacity 0.2s ease,
@@ -402,7 +402,7 @@ onBeforeUnmount(() => {
 }
 
 .overlay__close:hover {
-  background: #e8eaef;
+  background: var(--border-color);
 }
 
 .overlay__close:focus-visible {

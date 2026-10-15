@@ -21,6 +21,7 @@ import { useHaptics } from '@/composables/useHaptics'
 import { useSessionStore } from '@/stores/session'
 import { getTodayRoute } from '@/api'
 import { levelOf, DEMO_WEATHER } from '@/domain/constants'
+import { haversineKm, fmtKm } from '@/domain/geo'
 import type { RouteStore } from '@/types'
 
 const router = useRouter()
@@ -54,6 +55,20 @@ async function load(): Promise<void> {
 }
 
 onMounted(load)
+
+/* ─────────────── 距离：由坐标现算（与今日线路页同口径，不用写死 distanceKm） ─────────────── */
+
+/** 线路起点：今日线路第一家有坐标的门店 */
+const routeOrigin = computed<{ lat: number; lng: number } | null>(() => {
+  const first = list.value.find((r) => r.store.lat != null && r.store.lng != null)
+  return first ? { lat: Number(first.store.lat), lng: Number(first.store.lng) } : null
+})
+
+/** 门店距起点的展示文本（km，一位小数；无坐标显 —） */
+function kmOf(s: RouteStore['store']): string {
+  if (!routeOrigin.value || s.lat == null || s.lng == null) return '—'
+  return fmtKm(haversineKm(routeOrigin.value, { lat: Number(s.lat), lng: Number(s.lng) }))
+}
 
 /* ─────────────── 进度 ─────────────── */
 
@@ -143,7 +158,7 @@ function statusLabel(s: RouteStore['status']): string {
         <div class="rp-head__row">
           <div>
             <p class="rp-head__date">{{ date || '今日线路' }}</p>
-            <p class="rp-head__weather"><AppIcon name="refresh" :size="12" color="var(--text-3)" /> {{ weather }} · 按距离与健康分智能排序</p>
+            <p class="rp-head__weather">{{ weather }} · 按距离与健康分智能排序</p>
           </div>
           <div class="rp-head__stat">
             <b>{{ doneCount }}</b><span>/{{ total }}</span>
@@ -179,7 +194,7 @@ function statusLabel(s: RouteStore['status']): string {
             <div class="rp-store__info">
               <p class="rp-store__name u-ellipsis">{{ r.store.name }}</p>
               <p class="rp-store__meta">
-                {{ r.store.typeLabel }} · 距起点 {{ r.store.distanceKm }}km
+                {{ r.store.typeLabel }} · 距起点 {{ kmOf(r.store) }}km
                 <span class="rp-store__badge" :class="`rp-store__badge--${r.status}`">{{ statusLabel(r.status) }}</span>
               </p>
               <p class="rp-store__score">
@@ -221,7 +236,7 @@ function statusLabel(s: RouteStore['status']): string {
               <AppIcon name="map-pin" :size="13" /> 导航
             </button>
             <button v-if="r.status === 'done'" type="button" class="rp-act rp-act--ghost u-tap" @click="viewHistory(r)">
-              <AppIcon name="history" :size="13" /> 查看
+              查看<AppIcon name="chevron-right" :size="13" />
             </button>
             <button v-else type="button" class="rp-act rp-act--primary u-tap" @click="patrol(r.store.id)">
               <AppIcon name="camera" :size="13" color="#fff" /> 开始巡店

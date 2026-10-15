@@ -153,6 +153,26 @@ function totalAmountOf(useSim: boolean): number | null {
 const simTotalAmount = computed<number | null>(() => totalAmountOf(true))
 const realTotalAmount = computed<number | null>(() => totalAmountOf(false))
 
+/**
+ * 全部 SKU 日均销量之和（dailyForecast 为算法接口的真实字段，明细行「每天卖约 X 瓶」同源）。
+ * 只做求和这种直接换算，不做任何收益推算。
+ */
+const totalDailySales = computed<number>(() =>
+  simLines.value.reduce((s, l) => s + (Number(l.daily) || 0), 0),
+)
+
+/**
+ * 「这批大约够卖 X 天」：总补货瓶数 ÷ 全部 SKU 日均销量之和，口径与一键下单的模拟瓶数一致，
+ * 用户调参数时随行变化。瓶数为 0 或取不到日均销量（和 ≤ 0）时返回空串，整行不显示——不硬编数字。
+ * X ≥ 10 取整数，小于 10 保留 1 位小数（读着更像人话）。
+ */
+const sellDaysText = computed<string>(() => {
+  const dailySum = totalDailySales.value
+  if (simTotalBottles.value <= 0 || !(dailySum > 0)) return ''
+  const x = simTotalBottles.value / dailySum
+  return x >= 10 ? String(Math.round(x)) : round1(x)
+})
+
 /** 自动展开阈值：默认只展示算法推导入口，点击展开 */
 const openSteps = ref<Record<string, boolean>>({})
 function toggleSteps(key: string): void {
@@ -338,6 +358,11 @@ onMounted(() => {
             <span>调整后（模拟）</span>
             <b>{{ simTotalBottles }} 瓶<span v-if="simTotalAmount != null"> · ¥{{ simTotalAmount }}</span></b>
           </div>
+          <!-- 人话翻译：只按已有的瓶数与日均销量做除法，不做收益承诺；取不到则整行不渲染 -->
+          <p v-if="sellDaysText" class="rs__sum-human">
+            <AppIcon name="clock" :size="13" color="var(--text-3)" />
+            按最近的卖货速度，这批大约够卖 {{ sellDaysText }} 天
+          </p>
         </section>
 
         <!-- SKU 明细 -->
@@ -553,6 +578,18 @@ onMounted(() => {
 
 .rs__sum-row--sim b {
   color: var(--ai-purple);
+}
+
+.rs__sum-human {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border-color);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
 }
 
 /* ── SKU 明细 ── */

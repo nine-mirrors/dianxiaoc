@@ -1381,7 +1381,7 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
   padding: 4px 10px;
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-2);
   font-size: 11.5px;
 }
@@ -1445,8 +1445,8 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
   margin-top: 10px;
   padding: 10px 11px;
   border-radius: 10px;
-  background: #f7faf8;
-  border: 1px solid #e8efe9;
+  background: var(--bg-page);
+  border: 1px solid var(--border-color);
 }
 
 .p4-fc__params {
@@ -1486,7 +1486,7 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
 .p4-fc__summary {
   margin: 8px 0 0;
   padding-top: 8px;
-  border-top: 1px dashed #dfe8e1;
+  border-top: 1px dashed var(--border-color);
   font-size: 11.5px;
   line-height: 1.6;
   color: var(--text-2);
@@ -1516,7 +1516,7 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
   gap: 8px;
   /* 底部安全区：全面屏手势条不压按钮（env 桌面机壳内为 0，不影响演示） */
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(245, 247, 245, 0) 0%, var(--bg-page) 42%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-page) 0%, transparent) 0%, var(--bg-page) 42%);
 }
 
 .p4-bar__btn {
@@ -1591,7 +1591,7 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
   overflow-y: auto;
   padding: 16px 14px 18px;
   border-radius: 16px 16px 0 0;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .p4-sheet__title {
@@ -1708,7 +1708,7 @@ const rectificationPrimary = computed<boolean>(() => (diagnosis.value?.health.sc
   flex-direction: column;
   align-items: center;
   padding: 46px 16px 20px;
-  background: #fff;
+  background: var(--bg-card);
   overflow-y: auto;
 }
 

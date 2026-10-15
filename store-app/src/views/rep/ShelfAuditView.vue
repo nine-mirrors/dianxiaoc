@@ -654,7 +654,7 @@ function backToToday(): void {
   padding-top: 14px;
   padding-right: 12px;
   padding-left: 12px;
-  background: linear-gradient(180deg, rgba(245, 247, 245, 0) 0%, var(--bg-page) 42%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-page) 0%, transparent) 0%, var(--bg-page) 42%);
 }
 
 .sa-submit {

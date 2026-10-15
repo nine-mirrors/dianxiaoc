@@ -288,7 +288,9 @@ function backToList(): void {
           v-else-if="!conversations.length"
           icon="message"
           title="暂无会话"
-          desc="管理员发布公告后，可在公告页查看"
+          desc="暂时没有新消息，去看看公告里有没有新安排"
+          action-text="查看公告"
+          @action="tab = 'notice'"
         />
         <button
           v-for="c in conversations"

@@ -10,7 +10,7 @@ import { useToast } from '@/composables/useToast'
 import { useHaptics } from '@/composables/useHaptics'
 import AppIcon from './AppIcon.vue'
 
-const { toasts } = useToast()
+const { toasts, runAction } = useToast()
 const haptics = useHaptics()
 
 /**
@@ -69,11 +69,20 @@ const ICONS: Record<string, string> = {
         v-for="t in toasts"
         :key="t.id"
         class="toast"
-        :class="`toast--${t.type}`"
+        :class="[`toast--${t.type}`, { 'toast--has-action': !!t.action }]"
         :role="t.type === 'error' ? 'alert' : null"
       >
         <AppIcon :name="ICONS[t.type] || 'info'" :size="16" aria-hidden="true" />
         <span class="toast__text">{{ t.text }}</span>
+        <!-- 动作钮（如「再试一次」）：整条 toast 里唯一可点元素，点击后立即关闭并回调 -->
+        <button
+          v-if="t.action"
+          type="button"
+          class="toast__action"
+          @click.stop="runAction(t.id)"
+        >
+          {{ t.action.text }}
+        </button>
       </div>
     </TransitionGroup>
   </div>
@@ -102,7 +111,7 @@ const ICONS: Record<string, string> = {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: 320px;
+  max-width: 340px;
   padding: 9px 14px;
   border-radius: 999px;
   background: rgba(26, 31, 28, 0.92);
@@ -110,6 +119,32 @@ const ICONS: Record<string, string> = {
   font-size: 13px;
   font-weight: 500;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+/* 带动作钮时允许更长内容，改成圆角胶囊仍不拦截其余区域 */
+.toast--has-action {
+  max-width: 360px;
+}
+
+/* 动作钮：浅色描边胶囊，在各色 toast 底上都清晰 */
+.toast__action {
+  flex: none;
+  margin-left: 4px;
+  padding: 3px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.toast__action:hover {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .toast--success {

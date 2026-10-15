@@ -59,7 +59,7 @@ const emit = defineEmits<{ (e: 'back'): void }>()
     </header>
 
     <!-- 后端降级提示条 -->
-    <div v-if="degraded" class="ml-degraded">⚠ 后端未连接 · 请确认服务已启动</div>
+    <div v-if="degraded" class="ml-degraded">⚠ 网络开小差了，当前显示上次刷新的数据，恢复后会自动同步</div>
 
     <!-- 内容 -->
     <main class="ml-body u-scroll-y" :style="{ paddingBottom: `${contentPaddingBottom}px` }">
@@ -98,7 +98,8 @@ const emit = defineEmits<{ (e: 'back'): void }>()
   min-height: 52px;
   padding: 8px max(14px, env(safe-area-inset-right, 0px)) 8px max(14px, env(safe-area-inset-left, 0px));
   padding-top: max(14px, env(safe-area-inset-top, 0px));
-  background: #fff;
+  /* 令牌化：PC 手机壳内恒为日间白卡；真机全屏跟随日夜主题（夜间为墨绿卡） */
+  background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
   flex: none;
 }
@@ -144,11 +145,11 @@ const emit = defineEmits<{ (e: 'back'): void }>()
 .ml-degraded {
   flex: none;
   padding: 6px 14px;
-  background: #fff7e6;
-  color: #d46b08;
+  background: var(--warning-bg);
+  color: var(--warning-fg);
   font-size: 12px;
   text-align: center;
-  border-bottom: 1px solid #ffe7ba;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .ml-body {

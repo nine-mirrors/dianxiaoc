@@ -411,7 +411,7 @@ function onBack(): void {
               {{ cameraProbing ? '检测相机…' : '拍照' }}
             </button>
             <button type="button" class="vs-entry__btn mot-tap" @click="pickFromAlbum(i)">
-              <AppIcon name="layers" :size="15" /> 从相册上传
+              <AppIcon name="image" :size="15" /> 从相册上传
             </button>
           </div>
 
@@ -726,7 +726,7 @@ function onBack(): void {
   border: none;
   border-radius: 50%;
   background: var(--text-1);
-  color: #fff;
+  color: var(--bg-card);
   font-size: 10px;
   line-height: 20px;
 }
@@ -788,7 +788,7 @@ function onBack(): void {
   bottom: 0;
   z-index: 60;
   padding: 10px 12px 12px;
-  background: linear-gradient(180deg, rgba(245, 247, 245, 0) 0%, var(--bg-page) 42%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-page) 0%, transparent) 0%, var(--bg-page) 42%);
 }
 
 .vs-bar__step {

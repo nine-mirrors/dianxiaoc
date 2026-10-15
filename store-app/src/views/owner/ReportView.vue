@@ -353,7 +353,7 @@ onBeforeUnmount(() => {
         <section class="u-card rp__card">
           <header class="rp__head"><h2><AppIcon name="layers" :size="15" /> 各方面表现</h2><span>{{ profile.dimensions.length ? '六项得分' : '暂无' }}</span></header>
           <div v-if="profile.dimensions.length" ref="dimEl" class="rp__chart rp__chart--dim" />
-          <EmptyState v-else icon="layers" title="暂无分项数据" desc="该店还没有诊断记录，不做补齐。" />
+          <EmptyState v-else icon="layers" title="暂无分项数据" desc="完成第一次巡店体检后，这里会显示各方面表现。" />
         </section>
 
         <!-- 问题分布 -->

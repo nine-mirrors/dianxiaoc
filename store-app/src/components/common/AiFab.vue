@@ -34,12 +34,13 @@ const router = useRouter()
 const session = useSessionStore()
 const toast = useToast()
 
-/** 悬浮球可见性：登录页 / 桌面端不出现 */
+/** 悬浮球可见性：登录页 / 桌面端 / 移动门户不出现（门户自带 AI 问答 tab） */
 const visible = computed<boolean>(
   () =>
     !route.path.startsWith('/login') &&
     !route.path.startsWith('/manager') &&
-    !route.path.startsWith('/admin'),
+    !route.path.startsWith('/admin') &&
+    !route.path.startsWith('/m'),
 )
 
 const open = ref<boolean>(false)
@@ -49,6 +50,207 @@ const asking = ref<boolean>(false)
 const listRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 let controller: AbortController | null = null
+
+/* ── 等待首字期间的分阶段拟人话术（知识库口径）：提问后每 900ms 换一句，
+   首字到达 / 请求结束 / 关闭抽屉 / 卸载时立即清除定时器与文案 ── */
+const WAIT_PHRASES = ['正在标准答案库里查找…', '在比对最相关的操作指引…', '马上就好，整理成大白话…']
+const waitPhrase = ref<string>('')
+let waitTimer: number | undefined
+let waitIndex = 0
+
+function startWaitPhrases(): void {
+  stopWaitPhrases()
+  waitIndex = 0
+  waitPhrase.value = WAIT_PHRASES[0]
+  // 尊重系统「减弱动态效果」：只静态显示首条，不做轮换
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  waitTimer = window.setInterval(() => {
+    if (waitIndex >= WAIT_PHRASES.length - 1) return
+    waitIndex += 1
+    waitPhrase.value = WAIT_PHRASES[waitIndex]
+  }, 900)
+}
+
+function stopWaitPhrases(): void {
+  if (waitTimer !== undefined) {
+    window.clearInterval(waitTimer)
+    waitTimer = undefined
+  }
+  waitPhrase.value = ''
+}
+
+/* ═══════════════ 悬浮球拖拽 ═══════════════
+ * pointer 事件统一处理鼠标/触摸；位移超过阈值才算拖拽，否则视为点击打开抽屉；
+ * 松手后自动吸到最近的左右边缘；位置存 localStorage，下次进来保持。
+ * 坐标基准是 .aifab 容器（absolute inset:0，与手机屏可视区同尺寸）。 */
+const POS_KEY = 'dxc:aifab-pos'
+const BALL_SIZE = 52
+const MARGIN = 12
+const BOTTOM_SAFE = 76 // 避开底部 TabBar
+const DRAG_THRESHOLD = 6
+
+const rootRef = ref<HTMLElement | null>(null)
+const ballRef = ref<HTMLButtonElement | null>(null)
+/** 定位状态：null=用 CSS 默认右下；有值=显式 left/top（px） */
+const pos = ref<{ x: number; y: number } | null>(loadPos())
+const dragging = ref<boolean>(false)
+/** 松手后吸附边缘的过渡动画（拖拽中关闭，跟手无延迟） */
+const settling = ref<boolean>(false)
+
+let startX = 0
+let startY = 0
+let originX = 0
+let originY = 0
+let moved = false
+let activePointer: number | null = null
+/** 刚结束拖拽时短暂吞掉尾随的 click，避免拖完误开抽屉 */
+let suppressClick = false
+let suppressTimer: number | undefined
+
+function loadPos(): { x: number; y: number } | null {
+  try {
+    const raw = localStorage.getItem(POS_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw)
+    if (typeof p?.x === 'number' && typeof p?.y === 'number') return { x: p.x, y: p.y }
+  } catch {
+    /* 脏数据忽略 */
+  }
+  return null
+}
+
+function savePos(): void {
+  if (!pos.value) return
+  try {
+    localStorage.setItem(POS_KEY, JSON.stringify(pos.value))
+  } catch {
+    /* 隐私模式等：静默 */
+  }
+}
+
+/** 当前球的左上角坐标（无显式位置时按默认右下换算） */
+function currentXY(container: HTMLElement): { x: number; y: number } {
+  if (pos.value) return { x: pos.value.x, y: pos.value.y }
+  return { x: container.clientWidth - MARGIN - BALL_SIZE, y: container.clientHeight - BOTTOM_SAFE - BALL_SIZE }
+}
+
+function clamp(x: number, y: number, w: number, h: number): { x: number; y: number } {
+  return {
+    x: Math.min(Math.max(x, MARGIN), Math.max(MARGIN, w - MARGIN - BALL_SIZE)),
+    y: Math.min(Math.max(y, MARGIN), Math.max(MARGIN, h - MARGIN - BALL_SIZE)),
+  }
+}
+
+function onPointerDown(e: PointerEvent): void {
+  const container = rootRef.value
+  const ball = ballRef.value
+  if (!container || !ball) return
+  activePointer = e.pointerId
+  const cur = currentXY(container)
+  startX = e.clientX
+  startY = e.clientY
+  originX = cur.x
+  originY = cur.y
+  moved = false
+  settling.value = false
+  try {
+    ball.setPointerCapture?.(e.pointerId)
+  } catch {
+    /* 合成事件等场景无活动指针：不影响 window 级 move/up 监听 */
+  }
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerUp)
+}
+
+function onPointerMove(e: PointerEvent): void {
+  if (activePointer !== e.pointerId) return
+  const dx = e.clientX - startX
+  const dy = e.clientY - startY
+  if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+  if (!moved) {
+    moved = true
+    dragging.value = true
+  }
+  const container = rootRef.value
+  if (!container) return
+  const next = clamp(originX + dx, originY + dy, container.clientWidth, container.clientHeight)
+  pos.value = next
+}
+
+function onPointerUp(e: PointerEvent): void {
+  if (activePointer !== e.pointerId) return
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerUp)
+  activePointer = null
+  try {
+    ballRef.value?.releasePointerCapture?.(e.pointerId)
+  } catch {
+    /* 无活动指针时静默 */
+  }
+
+  if (!moved) {
+    // 点击：不在这里打开，交给随后的 click 事件（onBallClick）
+    dragging.value = false
+    return
+  }
+
+  // 发生了拖拽：吞掉松手后浏览器/自动化补派发的 click，防止误开抽屉
+  suppressClick = true
+  if (suppressTimer !== undefined) window.clearTimeout(suppressTimer)
+  suppressTimer = window.setTimeout(() => {
+    suppressClick = false
+    suppressTimer = undefined
+  }, 300)
+
+  // 吸附最近的左右边缘
+  const container = rootRef.value
+  if (container && pos.value) {
+    settling.value = true
+    const cur = clamp(pos.value.x, pos.value.y, container.clientWidth, container.clientHeight)
+    const nearLeft = cur.x + BALL_SIZE / 2 < container.clientWidth / 2
+    const targetX = nearLeft ? MARGIN : container.clientWidth - MARGIN - BALL_SIZE
+    pos.value = { x: targetX, y: cur.y }
+    savePos()
+    window.setTimeout(() => (settling.value = false), 220)
+  }
+  dragging.value = false
+}
+
+/** 点击打开抽屉；拖拽后的合成 click 被抑制 */
+function onBallClick(): void {
+  if (suppressClick) return
+  openDrawer()
+}
+
+/** 窗口尺寸变化（真机旋转/模拟器缩放）时把球收回可视区 */
+function onResize(): void {
+  const container = rootRef.value
+  if (!container || !pos.value) return
+  pos.value = clamp(pos.value.x, pos.value.y, container.clientWidth, container.clientHeight)
+}
+window.addEventListener('resize', onResize)
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerUp)
+  if (suppressTimer !== undefined) window.clearTimeout(suppressTimer)
+})
+
+/** 球的内联定位样式：有显式位置时 left/top，否则交给 CSS 默认右下 */
+const ballStyle = computed<Record<string, string>>(() => {
+  if (!pos.value) return {}
+  return {
+    left: `${pos.value.x}px`,
+    top: `${pos.value.y}px`,
+    right: 'auto',
+    bottom: 'auto',
+    transition: settling.value ? 'left 200ms ease, top 200ms ease' : 'none',
+  }
+})
 
 /** 快捷入口（按角色） */
 const shortcuts = computed<{ label: string; desc: string; icon: string; path: string }[]>(() => {
@@ -87,6 +289,7 @@ function closeDrawer(): void {
     controller = null
   }
   asking.value = false
+  stopWaitPhrases()
 }
 
 function onKeydown(e: KeyboardEvent): void {
@@ -101,6 +304,7 @@ watch(open, (v) => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
   if (controller) controller.abort()
+  stopWaitPhrases()
 })
 
 async function ask(): Promise<void> {
@@ -111,22 +315,30 @@ async function ask(): Promise<void> {
   const ai: Turn = { role: 'ai', text: '', source: null }
   turns.value.push(ai)
   asking.value = true
+  startWaitPhrases()
   scrollToEnd()
 
   controller = new AbortController()
-  const result = await streamKnowledgeAsk(text, (delta) => {
-    ai.text += delta
-    scrollToEnd()
-  }, { role: session.role, signal: controller.signal })
-  controller = null
-  asking.value = false
-  ai.source = result.source
+  try {
+    const result = await streamKnowledgeAsk(text, (delta) => {
+      // 首字到达：话术与定时器立刻退场
+      if (waitPhrase.value) stopWaitPhrases()
+      ai.text += delta
+      scrollToEnd()
+    }, { role: session.role, signal: controller.signal })
+    controller = null
+    asking.value = false
+    ai.source = result.source
 
-  if (!result.ok && !ai.text) {
-    ai.text = '暂时没能获取到回答，请稍后再试。'
-    toast.error('AI 助手暂时联系不上，请稍后再试')
+    if (!result.ok && !ai.text) {
+      ai.text = '暂时没能获取到回答，请稍后再试。'
+      toast.error('AI 助手暂时联系不上，请稍后再试')
+    }
+    scrollToEnd()
+  } finally {
+    // 请求结束 / 被 abort（关闭抽屉）都保证定时器被清理
+    stopWaitPhrases()
   }
-  scrollToEnd()
 }
 
 /** 语音输入结果落回输入框；失败交给 Toast（不抛裸错） */
@@ -145,14 +357,18 @@ function go(path: string): void {
 </script>
 
 <template>
-  <div v-if="visible" class="aifab">
-    <!-- AI 悬浮球：右下角，高于 TabBar -->
+  <div v-if="visible" ref="rootRef" class="aifab">
+    <!-- AI 悬浮球：可拖动，松手吸附左右边缘；短按（位移<6px）为点击打开 -->
     <button
       v-if="!open"
+      ref="ballRef"
       type="button"
       class="aifab__ball u-tap"
-      aria-label="打开店小C AI 助手"
-      @click="openDrawer"
+      :class="{ 'is-dragging': dragging }"
+      :style="ballStyle"
+      aria-label="打开店小C AI 助手（可拖动）"
+      @pointerdown="onPointerDown"
+      @click="onBallClick"
     >
       <span class="aifab__glow" aria-hidden="true" />
       <AppIcon name="sparkles" :size="24" color="#ffffff" />
@@ -241,7 +457,7 @@ function go(path: string): void {
   z-index: 40;
 }
 
-/* ── 悬浮球 ── */
+/* ── 悬浮球（默认右下；拖拽后由内联 left/top 接管） ── */
 .aifab__ball {
   position: absolute;
   right: 16px;
@@ -257,6 +473,22 @@ function go(path: string): void {
   background: var(--grad-brand);
   box-shadow: var(--sh-brand);
   pointer-events: auto;
+  /* 触摸拖拽时不触发页面滚动/下拉刷新；鼠标保持默认 */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: grab;
+}
+
+.aifab__ball.is-dragging {
+  cursor: grabbing;
+  transform: scale(1.08);
+  box-shadow: var(--sh-3);
+}
+
+.aifab__ball.is-dragging .aifab__glow {
+  animation: none;
+  opacity: 0;
 }
 
 .aifab__glow {

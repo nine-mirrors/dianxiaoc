@@ -123,8 +123,8 @@ onMounted(() => {
       <EmptyState
         v-else-if="loadError || !list.length"
         icon="layers"
-        title="暂无排行榜数据"
-        desc="当前账号可访问区域内尚未产生业代绩效数据，或后端服务未连接。"
+        title="本周榜单还没生成"
+        desc="等业代完成巡店、跑出绩效数据后，这里会自动上榜"
         action-text="重新加载"
         @action="load"
       />

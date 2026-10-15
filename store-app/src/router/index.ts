@@ -17,6 +17,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { reportError } from '@/composables/useAppErrorHandler'
+import { resolveMobileForRoute, syncForcedFromUrl } from '@/composables/useDeviceType'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/login' },
@@ -205,6 +206,15 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '消息中心', roles: ['manager', 'admin'] },
   },
 
+  /* ── 移动门户：真机/窄窗访问经理、管理员功能时的移动版（PC 访问自动回看板） ── */
+  {
+    path: '/m',
+    name: 'mobile-console',
+    component: () => import('@/views/mobile/MobileConsoleView.vue'),
+    // 登录即可；页内按角色显示经理/管理员功能
+    meta: { title: '店小C 移动工作台', roles: ['rep', 'manager', 'owner', 'admin'] },
+  },
+
   /* ── W6 店主端 ── */
   {
     path: '/owner',
@@ -263,6 +273,9 @@ const router = createRouter({
 
 /** 统一标题 */
 router.afterEach((to) => {
+  // 先同步 URL 上的 ?desktop=1 / ?mobile=1 强制形态（hash 路由下 query 在 # 之后），
+  // 让 App.vue 的三态布局在本次导航渲染前拿到最新 forced
+  syncForcedFromUrl()
   const title = (to.meta?.title as string) || ''
   document.title = title ? `${title} · 店小C` : '店小C · 蒙牛 AI 巡店助手'
 })
@@ -308,6 +321,21 @@ router.beforeEach(async (to) => {
   if (to.path === '/login') {
     // 断网时 session.home 可能为空，退回该角色的默认落地页
     return { path: session.home || roleHome(session.role), replace: true }
+  }
+
+  // ②.5 设备形态分流：
+  //   - 手机/窄窗访问桌面宽屏区（/manager、/admin）→ 移动门户 /m；
+  //   - PC 访问移动门户 /m → 经理回看板、管理员回总览。
+  //   必须用「目标路由 to.query」判定：守卫执行时地址栏还是旧 hash，
+  //   ?desktop=1 / ?mobile=1 此刻只存在于 to 上（详见 resolveMobileForRoute）。
+  {
+    const mobile = resolveMobileForRoute(to)
+    if (mobile && (to.path.startsWith('/manager') || to.path.startsWith('/admin'))) {
+      return { path: '/m', replace: true }
+    }
+    if (!mobile && to.path === '/m') {
+      return { path: session.role === 'admin' ? '/admin' : '/manager/dashboard', replace: true }
+    }
   }
 
   // ③ 角色权限隔离：登录哪个账号就只能进该角色的页面

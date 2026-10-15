@@ -162,7 +162,7 @@ async function submit(): Promise<void> {
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  background: linear-gradient(180deg, #f2f7f4 0%, #e9f2ec 100%);
+  background: var(--bg-page);
 }
 
 .login-inner {
@@ -230,7 +230,7 @@ async function submit(): Promise<void> {
   max-width: 340px;
   padding: 20px 18px 16px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: 0 8px 28px rgba(15, 39, 27, 0.1);
   box-sizing: border-box;
   flex: none;
@@ -269,8 +269,11 @@ async function submit(): Promise<void> {
   min-width: 0;
   height: 44px;
   padding: 0 12px;
-  border: 1px solid #e3e8e5;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
+  /* 显式卡片表面：部分浏览器 UA 给文本框默认白底，深色全屏下会出现亮白输入条 */
+  background: var(--bg-card);
+  color: var(--text-1);
   font-size: 14px;
   /* 不写 outline:none —— 键盘焦点环由全局 :focus-visible 统一提供 */
   transition: border-color 0.18s ease;

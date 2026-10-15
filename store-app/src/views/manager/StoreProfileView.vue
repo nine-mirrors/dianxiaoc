@@ -412,10 +412,10 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <!-- 数据诚实提示：无诊断时绝不把 lastScore 兜底伪装成 AI 结果 -->
+          <!-- 数据来源提示：无诊断时告诉经理当前分数是历史分，避免误读为最新体检结果 -->
           <p v-if="!hasDiagnosis" class="sp__honest">
-            <AppIcon name="warning" :size="13" /> 该门店暂无诊断数据，以下分数来自门店档案 lastScore
-            兜底（非 AI 诊断结果）；六维雷达与问题类型分布为「暂无」，不作补齐。
+            <AppIcon name="warning" :size="13" /> 这家店还没用 AI 体检过，当前显示的是最近一次历史分；
+            六维雷达和问题类型会在巡店拍照体检后自动生成。
           </p>
         </section>
 
@@ -430,7 +430,7 @@ onBeforeUnmount(() => {
           <section class="u-card sp__card">
             <header class="sp__card-head"><h2>六维健康雷达</h2><span>{{ profile.dimensions.length ? '六维加权' : '暂无' }}</span></header>
             <div v-if="profile.dimensions.length" ref="radarEl" class="sp__chart sp__chart--radar" />
-            <EmptyState v-else icon="layers" title="暂无六维数据" desc="该门店没有诊断记录，后端不补假分。" />
+            <EmptyState v-else icon="layers" title="暂无六维数据" desc="这家店还没体检过，完成一次巡店拍照后自动生成。" />
           </section>
 
           <section class="u-card sp__card">
@@ -522,7 +522,7 @@ onBeforeUnmount(() => {
               <div v-if="attrText" class="sp__attr-text">
                 <p class="sp__attr-body">{{ attrText }}</p>
                 <p class="sp__attr-source">
-                  {{ attrSource === 'llm' ? 'AI 生成 · qwen' : attrSource === 'fallback' ? '规则兜底（未配置大模型 Key）' : '未获取来源标注' }}
+                  {{ attrSource === 'llm' ? 'AI 生成 · qwen' : attrSource === 'fallback' ? '来自标准答案库（本次未调用大模型）' : '暂未标注来源' }}
                 </p>
               </div>
               <MilkDropLoader v-else-if="attrStreaming" size="button" label="" />

@@ -94,6 +94,8 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
       </div>
 
       <div class="store-card__cta">
+        <!-- 附加操作插槽（如一键导航）：与主 CTA 同排，主按钮在最右 -->
+        <slot name="extra-action" :item="item" />
         <button
           v-if="isDone"
           type="button"
@@ -124,13 +126,13 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
 <style scoped>
 .store-card {
   padding: 12px;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
 }
 
 .store-card--done {
-  background: linear-gradient(180deg, var(--mn-green-light) 0%, #fff 60%);
+  background: linear-gradient(180deg, var(--mn-green-light) 0%, var(--bg-card) 60%);
 }
 
 .store-card__row {
@@ -158,8 +160,8 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
 }
 
 .store-card__order--pending {
-  background: #c9d1cd;
-  color: var(--text-2);
+  background: var(--bg-page);
+  color: var(--text-3);
 }
 
 .store-card__order--alert {
@@ -220,7 +222,10 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
 }
 
 .store-card__cta {
+  display: flex;
   flex: none;
+  align-items: center;
+  gap: 8px;
 }
 
 .store-card__btn {
