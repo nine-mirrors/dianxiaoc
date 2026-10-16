@@ -1,10 +1,35 @@
 {
-  "_comment": "视觉识别小样本自测集（P0-3）人工标注真值。expected 为逐图人工数出的数量；verified=true 表示已人工核对。当前预填值来自系统陈列基线(fixture)，团队必须逐张看图复核后改为 true，评测结果才允许写进 PDF。",
+  "_comment": "视觉识别小样本自测集（P0-3）人工标注真值。expected 为逐图人工数出的数量；verified=true 表示已人工核对。团队必须逐张看图复核后改为 true，评测结果才允许写进 PDF。expected 全为 0 的条目＝尚未填任何真值。",
+  "_howto": "① 逐张打开 store-app/public/stores/**/*.jpg 看图；② 按统一口径数出 skuCount（蒙牛SKU正面可见排面数）/ emptyCount（蒙牛所在层架明显空位）/ competitorCount（竞品排面数）/ priceTagMissing（缺失或不符的价签数）；③ 把数字填进对应 expected；④ 把 verified 改为 true；⑤ 在 server/ 目录跑 node ../eval/vision-benchmark.mjs",
+  "_provenance": "source=demo-fixture 为项目自带的门店图；source=ai-generated 为 AI 生成的货架示意图（02_实拍素材/占位图 亦属此类）。★ 硬约束：AI 生成样本上的评测结果只能用于验证流程可跑通，禁止作为准确率写进竞赛材料；README 已载明『宁可不写数字，也不写未经验证的数字』。",
+  "_warning_ai_samples": "本清单后续 16 条为 AI 生成样本，非真实门店实拍。若评委追问样本来源，必须如实说明。",
+  "_goal": "初稿计划要求 n≥25：当前已达 25 张（9 张项目自带 + 16 张 AI 生成）。若要以『实拍样本准确率』对外表述，必须补拍真实门店照片替换 AI 样本，并逐张完成人工标注。",
   "labels": [
-    { "image": "/stores/S1/cold.jpg", "storeName": "家家悦·学府路店", "verified": false, "expected": { "skuCount": 3, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 1 } },
-    { "image": "/stores/S2/cold.jpg", "storeName": "好邻居·地铁口店", "verified": false, "expected": { "skuCount": 4, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 1 } },
-    { "image": "/stores/S3/cold.jpg", "storeName": "美宜佳·城建学院店", "verified": false, "expected": { "skuCount": 8, "emptyCount": 1, "competitorCount": 2, "priceTagMissing": 3 } },
-    { "image": "/stores/S4/cold.jpg", "storeName": "华联超市·万达店", "verified": false, "expected": { "skuCount": 3, "emptyCount": 1, "competitorCount": 1, "priceTagMissing": 1 } },
-    { "image": "/stores/S5/cold.jpg", "storeName": "永辉生活·中央公园店", "verified": false, "expected": { "skuCount": 3, "emptyCount": 2, "competitorCount": 2, "priceTagMissing": 2 } }
+    { "image": "/stores/S1/cold.jpg", "storeName": "家家悦·学府路店", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 3, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 1 } },
+    { "image": "/stores/S2/cold.jpg", "storeName": "好邻居·地铁口店", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 4, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 1 } },
+    { "image": "/stores/S2/cold_before.jpg", "storeName": "好邻居·地铁口店（整改前）", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/S3/ambient.jpg", "storeName": "美宜佳·城建学院店（常温架）", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/S3/cold.jpg", "storeName": "美宜佳·城建学院店", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 8, "emptyCount": 1, "competitorCount": 2, "priceTagMissing": 3 } },
+    { "image": "/stores/S3/stack.jpg", "storeName": "美宜佳·城建学院店（堆头）", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/S4/cold.jpg", "storeName": "华联超市·万达店", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 3, "emptyCount": 1, "competitorCount": 1, "priceTagMissing": 1 } },
+    { "image": "/stores/S5/cold.jpg", "storeName": "永辉生活·中央公园店", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 3, "emptyCount": 2, "competitorCount": 2, "priceTagMissing": 2 } },
+    { "image": "/stores/fallback/generic-shelf.jpg", "storeName": "兜底通用货架", "source": "demo-fixture", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+
+    { "image": "/stores/eval/eval-01-cold-community.jpg", "storeName": "社区便利店·冷柜（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-02-cold-outofstock.jpg", "storeName": "社区便利店·冷柜缺货（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-03-cold-competitor.jpg", "storeName": "便利店·冷柜竞品挤占（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-04-cold-pricetag.jpg", "storeName": "便利店·冷柜价签问题（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-05-cold-convenience-jp.jpg", "storeName": "日系便利店·标准冷柜（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-06-cold-messy.jpg", "storeName": "小超市·冷柜排面杂乱（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-07-cold-oldfridge.jpg", "storeName": "小卖部·老式冰柜不整洁（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-08-ambient-milk.jpg", "storeName": "超市·常温奶货架全景（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-09-ambient-squeezed.jpg", "storeName": "超市·常温架排面被挤占（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-10-ambient-pricetag.jpg", "storeName": "超市·货架价签特写（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-11-stack-promo.jpg", "storeName": "超市·促销堆头（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-12-stack-messy.jpg", "storeName": "超市·堆头杂乱（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-13-smallshop-fridge.jpg", "storeName": "夫妻店·冰柜混放（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-14-smallshop-outofstock.jpg", "storeName": "校园小卖部·冰柜严重缺货（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-15-snackstore.jpg", "storeName": "零食量贩店·饮料冷藏柜（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } },
+    { "image": "/stores/eval/eval-16-supermarket-wall.jpg", "storeName": "大型超市·整面冷柜（AI 生成）", "source": "ai-generated", "verified": false, "expected": { "skuCount": 0, "emptyCount": 0, "competitorCount": 0, "priceTagMissing": 0 } }
   ]
 }

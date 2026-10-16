@@ -19,6 +19,7 @@ import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useHaptics } from '@/composables/useHaptics'
 import { getTodayRoute, updateTaskStatus, getTickets, updateTicketStatus } from '@/api'
+import { getUnreadSummary } from '@/api/messages'
 import { onRealtime } from '@/realtime/client'
 import { useSessionStore } from '@/stores/session'
 import { useDemoStore } from '@/stores/demo'
@@ -87,6 +88,26 @@ function handleTaskNew(payload: { task?: Task }): void {
 
 const offTaskNew = onRealtime<Task>('task:new', (payload) => handleTaskNew(payload as { task?: Task }))
 onUnmounted(() => offTaskNew())
+
+/* ═══════════════ 顶栏铃铛：未读消息角标 ═══════════════ */
+
+/** 未读消息总数（与 TabBar 同源，保证顶栏铃铛与底部「消息」页签角标一致） */
+const unreadTotal = ref(0)
+
+async function loadUnread(): Promise<void> {
+  try {
+    const res = await getUnreadSummary()
+    unreadTotal.value = res.total
+  } catch {
+    /* 静默：拉不到未读不影响主流程 */
+  }
+}
+
+void loadUnread()
+
+/** 收到任何新消息 → 刷新未读角标 */
+const offMessageNew = onRealtime<{ convId?: string }>('message:new', () => void loadUnread())
+onUnmounted(() => offMessageNew())
 
 /* ═══════════════ 待办回执：业代标记完成（经理端可见闭环） ═══════════════ */
 
@@ -198,6 +219,8 @@ const mapMarkers = computed<MapMarker[]>(() =>
       name: r.store.name,
       score: r.store.lastScore,
       level: levelOf(r.store.lastScore),
+      order: r.order,
+      status: r.status,
     })),
 )
 /**
@@ -379,15 +402,15 @@ function openStoreNav(target: NavTarget | null | undefined): void {
           <p class="p2-head__date">{{ route.date }} · {{ route.weather }}</p>
         </div>
         <div class="p2-head__right">
+          <!-- 顶栏铃铛＝消息中心入口（角标＝未读消息数，与底部「消息」页签同源） -->
           <button
             class="p2-head__icon u-tap"
             type="button"
-            :aria-label="`待办提醒，${todoTasks.length} 条，${todoCollapsed ? '已折叠' : '已展开'}`"
-            :aria-expanded="!todoCollapsed"
-            @click="todoCollapsed = !todoCollapsed"
+            :aria-label="unreadTotal ? `消息中心，${unreadTotal} 条未读` : '消息中心'"
+            @click="router.push('/messages')"
           >
             <AppIcon name="bell" :size="19" color="#fff" />
-            <em v-if="todoTasks.length" class="p2-head__dot">{{ todoTasks.length }}</em>
+            <em v-if="unreadTotal" class="p2-head__dot">{{ unreadTotal }}</em>
           </button>
           <button
             class="p2-head__avatar u-tap"

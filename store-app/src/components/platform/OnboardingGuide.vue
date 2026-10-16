@@ -3,7 +3,8 @@
  * OnboardingGuide —— 角色化新手引导（W7 平台层）。
  *
  * 触发：首次进入某角色时显示一次（localStorage 键 `dxc:onboard:<role>`，每个角色各一次）。
- * 形态：仅手机形态展示（/manager、/admin 时组件内部直接不渲染）。
+ * 形态：★ 仅手机形态展示 —— 这是 3 屏横滑的手机式引导，PC 桌面形态（含 /manager、
+ *       /admin 看板）一律不弹，避免整屏遮罩盖住桌面布局。
  * 交互：3 屏横向滑动 + 指示点，可「上一步/下一步」，右上角可随时关闭、也可「跳过」。
  * 非阻塞：遮罩半透明且不吃事件，页面本身始终可点（不锁死）。
  * 内容按 session.role 差异化（业代 / 店主 / 经理各一套，每套 3 屏，全中文具体）。
@@ -12,6 +13,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useSessionStore } from '@/stores/session'
+import { useDeviceType } from '@/composables/useDeviceType'
 import type { Role } from '@/types'
 
 interface Screen {
@@ -41,6 +43,8 @@ const GUIDES: Record<Role, Screen[]> = {
 
 const route = useRoute()
 const session = useSessionStore()
+/** 设备形态：手机式引导只在移动形态出现（PC 走桌面外壳，不弹） */
+const { isMobile } = useDeviceType()
 
 const visible = ref<boolean>(false)
 const index = ref<number>(0)
@@ -48,6 +52,7 @@ let started = false
 
 const excluded = computed<boolean>(
   () =>
+    !isMobile.value ||
     route.path === '/' ||
     route.path.startsWith('/login') ||
     route.path.startsWith('/manager') ||

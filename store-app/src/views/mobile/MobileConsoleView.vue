@@ -9,7 +9,7 @@
  *  4. 我的：AI 经营周报（streamWeeklyReport）+ admin 公告发布 + 切换电脑版 + 退出
  *
  * 运行在 App.vue 的 .dxc-mobile-full（fixed inset:0 / 100dvh）容器内：
- * 不套 PhoneFrame、不套 MobileLayout，顶栏与底部 tab 全部在本文件内实现。
+ * 不套 MobileLayout，顶栏与底部 tab 全部在本文件内实现。
  * 所有颜色取 styles/tokens.css 变量，日夜主题均可用；品牌渐变块上的白字为特许例外。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'

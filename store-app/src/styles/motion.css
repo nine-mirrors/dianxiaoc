@@ -35,9 +35,9 @@
  *
  * 移动端转场宿主 .mot-route-host（App.vue 内）：
  *   position:relative; height:100%; overflow:hidden —— 只负责裁剪与定位上下文，
- *   不改变 .phone__screen / .mobile-layout / .ml-body 的任何既有盒模型与滚动行为。
+ *   不改变 .mobile-layout / .ml-body 的任何既有盒模型与滚动行为。
  * 入场页绝对定位覆盖在旧页之上同步滑动（旧页保留在文档流中撑住高度），
- * 故手机壳高度恒定、不会跳动；各页自带不透明背景，滑动中不露底。
+ * 故转场宿主高度恒定、不会跳动；各页自带不透明背景，滑动中不露底。
  * ════════════════════════════════════════════════════════════ */
 
 .mot-route-host {
@@ -109,6 +109,21 @@
 
 .mot-route-desk-leave-to {
   opacity: 0;
+}
+
+/* ── 桌面端（业代 / 店主 / 消息等 MobileLayout 内容页）：仅入场淡入 + 8px 上移。
+      ★ 不声明 leave 帧 —— 这些页面根组件（MobileLayout）的根节点是「桌面外壳 /
+      移动外壳」的条件分支，配 mode="out-in" 时出帧与入帧并存会卡住（新页不挂载，
+      实测白屏）。无 leave 过渡 = 旧页即时移除，不叠加、不跳版，视觉与看板一致。 */
+.mot-route-desk-in-enter-active {
+  transition:
+    opacity var(--dur-base) var(--ease-decel),
+    transform var(--dur-base) var(--ease-decel);
+}
+
+.mot-route-desk-in-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -254,7 +269,8 @@
   .mot-route-mob-back-enter-active,
   .mot-route-mob-back-leave-active,
   .mot-route-desk-enter-active,
-  .mot-route-desk-leave-active {
+  .mot-route-desk-leave-active,
+  .mot-route-desk-in-enter-active {
     transition-duration: 0.01ms !important;
     transition-delay: 0s !important;
   }
@@ -266,7 +282,8 @@
   .mot-route-mob-back-enter-from,
   .mot-route-mob-back-leave-to,
   .mot-route-desk-enter-from,
-  .mot-route-desk-leave-to {
+  .mot-route-desk-leave-to,
+  .mot-route-desk-in-enter-from {
     transform: none !important;
     opacity: 1 !important;
   }

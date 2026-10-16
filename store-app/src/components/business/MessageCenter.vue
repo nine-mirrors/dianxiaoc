@@ -155,7 +155,11 @@ async function send(): Promise<void> {
   sending.value = true
   try {
     const res = await sendMessage(activeId.value, { kind: 'text', content: text })
-    messages.value = [...messages.value, res.message]
+    // ★ 后端在返回响应**之前**就已广播 message:new，realtime 那条路径通常先到达并已入列；
+    //   这里必须同样按 id 判重，否则一条消息会被渲染两遍（发 2 次看到 4 条）。
+    if (!messages.value.some((m) => m.id === res.message.id)) {
+      messages.value = [...messages.value, res.message]
+    }
     draft.value = ''
     const conv = conversations.value.find((c) => c.id === activeId.value)
     if (conv) conv.lastMessage = res.message

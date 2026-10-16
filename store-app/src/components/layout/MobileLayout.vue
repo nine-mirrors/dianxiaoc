@@ -1,11 +1,21 @@
 <script setup lang="ts">
 /**
- * 手机端页面外壳：顶栏 + 内容区 + 底部 TabBar。
+ * 页面外壳：**同一个外壳，两种设备形态**。
  *
- * 顶栏通过 #nav / #header 插槽自定义，内容区可滚动。
+ *  - 真机 / 窄窗（isMobile）：顶栏 + 内容区 + 底部 TabBar（原移动端形态，完全不变）；
+ *  - PC（!isMobile）：左侧导航栏 + 顶栏 + 宽内容区（桌面形态，不套手机壳）。
+ *
+ * ★ 形态只由「设备」决定，不由「角色」决定 —— 业代 / 店主 / 经理 / 管理员
+ *   在 PC 上都拿到桌面形态，在手机上都拿到移动形态（经理手机端由路由守卫
+ *   分流到移动门户 /m，不经过本组件）。
+ *
+ * 顶栏通过 #nav / #header 插槽自定义，内容区可滚动；两种形态共用同一套插槽，
+ * 页面无需为桌面形态改一行代码。
  */
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import TabBar from './TabBar.vue'
+import { useDeviceType } from '@/composables/useDeviceType'
+import { useSessionStore } from '@/stores/session'
 
 /** 后端是否不可用（由 api 层广播 api:offline） */
 const degraded = ref<boolean>(false)
@@ -35,10 +45,67 @@ withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{ (e: 'back'): void }>()
+
+/** 设备形态（只看设备，不看角色）：PC = 桌面外壳，真机/窄窗 = 移动外壳 */
+const { isMobile } = useDeviceType()
+const isDesk = computed<boolean>(() => !isMobile.value)
+const session = useSessionStore()
 </script>
 
 <template>
-  <div class="mobile-layout">
+  <!-- ══════════ 形态一：PC 桌面外壳（左侧导航 + 宽内容区） ══════════ -->
+  <div v-if="isDesk" class="desk-layout">
+    <!-- 侧边导航：品牌 + 角色主导航（复用 TabBar 的 side 形态） -->
+    <aside class="dl-side">
+      <div class="dl-brand">
+        <span class="dl-brand__logo">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3C12 3 6 10.5 6 15.5a6 6 0 0 0 12 0C18 10.5 12 3 12 3z" fill="#fff" />
+          </svg>
+        </span>
+        <span class="dl-brand__name">
+          <b>店小C</b>
+          <small>MENGNIU AI</small>
+        </span>
+      </div>
+
+      <TabBar v-if="showTabBar" variant="side" />
+
+      <div class="dl-side__foot">
+        <span class="dl-user__avatar">{{ session.avatarText }}</span>
+        <span class="dl-user__name">{{ session.user?.name ?? '未登录' }}</span>
+      </div>
+    </aside>
+
+    <!-- 主区：顶栏 + 内容 + 吸底操作栏（两种形态共用同一套插槽） -->
+    <div class="dl-main">
+      <header class="dl-head" :class="{ 'dl-head--gradient': gradient }">
+        <!-- 页面自绘顶栏优先（如 P2 首页的问候/天气/头像），否则用通用「返回 + 标题」 -->
+        <slot name="nav">
+          <button v-if="back" type="button" class="dl-head__back u-tap" @click="emit('back')">
+            ‹ 返回
+          </button>
+          <h1 v-if="title" class="dl-head__title">{{ title }}</h1>
+          <div class="dl-head__right">
+            <slot name="right" />
+          </div>
+        </slot>
+      </header>
+
+      <div v-if="degraded" class="ml-degraded">⚠ 网络开小差了，当前显示上次刷新的数据，恢复后会自动同步</div>
+
+      <main class="dl-body u-scroll-y" :style="{ paddingBottom: `${contentPaddingBottom}px` }">
+        <slot />
+      </main>
+
+      <footer v-if="$slots.footer" class="dl-foot">
+        <slot name="footer" />
+      </footer>
+    </div>
+  </div>
+
+  <!-- ══════════ 形态二：真机 / 窄窗移动外壳（原形态，未做任何改动） ══════════ -->
+  <div v-else class="mobile-layout">
     <!-- 顶栏 -->
     <header class="ml-head" :class="{ 'ml-head--gradient': gradient }">
       <slot name="nav">
@@ -78,12 +145,13 @@ const emit = defineEmits<{ (e: 'back'): void }>()
   </div>
 </template>
 
+
 <style scoped>
 .mobile-layout {
   display: flex;
   flex-direction: column;
-  /* 高度只依赖父盒：桌面机壳内为 844 设计高度，真机全屏下父链最终取
-     100dvh（见 PhoneFrame），不硬编码 844，矮屏/横屏自然适应 */
+  /* 高度只依赖父盒：父链最终取 100dvh（移动形态为全屏 App、桌面形态为外壳内容区），
+     不硬编码 844，矮屏/横屏自然适应 */
   height: 100%;
   background: var(--bg-page);
 }
@@ -196,6 +264,200 @@ const emit = defineEmits<{ (e: 'back'): void }>()
 
   .ml-head__title {
     font-size: 15px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * PC 桌面外壳（形态一）——形态判定只看设备，不看角色：
+ * 业代 / 店主 / 经理 / 管理员在 PC 上都是这一套；真机/窄窗走上面的移动外壳。
+ *
+ * 结构：左侧固定导航栏 + 右侧「顶栏 / 内容 / 吸底操作栏」纵向主区。
+ * 下方 .mobile-layout 的规则全部保留，两个形态互不影响。
+ * ══════════════════════════════════════════════════════════════════ */
+.desk-layout {
+  display: flex;
+  /* 与移动外壳同口径：高度只依赖视口，不硬编码像素值，
+     笔记本矮屏 / 高分屏自然适应；内部各区块自管滚动 */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-page);
+  color: var(--text-1);
+}
+
+/* ── 左侧导航栏 ── */
+.dl-side {
+  flex: none;
+  width: 232px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 14px 14px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-color);
+}
+
+.dl-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 8px 12px;
+}
+
+.dl-brand__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--mn-green, #009639);
+  flex: none;
+}
+
+.dl-brand__name b {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1.2;
+}
+
+.dl-brand__name small {
+  display: block;
+  margin-top: 1px;
+  color: var(--text-3);
+  font-size: 8px;
+  letter-spacing: 2.4px;
+}
+
+/* 侧栏底部：当前登录人（与移动端「我的」页头信息同源） */
+.dl-side__foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 8px 4px;
+  border-top: 1px solid var(--border-color);
+}
+
+.dl-user__avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--mn-green, #009639);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dl-user__name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── 主区 ── */
+.dl-main {
+  /* 定位上下文：页面自带的吸底 CTA 栏（position:absolute）以此为准，
+     不会跑到左侧导航栏上方去 */
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dl-head {
+  flex: none;
+  width: 100%;
+  max-width: var(--dl-max, 1240px);
+  margin-inline: auto;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 28px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* 品牌绿渐变顶栏（P2 首页等自绘白色顶栏的页面用，否则白字会落在白底上不可见） */
+.dl-head--gradient {
+  background: linear-gradient(135deg, #007a30 0%, var(--mn-green-dark) 100%);
+  border-bottom: none;
+  color: #fff;
+}
+
+.dl-head__back {
+  flex: none;
+  padding: 6px 12px 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dl-head__back:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.dl-head__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.dl-head__right {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dl-body {
+  /* flex 撑满顶栏与吸底栏之间的剩余高度（min-height:0 允许收缩），
+     页面内 height:100% 的根元素仍能拿到确定高度，与移动形态语义一致 */
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: var(--dl-max, 1240px);
+  margin-inline: auto;
+  box-sizing: border-box;
+  padding: 20px 28px;
+  /* 与移动外壳同口径的溢出兜底：横向不出现滚动条，长串可断行 */
+  overflow-x: hidden;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.dl-foot {
+  flex: none;
+  width: 100%;
+  max-width: var(--dl-max, 1240px);
+  margin-inline: auto;
+}
+
+/* 桌面内容区纵向节奏放宽一档：大面积留白比移动端更舒展（不改页面自身样式） */
+@media (min-width: 1025px) {
+  .dl-body {
+    padding: 24px 32px;
+  }
+
+  .dl-head {
+    padding-inline: 32px;
   }
 }
 </style>

@@ -87,6 +87,8 @@ const markers = computed<MapMarker[]>(() =>
       name: r.store.name,
       score: r.store.lastScore,
       level: levelOf(r.store.lastScore),
+      order: r.order,
+      status: r.status,
     })),
 )
 

@@ -2,7 +2,8 @@
 /**
  * AiFab —— AI 悬浮球 + 底部 AI 助手抽屉（W7 平台层）。
  *
- * 挂载位置：PhoneFrame 的 #overlay 插槽内（悬浮球落在机壳内，桌面演示不漂出画面）。
+ * 挂载位置：App.vue 顶层，两种设备形态各挂一处（移动形态在 .dxc-mobile-full 内、
+ *          桌面形态在 RouterView 之外），固定于窗口右下角，随形态共存。
  * 显示条件：非 /login、非 /manager、非 /admin（组件内部自判，App.vue 不做业务判断）。
  *
  * 能力：

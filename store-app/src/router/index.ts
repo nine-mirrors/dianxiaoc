@@ -323,9 +323,9 @@ router.beforeEach(async (to) => {
     return { path: session.home || roleHome(session.role), replace: true }
   }
 
-  // ②.5 设备形态分流：
+  // ②.5 设备形态分流（只看设备，不看角色）：
   //   - 手机/窄窗访问桌面宽屏区（/manager、/admin）→ 移动门户 /m；
-  //   - PC 访问移动门户 /m → 经理回看板、管理员回总览。
+  //   - PC 访问移动门户 /m → 按角色回各自桌面首页（业代/店主/经理/管理员）。
   //   必须用「目标路由 to.query」判定：守卫执行时地址栏还是旧 hash，
   //   ?desktop=1 / ?mobile=1 此刻只存在于 to 上（详见 resolveMobileForRoute）。
   {
@@ -334,7 +334,7 @@ router.beforeEach(async (to) => {
       return { path: '/m', replace: true }
     }
     if (!mobile && to.path === '/m') {
-      return { path: session.role === 'admin' ? '/admin' : '/manager/dashboard', replace: true }
+      return { path: session.home || roleHome(session.role), replace: true }
     }
   }
 

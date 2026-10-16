@@ -591,7 +591,10 @@ export function createVisit(storeId, photoIds, score) {
       storeId,
       storeName: store?.name ?? '',
       repId: 'U_REP',
-      visitedAt: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`,
+      // ★ 缺口 F（根因）：visitedAt 必须落在演示基准日 DEMO_TODAY，而非真实时钟。
+      //   否则新巡店记录与「今日已巡」判定（isTodayDone 按 DEMO_TODAY 前缀匹配）脱节，
+      //   业代诊断完返回 P2 仍显示「待巡」、平均分也不动。日期冻结、取真实时分保证会话内有序。
+      visitedAt: `${DEMO_TODAY} ${pad(now.getHours())}:${pad(now.getMinutes())}`,
       visitNo: nextNo,
       photoIds,
       score,

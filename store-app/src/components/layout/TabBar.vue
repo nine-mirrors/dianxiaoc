@@ -20,6 +20,15 @@ const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
+/**
+ * 形态：bottom = 移动端底部 TabBar（默认）；side = 桌面端左侧导航栏。
+ * 两种形态共用同一份角色导航数据、同一套命中判定与未读角标逻辑，不重复实现。
+ */
+interface Props {
+  variant?: 'bottom' | 'side'
+}
+withDefaults(defineProps<Props>(), { variant: 'bottom' })
+
 interface TabItem {
   key: string
   label: string
@@ -99,7 +108,7 @@ function go(tab: TabItem): void {
 </script>
 
 <template>
-  <nav class="tabbar" aria-label="主导航">
+  <nav class="tabbar" :class="{ 'tabbar--side': variant === 'side' }" aria-label="主导航">
     <button
       v-for="t in tabs"
       :key="t.key"
@@ -220,4 +229,44 @@ function go(tab: TabItem): void {
     padding-bottom: 3px;
   }
 }
+
+/* ══════════ 桌面端侧边导航形态（variant="side"）══════════
+   同一份角色导航数据，改为纵向列表：图标在左、文案在右，色块高亮当前项。
+   移动端底部形态的样式全部保留，两者互不干扰。 */
+.tabbar--side {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border-top: none;
+}
+
+.tabbar--side .tabbar__item {
+  flex: none;
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  color: var(--text-2);
+  font-size: 13.5px;
+  text-align: left;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.tabbar--side .tabbar__item:hover {
+  background: var(--bg-page);
+}
+
+.tabbar--side .tabbar__item--on {
+  background: rgba(0, 150, 57, 0.1);
+  color: var(--mn-green);
+  font-weight: 700;
+}
+
+/* 顺提一句：移动端窄屏的 clamp 字号 / 弹性图标规则只在 ≤480px 生效，
+   桌面侧边栏不触发，故无需额外覆盖。 */
 </style>

@@ -239,7 +239,7 @@ a {
  * 移动端全机型适配（响应式 + 安全区）—— 本段只追加，不改既有规则。
  *
  * 断点口径（媒体查询内写像素值，与 tokens.css 令牌对齐）：
- *   480px  真机全屏退化线（< --bp-sm:640px 的真机子集，PhoneFrame 据此退壳）
+ *   480px  真机全屏退化线（< --bp-sm:640px 的真机子集）
  *   360px / 320px  超小屏收敛档
  *   480px 高 + landscape  横屏矮高度（手机横屏 844×390 / 超宽矮窗口）
  *
@@ -314,7 +314,7 @@ canvas {
 }
 
 /* ── 横屏矮高度（≤480px 高且 landscape：手机横屏 / 超宽矮窗口） ──
- * 外壳限高与头部/TabBar 压缩分别在 PhoneFrame、MobileLayout、TabBar 内；
+ * 外壳限高与头部/TabBar 压缩分别在 MobileLayout、TabBar 内；
  * 此处兜底禁止矮横屏出现页面级横向滚动，保证吸底主操作始终可达。 */
 @media (max-height: 480px) and (orientation: landscape) {
   body {

@@ -13,6 +13,8 @@ import type { Annotation, AnnotationLayer } from '@/types'
 
 interface Props {
   src: string
+  /** 第二张图：提供后进入「整改前 / 整改后」双图对比模式（左=after，右=src 整改前） */
+  afterSrc?: string
   annotations: Annotation[]
   filter?: 'all' | AnnotationLayer
   highlightIds?: string[]
@@ -20,6 +22,7 @@ interface Props {
 }
 const props = withDefaults(defineProps<Props>(), {
   src: '',
+  afterSrc: '',
   annotations: () => [],
   filter: 'all',
   highlightIds: () => [],
@@ -144,25 +147,31 @@ onUnmounted(onUp)
       @touchmove.prevent="onMove"
       @click.capture="onStageClick"
     >
-      <!-- 右半：原图（底层，铺满） -->
+      <!-- 右半：原图 / 整改前（底层，铺满） -->
       <div class="cmp__layer cmp__layer--base">
-        <SmartImage :src="src" alt="货架原图" />
-        <span class="cmp__corner cmp__corner--right">原图</span>
+        <SmartImage :src="src" :alt="afterSrc ? '整改前' : '货架原图'" />
+        <span class="cmp__corner cmp__corner--right">{{ afterSrc ? '整改前' : '原图' }}</span>
       </div>
 
-      <!-- 左半：标注图（按 clip-path 裁切） -->
+      <!-- 左半：整改后图（双图模式）或 AI 标注图（单图模式），按 clip-path 裁切 -->
       <div class="cmp__layer cmp__layer--clip" :style="{ clipPath: `inset(0 ${100 - pos}% 0 0)` }">
-        <AnnotatedImage
-          :src="src"
-          :annotations="annotations"
-          :filter="filter"
-          :highlight-ids="highlightIds"
-          :show-legend="false"
-          :aspect="aspect"
-          @hover="emit('hover', $event)"
-          @select="emit('select', $event)"
-        />
-        <span class="cmp__corner cmp__corner--left">✦ AI 标注</span>
+        <template v-if="afterSrc">
+          <SmartImage :src="afterSrc" alt="整改后" />
+          <span class="cmp__corner cmp__corner--left cmp__corner--after">整改后</span>
+        </template>
+        <template v-else>
+          <AnnotatedImage
+            :src="src"
+            :annotations="annotations"
+            :filter="filter"
+            :highlight-ids="highlightIds"
+            :show-legend="false"
+            :aspect="aspect"
+            @hover="emit('hover', $event)"
+            @select="emit('select', $event)"
+          />
+          <span class="cmp__corner cmp__corner--left">✦ AI 标注</span>
+        </template>
       </div>
 
       <!-- 分割线 + 手柄（role=slider 键盘可达，WCAG 2.1.1；鼠标/触屏拖拽仍走舞台） -->
@@ -192,7 +201,10 @@ onUnmounted(onUp)
       </div>
     </div>
 
-    <p class="cmp__tip">← 左右拖动查看「原图 / AI 标注」对比 →</p>
+    <p class="cmp__tip">
+      <template v-if="afterSrc">← 左＝整改后 · 右＝整改前 →</template>
+      <template v-else>← 左右拖动查看「原图 / AI 标注」对比 →</template>
+    </p>
   </div>
 </template>
 
@@ -252,6 +264,11 @@ onUnmounted(onUp)
 
 .cmp__corner--right {
   right: 8px;
+}
+
+/* 双图模式（整改后）：盖过 --left 的紫色 AI 渐变，用品牌绿强调「已整改」 */
+.cmp__corner--after {
+  background: var(--grad-brand);
 }
 
 .cmp__divider {

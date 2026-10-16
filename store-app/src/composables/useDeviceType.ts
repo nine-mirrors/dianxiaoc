@@ -3,8 +3,9 @@
  *
  * 与 useDevice 的分工：
  * - useDevice 是「能力探测」（摄像头/震动/安全区…），一次性 getter；
- * - 本文件是「形态判定」，输出响应式的 isMobile（手机/移动形态 vs 桌面形态），
- *   供 App.vue 决定套不套手机壳、路由守卫决定是否进移动门户。
+ * - 本文件是「形态判定」，输出响应式的 isMobile（移动形态 vs 桌面形态），
+ *   供 App.vue 决定使用「全屏移动外壳」还是「桌面外壳」，并供路由守卫
+ *   决定是否把经理/管理员分流到移动门户 /m。形态只看设备，不看角色。
  *
  * 判定策略（两条路任一成立即移动形态）：
  *  1. 硬件特征：UA-CH mobile 标志、Android/iPhone/iPod/iPadOS 伪装、粗指针触屏；
@@ -18,7 +19,7 @@
  */
 import { computed, ref, type ComputedRef } from 'vue'
 
-/** 移动形态视口断点（px）：与 PhoneFrame 真机退化线 480 拉开一档，平板竖屏/窄窗都收编 */
+/** 移动形态视口断点（px）：与真机全屏退化线 480（styles/global.css）拉开一档，平板竖屏/窄窗都收编 */
 export const MOBILE_BREAKPOINT = 640
 
 const FORCE_KEY = 'dxc:force-form'
@@ -38,15 +39,22 @@ let listenerBound = false
  * `?desktop=1` 位于 `#` 之后（如 `/#/manager/dashboard?desktop=1`），并不在
  * window.location.search 里；因此必须同时解析 hash 段中的 query，否则
  * 「切换电脑版」按钮与评委在 hash 后追加参数都会被守卫忽略。
- * 合并优先级：hash 段 query（应用内导航参数）> 真实 search（整页加载参数）。
+ *
+ * 优先级：**hash 段 query 一旦显式带形态参数就以它为准**，不与真实 search 合并。
+ * 原因：整页加载时写在 search 上的参数（如 `?desktop=1#/rep/today`）会一直留在
+ * 地址栏，之后 SPA 内部导航只改 hash —— 两个来源的参数会并存，旧 search 参数
+ * 会反向覆盖新选择（实测 `?desktop=1` + `#/rep/today?mobile=1` 被判成桌面形态）。
+ * hash 段不带形态参数时才回落到 search（覆盖「整页加载带参数」的入口场景）。
  */
 function urlParams(): URLSearchParams {
   const hash = typeof window === 'undefined' ? '' : window.location.hash || ''
   const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : ''
+  const hashParams = new URLSearchParams(hashQuery)
+  if (hashParams.has('desktop') || hashParams.has('mobile')) return hashParams
   const merged = new URLSearchParams(
     typeof window === 'undefined' ? '' : window.location.search || '',
   )
-  new URLSearchParams(hashQuery).forEach((v, k) => merged.set(k, v))
+  hashParams.forEach((v, k) => merged.set(k, v))
   return merged
 }
 

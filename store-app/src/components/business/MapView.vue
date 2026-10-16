@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
- * 巡店地图（P2 今日线路可视化）：Leaflet + 高德瓦片（国内免 key 直连）。
- * 标记按健康分四档着色，点击弹出店名与分数。
+ * 巡店地图（P2 今日线路可视化）：Leaflet + 本地高德瓦片（零外网），在线兜底。
+ * 标记按健康分四档着色，已巡/待巡状态区分，按拜访顺序串联成动线。
+ * 点击弹出店名 + 健康分 + 分档 + 巡店状态 + 进度条。
  */
 import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import L from 'leaflet'
@@ -13,6 +14,10 @@ export interface MapMarker {
   name: string
   score: number
   level: string
+  /** 线路拜访顺序（1 起始，用于画动线连线） */
+  order?: number
+  /** 巡店状态：done 已巡 / pending 待巡 / alert 需重点复查 */
+  status?: string
 }
 
 const props = withDefaults(defineProps<{ markers?: MapMarker[]; height?: number }>(), {
@@ -22,11 +27,12 @@ const props = withDefaults(defineProps<{ markers?: MapMarker[]; height?: number 
 
 const el = ref<HTMLDivElement | null>(null)
 const wrap = ref<HTMLDivElement | null>(null)
-/** 底图瓦片是否加载失败（无网时降级为灰底 + 提示，点位与分数仍准确） */
+/** 底图瓦片是否加载失败（本地 + 在线都不可用时降级为灰底 + 提示） */
 const tileFailed = ref<boolean>(false)
 const isFull = ref<boolean>(false)
 let map: L.Map | null = null
 let markerGroup: L.LayerGroup | null = null
+let routeLine: L.Polyline | null = null
 
 /** 全屏 / 退出全屏：同一 Leaflet 实例切换容器尺寸后 invalidateSize 重算瓦片 */
 async function toggleFull(): Promise<void> {
@@ -43,52 +49,121 @@ const LEVEL_COLOR: Record<string, string> = {
   risk: 'var(--level-risk)',
 }
 
+const LEVEL_LABEL: Record<string, string> = {
+  excellent: '优秀',
+  good: '良好',
+  warning: '预警',
+  risk: '风险',
+}
+
+/** 标记气泡：已巡实心 + ✓ 角标，待巡空心描边（视觉区分进度） */
 function markerHtml(m: MapMarker): string {
   const color = LEVEL_COLOR[m.level] ?? 'var(--brand)'
-  // 分数文字 / 外圈描边用奶白令牌（日/夜都与四档亮色形成对比）；投影为地图图钉专用，无等价令牌
-  return `<div style="width:36px;height:36px;border-radius:50%;background:${color};color:var(--milk);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid var(--milk);box-shadow:0 2px 8px rgba(0,0,0,.35)">${m.score}</div>`
+  const done = m.status === 'done'
+  const bg = done ? color : 'var(--milk)'
+  const fg = done ? 'var(--milk)' : color
+  const badge = done
+    ? '<span style="position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;border:1.5px solid var(--milk);box-shadow:0 1px 3px rgba(0,0,0,.3)">✓</span>'
+    : ''
+  return `<div style="position:relative;width:36px;height:36px;border-radius:50%;background:${bg};color:${fg};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid ${color};box-shadow:0 2px 8px rgba(0,0,0,.35)">${m.score}${badge}</div>`
+}
+
+function popupHtml(m: MapMarker): string {
+  const color = LEVEL_COLOR[m.level] ?? 'var(--brand)'
+  const levelLabel = LEVEL_LABEL[m.level] ?? ''
+  const status = m.status ?? 'pending'
+  const statusText = status === 'done' ? '✓ 今日已巡' : status === 'alert' ? '⚠ 需重点复查' : '○ 待巡店'
+  const statusColor = status === 'alert' ? 'var(--level-warning)' : status === 'done' ? 'var(--brand)' : 'var(--text-3)'
+  const pct = Math.max(0, Math.min(100, m.score))
+  return `<div style="min-width:150px;font-family:'PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+    <div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:4px">${m.name}</div>
+    <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">
+      <span style="font-size:24px;font-weight:800;line-height:1;color:${color}">${m.score}</span>
+      <span style="font-size:11px;color:var(--text-3)">健康分 · ${levelLabel}</span>
+    </div>
+    <div style="height:6px;border-radius:999px;background:var(--border-color);overflow:hidden;margin-bottom:8px">
+      <div style="height:100%;width:${pct}%;background:${color};border-radius:999px"></div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:${statusColor}">${statusText}</div>
+  </div>`
 }
 
 function render(): void {
   if (!el.value || map) return
-  const center: [number, number] = [30.98, 103.59]
+  // 初始中心 = 演示门店质心（S1–S5 成都温江方向），有标记后 fitBounds 自动重算
+  const center: [number, number] = [30.763, 103.975]
   map = L.map(el.value, { zoomControl: true, attributionControl: false }).setView(center, 13)
 
-  // ★ 无网降级（QA 实测：断网时瓦片全失败但页面零提示，用户以为地图坏了）
-  // 统计瓦片加载成功/失败，超过阈值即判定「底图不可用」→ 显示提示条 + 转灰底
-  let loaded = 0
-  let broken = 0
-  const layer = L.tileLayer(
-    'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
-    { subdomains: ['1', '2', '3', '4'], maxZoom: 18 },
-  )
-  layer.on('tileload', () => {
-    loaded += 1
-    if (broken === 0 && loaded >= 1) tileFailed.value = false
-  })
-  layer.on('tileerror', () => {
-    broken += 1
-    // 连续失败且没有任何一张成功 → 判定无网
-    if (loaded === 0 && broken >= 3) {
+  /* ── 底图：本地瓦片优先（零外网），缺失时回退在线高德，全挂再判无网 ── */
+  let anyLoaded = 0
+  let anyBroken = 0
+  let localLoaded = 0
+  let localBroken = 0
+  let onlineAdded = false
+
+  const markUp = () => {
+    anyLoaded += 1
+    tileFailed.value = false
+    el.value?.classList.remove('map-view--offline')
+  }
+  const markDown = () => {
+    anyBroken += 1
+    if (anyLoaded === 0 && anyBroken >= 3) {
       tileFailed.value = true
       el.value?.classList.add('map-view--offline')
     }
+  }
+
+  const online = L.tileLayer(
+    'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
+    { subdomains: ['1', '2', '3', '4'], maxZoom: 18 },
+  )
+  online.on('tileload', markUp)
+  online.on('tileerror', markDown)
+
+  const local = L.tileLayer('/tiles/{z}/{x}/{y}.png', { maxZoom: 18, maxNativeZoom: 16 })
+  local.on('tileload', () => {
+    localLoaded += 1
+    markUp()
   })
-  layer.addTo(map)
+  local.on('tileerror', () => {
+    localBroken += 1
+    // 本地瓦片缺失（该缩放级别 / 区域未预下载）→ 无一张成功时切在线
+    if (localLoaded === 0 && localBroken >= 3 && !onlineAdded) {
+      onlineAdded = true
+      online.addTo(map)
+    }
+  })
+  local.addTo(map)
 
   markerGroup = L.layerGroup().addTo(map)
   syncMarkers()
 }
 
-/** 标记同步：每次 markers 变化先清空再重建，支持异步加载数据 */
+/** 标记同步：按拜访顺序重建标记 + 画动线连线，支持异步加载数据 */
 function syncMarkers(): void {
   if (!map || !markerGroup) return
-  const ms = props.markers
   markerGroup.clearLayers()
+  if (routeLine) {
+    routeLine.remove()
+    routeLine = null
+  }
+
+  const ms = [...props.markers].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
   ms.forEach((m) => {
     const icon = L.divIcon({ html: markerHtml(m), className: '', iconSize: [36, 36] })
-    L.marker([m.lat, m.lng], { icon }).addTo(markerGroup!).bindPopup(`<b>${m.name}</b><br/>健康分 ${m.score}`)
+    L.marker([m.lat, m.lng], { icon }).addTo(markerGroup!).bindPopup(popupHtml(m))
   })
+
+  // 动线连线：≥2 个点按拜访顺序串联（虚线，不与四档着色争视觉）
+  if (ms.length >= 2) {
+    routeLine = L.polyline(
+      ms.map((m) => [m.lat, m.lng] as [number, number]),
+      { color: '#00b451', weight: 3, opacity: 0.55, dashArray: '6 7', lineCap: 'round' },
+    ).addTo(map)
+  }
+
   // 自动缩放到包含全部标记
   if (ms.length > 1) {
     map.fitBounds(L.latLngBounds(ms.map((m) => [m.lat, m.lng] as [number, number])).pad(0.25))
@@ -101,6 +176,7 @@ onBeforeUnmount(() => {
   map?.remove()
   map = null
   markerGroup = null
+  routeLine = null
 })
 </script>
 
@@ -125,9 +201,9 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-/* 全屏：撑满「手机屏」而非整个浏览器窗口。
-   PhoneFrame 的 .phone 已加 z-index:1 形成 containing block，
-   因此这里的 fixed 是相对手机屏定位，移动端才符合「手机全屏」的直觉。 */
+/* 全屏：撑满当前视口（不再有手机壳作为 containing block，fixed 即相对视口定位）。
+   移动形态下视口就是「手机屏」，符合手机全屏的直觉；
+   桌面形态下即铺满浏览器窗口，与全屏看图的预期一致。 */
 .map-wrap--full {
   position: fixed;
   inset: 0;

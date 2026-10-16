@@ -41,9 +41,9 @@ const totalGain = computed<number>(() => props.records.reduce((s, r) => s + (r.g
   <div class="rc-cmp">
     <!-- 对比区 -->
     <div v-if="hasAfter" class="rc-cmp__slider">
-      <CompareSlider :src="beforeUrl" :annotations="[]" :aspect="2 / 3" />
+      <CompareSlider :src="beforeUrl" :after-src="latest?.photoUrl" :annotations="[]" :aspect="2 / 3" />
       <p class="rc-cmp__cap">
-        左滑看<strong>整改前</strong> · 右滑看<strong>整改后</strong>（{{ latest?.createdAt }}）
+        左＝<strong>整改后</strong> · 右＝<strong>整改前</strong>（{{ latest?.createdAt }}）
       </p>
     </div>
 

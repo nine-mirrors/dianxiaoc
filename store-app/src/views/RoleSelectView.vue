@@ -154,7 +154,8 @@ async function submit(): Promise<void> {
 
 <style scoped>
 /*
- * ★ 布局：外层是手机壳内的固定高度视口（PhoneFrame .phone__screen overflow:hidden），
+ * ★ 布局：外层是固定高度的路由视口（移动形态由 .mot-route-host overflow:hidden 裁剪，
+ *   桌面形态即浏览器视口），
  *   本页自身承担纵向滚动；内容不足一屏时居中，超高时从顶部开始且可完整滚到底部，
  *   不再出现底部元素被裁掉的问题。
  */
