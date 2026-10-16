@@ -816,19 +816,4 @@ function resetReview(): void {
     opacity: 0;
   }
 }
-
-/* ── 减弱动效：白闪瞬时静态；快门按压不缩放；加载环停转（文案承载状态） ── */
-@media (prefers-reduced-motion: reduce) {
-  .cc__flash {
-    animation-duration: 0.01ms;
-  }
-
-  .cc__shutter:active .cc__shutter__core {
-    transform: none;
-  }
-
-  .cc__spinner {
-    animation: none;
-  }
-}
 </style>

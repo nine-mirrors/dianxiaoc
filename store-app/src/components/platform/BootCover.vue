@@ -29,10 +29,6 @@ interface Stat {
 const route = useRoute()
 
 const playedKey = 'dxc:boot-played'
-const prefersReduced =
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 const visible = ref<boolean>(false)
 const welcomeOnly = ref<boolean>(false)
@@ -70,13 +66,9 @@ function isExcluded(path: string): boolean {
   )
 }
 
-/* ── 数字滚动计数（rAF；减弱动效直接落位） ── */
+/* ── 数字滚动计数（rAF） ── */
 function animateNumbers(): void {
   const targets = stats.value.map((s) => s.value)
-  if (prefersReduced) {
-    display.value = targets
-    return
-  }
   display.value = targets.map(() => 0)
   const t0 = performance.now()
   const dur = 900
@@ -327,17 +319,5 @@ const subtitle = computed<string>(() =>
 
 .boot-leave-to {
   opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .boot-enter-active,
-  .boot-enter-active .boot__card,
-  .boot-leave-active {
-    transition: none;
-  }
-
-  .boot-enter-from .boot__card {
-    transform: none;
-  }
 }
 </style>

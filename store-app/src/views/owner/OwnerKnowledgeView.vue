@@ -184,12 +184,12 @@ onBeforeUnmount(() => {
     :content-padding-bottom="16"
     @back="router.push('/owner')"
   >
-    <div class="kb">
+    <div class="kb mot-rise">
       <!-- 分类 chips -->
-      <div class="kb__cats u-scroll-x">
+      <div class="kb__cats u-scroll-x mot-stagger">
         <button
           type="button"
-          class="kb__cat u-tap"
+          class="kb__cat u-tap mot-tap"
           :class="{ 'kb__cat--on': activeCategory === '' }"
           @click="pickCategory('')"
         >
@@ -199,7 +199,7 @@ onBeforeUnmount(() => {
           v-for="c in categories"
           :key="c"
           type="button"
-          class="kb__cat u-tap"
+          class="kb__cat u-tap mot-tap"
           :class="{ 'kb__cat--on': activeCategory === c }"
           @click="pickCategory(c)"
         >
@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
             <AppIcon name="sparkles" :size="15" color="var(--ai-purple)" />
             {{ asking ? '正在回答' : askBadge }}
           </span>
-          <button type="button" class="kb__ans-close u-tap" aria-label="关闭回答" @click="clearAnswer">
+          <button type="button" class="kb__ans-close u-tap mot-tap" aria-label="关闭回答" @click="clearAnswer">
             <AppIcon name="close" :size="15" />
           </button>
         </div>
@@ -249,8 +249,13 @@ onBeforeUnmount(() => {
       />
 
       <template v-else>
-        <section v-for="it in items" :key="it.id" class="u-card kb__item">
-          <button type="button" class="kb__q u-tap" @click="toggle(it.id)">
+        <section
+          v-for="(it, i) in items"
+          :key="it.id"
+          class="u-card kb__item mot-fade-up"
+          :style="{ animationDelay: `${Math.min(i, 6) * 60}ms` }"
+        >
+          <button type="button" class="kb__q u-tap mot-tap" @click="toggle(it.id)">
             <span class="kb__q-main">
               <span v-if="it.category" class="kb__q-cat">{{ it.category }}</span>
               <span class="kb__q-text">{{ it.question }}</span>
@@ -264,6 +269,7 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="u-btn u-btn--ghost kb__more-btn"
+            :class="{ 'mot-press-loading': loadingMore }"
             :disabled="loadingMore"
             @click="loadMore"
           >
@@ -276,12 +282,12 @@ onBeforeUnmount(() => {
     <!-- 底部固定「问一问」 -->
     <template #footer>
       <div class="kb-ask">
-        <div class="kb-ask__presets u-scroll-x">
+        <div class="kb-ask__presets u-scroll-x mot-stagger">
           <button
             v-for="p in PRESETS"
             :key="p"
             type="button"
-            class="kb-ask__preset u-tap"
+            class="kb-ask__preset u-tap mot-tap"
             :disabled="asking"
             @click="ask(p)"
           >

@@ -14,16 +14,18 @@ import type { MapMarker } from '@/components/business/MapView.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import UserAvatar from '@/components/common/UserAvatar.vue'
 import PullRefresh from '@/components/platform/PullRefresh.vue'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useHaptics } from '@/composables/useHaptics'
+import { useCountUp } from '@/composables/useCountUp'
 import { getTodayRoute, updateTaskStatus, getTickets, updateTicketStatus } from '@/api'
 import { getUnreadSummary } from '@/api/messages'
 import { onRealtime } from '@/realtime/client'
 import { useSessionStore } from '@/stores/session'
 import { useDemoStore } from '@/stores/demo'
-import { DEMO_TODAY, DEMO_WEEKDAY, DEMO_WEATHER, levelOf } from '@/domain/constants'
+import { DEMO_TODAY, DEMO_WEEKDAY, DEMO_WEATHER, isTaskOverdue, levelOf } from '@/domain/constants'
 import { haversineKm, fmtKm } from '@/domain/geo'
 import type { RouteStore, TodayRoute, Task, TaskType, Ticket } from '@/types'
 
@@ -237,6 +239,17 @@ const routeOrigin = computed<{ lat: number; lng: number } | undefined>(() => {
 /** 待办任务 */
 const todoTasks = computed(() => route.value.todoTasks ?? [])
 
+/**
+ * 逾期未完成的待办数（以演示基准时刻 DEMO_NOW 判定，与后端 /messages/unread 的
+ * 「逾期待办」同一口径 → 首页提醒条与通知中心、底部角标三处数字一致）。
+ */
+const overdueTasks = computed(() => todoTasks.value.filter((t) => isTaskOverdue(t.dueAt)))
+
+/** 跳通知中心：首页只做提醒，详情与「标记完成」统一在通知中心里跟进 */
+function gotoNotifyCenter(): void {
+  void router.push('/messages')
+}
+
 /** 时限展示文案：优先原始中文文案，其次归一化时间，缺失时给兜底（不渲染出「请在前完成」） */
 function taskDueText(t: Task): string {
   return t.dueAtLabel || t.dueAt || ''
@@ -267,6 +280,10 @@ const progressCheer = computed<string>(() => {
   if (remaining.value === 1) return `就剩最后 1 家了，一鼓作气`
   return `已跑完 ${d}/${progressTotal.value}，还剩 ${remaining.value} 家`
 })
+
+/* ── 进度数字滚动：已完成 / 总数（整数，落地即精确回写） ── */
+const countDone = useCountUp(() => progressDone.value).text
+const countTotal = useCountUp(() => progressTotal.value).text
 
 /* ── 收工庆祝：从「未全完 → 全完」跨变时弹一次轻量庆祝（峰终效应） ── */
 const showCelebrate = ref<boolean>(false)
@@ -419,7 +436,13 @@ function openStoreNav(target: NavTarget | null | undefined): void {
             aria-label="切换账号"
             @click="switchAccount"
           >
-            {{ session.avatarText }}
+            <UserAvatar
+              :url="session.avatarUrl"
+              :name="session.user?.name"
+              :text="session.avatarText"
+              :size="30"
+              variant="glass"
+            />
           </button>
         </div>
       </div>
@@ -435,14 +458,14 @@ function openStoreNav(target: NavTarget | null | undefined): void {
       <div v-if="showSkeleton" class="p2-summary__inner">
         <SkeletonBlock v-for="i in 3" :key="i" height="42px" radius="10px" width="100%" />
       </div>
-      <div v-else class="p2-summary__inner">
+      <div v-else class="p2-summary__inner mot-stagger-pop">
         <div class="p2-stat">
-          <p class="p2-stat__num">{{ summary.total }}</p>
+          <p class="p2-stat__num">{{ countTotal }}</p>
           <p class="p2-stat__cap">今日门店</p>
         </div>
         <div class="p2-stat">
           <p class="p2-stat__num">
-            {{ summary.done }}<em>/{{ summary.total }}</em>
+            {{ countDone }}<em>/{{ countTotal }}</em>
           </p>
           <p class="p2-stat__cap">已完成</p>
         </div>
@@ -462,7 +485,7 @@ function openStoreNav(target: NavTarget | null | undefined): void {
     <div v-if="!showSkeleton && progressTotal > 0" class="p2-progress">
       <div class="p2-progress__row">
         <span class="p2-progress__cheer" :class="{ 'is-done': allDoneToday }">{{ progressCheer }}</span>
-        <span class="p2-progress__num">{{ progressDone }}/{{ progressTotal }}</span>
+        <span class="p2-progress__num">{{ countDone }}/{{ countTotal }}</span>
       </div>
       <div
         class="p2-progress__track"
@@ -472,33 +495,58 @@ function openStoreNav(target: NavTarget | null | undefined): void {
         :aria-valuemax="progressTotal"
         aria-label="今日巡店进度"
       >
-        <div class="p2-progress__fill" :class="{ 'is-done': allDoneToday }" :style="{ width: progressPercent + '%' }" />
+        <div
+          class="p2-progress__fill mot-grow-x"
+          :class="{ 'is-done': allDoneToday }"
+          :style="{ width: progressPercent + '%' }"
+        />
       </div>
     </div>
 
     <!-- 待办提醒条（★经理下派 → 业代可见） -->
-    <div v-if="todoTasks.length" class="p2-todo">
-      <button
-        type="button"
-        class="p2-todo__bar"
-        :aria-expanded="!todoCollapsed"
-        @click="todoCollapsed = !todoCollapsed"
-      >
-        <AppIcon name="alert-triangle" :size="14" color="var(--warning-fg)" />
-        <span>待办提醒（{{ todoTasks.length }}）来自{{ todoTasks[0].creatorName }}经理</span>
-        <em>{{ todoCollapsed ? '展开' : '收起' }}</em>
-      </button>
-      <div v-if="!todoCollapsed" class="p2-todo__list">
+    <div v-if="todoTasks.length" class="p2-todo mot-rise">
+      <!-- 提醒条：折叠开关与「通知中心」入口是并列按钮（HTML 不允许按钮嵌套） -->
+      <div class="p2-todo__barwrap">
+        <button
+          type="button"
+          class="p2-todo__bar"
+          :aria-expanded="!todoCollapsed"
+          @click="todoCollapsed = !todoCollapsed"
+        >
+          <AppIcon name="alert-triangle" :size="14" color="var(--warning-fg)" />
+          <span>待办提醒（{{ todoTasks.length }}）来自{{ todoTasks[0].creatorName }}经理</span>
+          <span v-if="overdueTasks.length" class="p2-todo__alert mot-pulse">
+            {{ overdueTasks.length }} 项逾期
+          </span>
+          <em>{{ todoCollapsed ? '展开' : '收起' }}</em>
+        </button>
+        <button
+          type="button"
+          class="p2-todo__more u-tap"
+          aria-label="打开通知中心查看全部待办"
+          @click="gotoNotifyCenter"
+        >
+          通知中心
+          <AppIcon name="chevron-right" :size="13" />
+        </button>
+      </div>
+      <div v-if="!todoCollapsed" class="p2-todo__list mot-stagger">
         <div
           v-for="t in todoTasks"
           :key="t.id"
           class="p2-todo__card"
-          :class="`p2-todo__card--${taskTone(t)}`"
+          :class="[
+            `p2-todo__card--${taskTone(t)}`,
+            { 'p2-todo__card--overdue': isTaskOverdue(t.dueAt) },
+          ]"
         >
           <p class="p2-todo__name">
             <AppIcon name="map-pin" :size="13" :color="TONE_COLOR[taskTone(t)]" />
             {{ t.storeName }}
             <span class="p2-todo__tag" :class="`p2-todo__tag--${taskTone(t)}`">{{ t.taskTypeLabel }}</span>
+            <span v-if="isTaskOverdue(t.dueAt)" class="p2-todo__tag p2-todo__tag--overdue">
+              已逾期
+            </span>
           </p>
           <p v-if="taskDueText(t)" class="p2-todo__note">
             请在{{ taskDueText(t) }}前完成整改<template v-if="t.note"> · {{ t.note }}</template>
@@ -509,6 +557,7 @@ function openStoreNav(target: NavTarget | null | undefined): void {
             <button
               type="button"
               class="p2-todo__btn p2-todo__btn--done u-tap"
+              :class="{ 'mot-press-loading': markingTaskId === t.id }"
               :disabled="markingTaskId === t.id"
               @click="markTaskDone(t)"
             >
@@ -520,19 +569,25 @@ function openStoreNav(target: NavTarget | null | undefined): void {
     </div>
 
     <!-- 待接单（★店主 P6 下单 → 业代秒收，订货三端打通的落点） -->
-    <div v-if="pendingTickets.length" class="p2-orders">
+    <div v-if="pendingTickets.length" class="p2-orders mot-rise">
       <div class="p2-orders__bar">
         <AppIcon name="cart" :size="14" color="var(--mn-green)" />
         <span>待接单（{{ pendingTickets.length }}）来自店主自助下单</span>
       </div>
-      <div class="p2-orders__list">
+      <div class="p2-orders__list mot-stagger">
         <div v-for="t in pendingTickets" :key="t.id" class="p2-order">
           <p class="p2-order__name">
             {{ t.storeName }}
             <span class="p2-order__id">{{ t.id }}</span>
           </p>
           <p class="p2-order__meta">{{ t.totalBottles }} 瓶 · ¥{{ t.totalAmount }} · {{ t.createdAt }}</p>
-          <button type="button" class="p2-order__btn u-tap" :disabled="acceptingId === t.id" @click="acceptTicket(t)">
+          <button
+            type="button"
+            class="p2-order__btn u-tap"
+            :class="{ 'mot-press-loading': acceptingId === t.id }"
+            :disabled="acceptingId === t.id"
+            @click="acceptTicket(t)"
+          >
             {{ acceptingId === t.id ? '接单中…' : '一键确认接单' }}
           </button>
         </div>
@@ -570,7 +625,7 @@ function openStoreNav(target: NavTarget | null | undefined): void {
       </div>
 
       <template v-else>
-        <MapView :markers="mapMarkers" :height="240" />
+        <MapView class="mot-rise" :markers="mapMarkers" :height="240" />
         <button type="button" class="p2-map__collapse u-tap" @click="mapExpanded = false">收起地图</button>
       </template>
     </div>
@@ -595,8 +650,13 @@ function openStoreNav(target: NavTarget | null | undefined): void {
         @action="router.push('/rep/capture/S3')"
       />
 
-      <div v-else class="p2-route__list">
-        <div v-for="r in routeStores" :id="`store-card-${r.store.id}`" :key="r.store.id">
+      <div v-else class="p2-route__list mot-stagger">
+        <div
+          v-for="r in routeStores"
+          :id="`store-card-${r.store.id}`"
+          :key="r.store.id"
+          class="p2-route__item mot-tap mot-hover-lift"
+        >
           <StoreCard :item="r" :origin="routeOrigin" :just-done="justDone.includes(r.store.id)" @patrol="goCapture" @view="viewHistory">
             <!-- 一键导航：收进卡片操作行，主按钮在最右，不悬出卡片、不与悬浮球打架 -->
             <template #extra-action>
@@ -685,14 +745,15 @@ function openStoreNav(target: NavTarget | null | undefined): void {
 }
 
 .p2-head__avatar {
+  /* 视觉（圆/底色/描边/字号）由 UserAvatar 统一负责，此处仅保留 30px 触控盒 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 30px;
   height: 30px;
-  border: 1.5px solid rgba(255, 255, 255, 0.7);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 0;
+  border: none;
+  background: none;
 }
 
 /* 概览 */
@@ -829,6 +890,42 @@ function openStoreNav(target: NavTarget | null | undefined): void {
   background: color-mix(in srgb, var(--warning-bg) 82%, var(--color-warning));
 }
 
+.p2-todo__barwrap {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* 「通知中心」入口：与提醒条同高、次级配色，不抢提醒条本身的告警色 */
+.p2-todo__more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 逾期计数徽标：提醒条内的红色强调（与通知中心的逾期色语义一致）
+   选择器比 `.p2-todo__bar span { flex: 1 }` 高一级，无需 !important 即可不撑满 */
+.p2-todo__bar .p2-todo__alert {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .p2-todo__bar span {
   flex: 1;
 }
@@ -865,6 +962,19 @@ function openStoreNav(target: NavTarget | null | undefined): void {
 
 .p2-todo__card--low {
   border-left-color: var(--text-3);
+}
+
+/* 逾期再加一层底纹（不改左条颜色，保留原有的「类型严重度」信息，两级信息叠加不互相覆盖） */
+.p2-todo__card--overdue {
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--danger-bg) 55%, transparent), color-mix(in srgb, var(--danger-bg) 55%, transparent)),
+    var(--bg-card);
+}
+
+.p2-todo__tag--overdue {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  font-weight: 700;
 }
 
 .p2-todo__name {
@@ -1207,11 +1317,28 @@ function openStoreNav(target: NavTarget | null | undefined): void {
   transform: translateX(-50%) translateY(-8px) scale(0.98);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .p2-progress__fill,
-  .celebrate-enter-active,
-  .celebrate-leave-active {
-    transition: none;
-  }
+/* ── 门店卡容器：级联入场结束后释放 transform，让卡片按下 / 悬停反馈生效
+       （只改 fill-mode，不锁 to 帧；入场动画仍完整播放）。
+       position: relative 供下方闪光伪元素定位，不改卡片盒模型 ── */
+.p2-route__list > .p2-route__item {
+  position: relative;
+  animation-fill-mode: backwards;
+}
+
+/* 「查看」定位时原有的绿色闪光：级联入场占用了元素自身的 animation，
+   故改用同款关键帧渲染到覆盖卡片的伪元素上——既不打断/重播入场，又能随类名增删重播 */
+.p2-route__list > .p2-route__item.u-flash-success::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--radius-card);
+  animation: u-flash-success 1.1s ease 2;
+}
+
+/* ── 状态标记（StoreCard 内）：完成态出现时一次性弹性强调，纯 transform / opacity。
+       复用全局 mot-pop 关键帧；未完成态无动画，切换时即触发，不重排整卡 ── */
+.p2-route__list :deep(.store-card__order--done) {
+  animation: mot-pop var(--dur-base) var(--ease-decel) both;
 }
 </style>

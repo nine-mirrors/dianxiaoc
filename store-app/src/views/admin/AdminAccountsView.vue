@@ -14,6 +14,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 import { ApiError } from '@/api/client'
 import { getStores } from '@/api'
 import {
@@ -41,6 +42,13 @@ const stats = computed(() => {
   const ext = accounts.value.filter((a) => a.source === 'ext').length
   return { seed, ext, total: accounts.value.length }
 })
+
+/** 统计数字滚动入场（账号数） */
+const statsCount = {
+  seed: useCountUp(() => stats.value.seed),
+  ext: useCountUp(() => stats.value.ext),
+  total: useCountUp(() => stats.value.total),
+}
 
 async function load(): Promise<void> {
   loading.value = true
@@ -81,6 +89,8 @@ const form = reactive({
 })
 
 const submitting = ref(false)
+/** 表单校验失败时临时挂 .mot-shake（animationend 后由模板清空） */
+const formShake = ref(false)
 
 function openCreate(): void {
   editTarget.value = null
@@ -106,6 +116,7 @@ function openEdit(acc: AdminAccount): void {
 async function submitForm(): Promise<void> {
   if (submitting.value) return
   if (!form.name.trim()) {
+    formShake.value = true
     toast.error('请填写使用者姓名')
     return
   }
@@ -122,6 +133,7 @@ async function submitForm(): Promise<void> {
       toast.success(`已更新账号「${form.name.trim()}」`)
     } else {
       if (!form.username.trim() || !form.password.trim()) {
+        formShake.value = true
         toast.error('请填写登录账号与初始密码')
         submitting.value = false
         return
@@ -221,20 +233,20 @@ function fmtDate(): string {
 
     <div class="ac">
       <!-- ── 统计 ── -->
-      <div class="ac__stats">
+      <div class="ac__stats mot-stagger-pop">
         <div class="ac__stat u-card">
           <span class="ac__stat-label">内置账号</span>
-          <p class="ac__stat-value">{{ stats.seed }}</p>
+          <p class="ac__stat-value">{{ statsCount.seed.text }}</p>
           <span class="ac__stat-note">演示账号 · 不可停用</span>
         </div>
         <div class="ac__stat u-card">
           <span class="ac__stat-label">派发账号</span>
-          <p class="ac__stat-value">{{ stats.ext }}</p>
+          <p class="ac__stat-value">{{ statsCount.ext.text }}</p>
           <span class="ac__stat-note">管理端新建 · 可编辑</span>
         </div>
         <div class="ac__stat u-card ac__stat--brand">
           <span class="ac__stat-label">账号总量</span>
-          <p class="ac__stat-value">{{ stats.total }}</p>
+          <p class="ac__stat-value">{{ statsCount.total.text }}</p>
           <span class="ac__stat-note">内置 + 派发</span>
         </div>
       </div>
@@ -265,7 +277,7 @@ function fmtDate(): string {
                   <th class="ac__col-op">操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="mot-stagger">
                 <tr v-for="a in accounts" :key="a.id">
                   <td class="ac__mono">{{ a.username || '—' }}</td>
                   <td>{{ a.name }}</td>
@@ -284,11 +296,11 @@ function fmtDate(): string {
                   </td>
                   <td class="ac__col-op">
                     <template v-if="a.editable">
-                      <button type="button" class="ac__op" @click="openEdit(a)">编辑</button>
-                      <button type="button" class="ac__op" @click="toggleStatus(a)">
+                      <button type="button" class="ac__op mot-tap" @click="openEdit(a)">编辑</button>
+                      <button type="button" class="ac__op mot-tap" @click="toggleStatus(a)">
                         {{ a.status === 'active' ? '停用' : '启用' }}
                       </button>
-                      <button type="button" class="ac__op ac__op--warn" @click="openReset(a)">重置密码</button>
+                      <button type="button" class="ac__op ac__op--warn mot-tap" @click="openReset(a)">重置密码</button>
                     </template>
                     <span v-else class="ac__op-disabled" title="内置演示账号受后端保护，不可编辑或停用">内置账号 · 不可停用</span>
                   </td>
@@ -303,15 +315,15 @@ function fmtDate(): string {
 
     <!-- ══ 派发 / 编辑 弹层 ══ -->
     <div v-if="showForm" class="ac__mask" @click.self="showForm = false">
-      <div class="ac__modal u-card" role="dialog" aria-modal="true" :aria-label="editTarget ? '编辑账号' : '派发新账号'">
+      <div class="ac__modal u-card mot-rise" role="dialog" aria-modal="true" :aria-label="editTarget ? '编辑账号' : '派发新账号'">
         <header class="ac__modal-head">
           <h3>{{ editTarget ? '编辑账号' : '派发新账号' }}</h3>
-          <button type="button" class="ac__close u-tap" aria-label="关闭" @click="showForm = false">
+          <button type="button" class="ac__close u-tap mot-tap" aria-label="关闭" @click="showForm = false">
             <AppIcon name="close" :size="18" />
           </button>
         </header>
 
-        <div class="ac__form">
+        <div class="ac__form" :class="{ 'mot-shake': formShake }" @animationend="formShake = false">
           <label class="ac__field">
             <span>登录账号 <em v-if="!editTarget">*</em></span>
             <input v-model="form.username" :disabled="!!editTarget" placeholder="如 zhangsan" autocomplete="off" />
@@ -356,7 +368,7 @@ function fmtDate(): string {
 
         <footer class="ac__modal-foot">
           <button type="button" class="u-btn u-btn--ghost" @click="showForm = false">取消</button>
-          <button type="button" class="u-btn u-btn--primary" :disabled="submitting" @click="submitForm">
+          <button type="button" class="u-btn u-btn--primary" :class="{ 'mot-press-loading': submitting }" :disabled="submitting" @click="submitForm">
             {{ submitting ? '提交中…' : editTarget ? '保存修改' : '确认派发' }}
           </button>
         </footer>
@@ -365,10 +377,10 @@ function fmtDate(): string {
 
     <!-- ══ 重置密码 弹层 ══ -->
     <div v-if="resetTarget" class="ac__mask" @click.self="closeReset">
-      <div class="ac__modal ac__modal--sm u-card" role="dialog" aria-modal="true" aria-label="重置密码">
+      <div class="ac__modal ac__modal--sm u-card mot-rise" role="dialog" aria-modal="true" aria-label="重置密码">
         <header class="ac__modal-head">
           <h3>重置密码</h3>
-          <button type="button" class="ac__close u-tap" aria-label="关闭" @click="closeReset">
+          <button type="button" class="ac__close u-tap mot-tap" aria-label="关闭" @click="closeReset">
             <AppIcon name="close" :size="18" />
           </button>
         </header>
@@ -380,7 +392,7 @@ function fmtDate(): string {
           </p>
           <footer class="ac__modal-foot">
             <button type="button" class="u-btn u-btn--ghost" @click="closeReset">取消</button>
-            <button type="button" class="u-btn u-btn--primary" :disabled="resetting" @click="confirmReset">
+            <button type="button" class="u-btn u-btn--primary" :class="{ 'mot-press-loading': resetting }" :disabled="resetting" @click="confirmReset">
               {{ resetting ? '生成中…' : '确认重置' }}
             </button>
           </footer>
@@ -391,7 +403,7 @@ function fmtDate(): string {
             <p class="ac__pwd-label">新密码（仅显示一次）</p>
             <div class="ac__pwd-row">
               <code class="ac__pwd">{{ resetResult.password }}</code>
-              <button type="button" class="ac__copy" @click="copyPassword">
+              <button type="button" class="ac__copy mot-tap" @click="copyPassword">
                 <AppIcon name="clipboard" :size="15" /> {{ copied ? '已复制' : '复制' }}
               </button>
             </div>
@@ -592,7 +604,7 @@ function fmtDate(): string {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background var(--dur-fast) ease;
+  transition: background var(--dur-fast) ease, transform var(--dur-instant) var(--ease-standard);
 }
 
 .ac__op:hover {

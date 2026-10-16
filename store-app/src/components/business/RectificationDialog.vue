@@ -42,6 +42,14 @@ const { panelRef } = useDialogFocus({
 
 /** 提交中 */
 const submitting = ref<boolean>(false)
+/** 提交失败时的一次性抖动（纯 transform；animationend 后复位，保证可重播） */
+const shake = ref<boolean>(false)
+function triggerShake(): void {
+  shake.value = false
+  window.requestAnimationFrame(() => {
+    shake.value = true
+  })
+}
 /** 选中的整改后照片（base64） */
 const photo = ref<string>('')
 /** 照片预览 url */
@@ -123,6 +131,7 @@ async function submit(): Promise<void> {
     emit('close')
   } catch {
     toast.error('留证提交失败，请重试')
+    triggerShake()
   } finally {
     submitting.value = false
   }
@@ -135,9 +144,11 @@ async function submit(): Promise<void> {
       <div
         ref="panelRef"
         class="rc"
+        :class="{ 'mot-shake': shake }"
         role="dialog"
         aria-modal="true"
         aria-labelledby="rc-title"
+        @animationend="shake = false"
       >
         <p id="rc-title" class="rc__title">
           <AppIcon name="clipboard" :size="16" color="var(--mn-green)" />
@@ -196,7 +207,13 @@ async function submit(): Promise<void> {
           <button type="button" class="u-btn u-btn--ghost" data-close :disabled="submitting" @click="emit('close')">
             取消
           </button>
-          <button type="button" class="u-btn u-btn--primary" :disabled="submitting" @click="submit">
+          <button
+            type="button"
+            class="u-btn u-btn--primary"
+            :class="{ 'mot-press-loading': submitting }"
+            :disabled="submitting"
+            @click="submit"
+          >
             {{ submitting ? '提交中…' : '提交留证' }}
           </button>
         </div>
@@ -423,19 +440,5 @@ async function submit(): Promise<void> {
 .rc-enter-from .rc,
 .rc-leave-to .rc {
   transform: translateY(24px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rc-enter-active,
-  .rc-leave-active,
-  .rc-enter-active .rc,
-  .rc-leave-active .rc {
-    transition-duration: 0.01ms;
-  }
-
-  .rc-enter-from .rc,
-  .rc-leave-to .rc {
-    transform: none;
-  }
 }
 </style>

@@ -63,8 +63,6 @@ function startWaitPhrases(): void {
   stopWaitPhrases()
   waitIndex = 0
   waitPhrase.value = WAIT_PHRASES[0]
-  // 尊重系统「减弱动态效果」：只静态显示首条，不做轮换
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   waitTimer = window.setInterval(() => {
     if (waitIndex >= WAIT_PHRASES.length - 1) return
     waitIndex += 1
@@ -763,17 +761,5 @@ function go(path: string): void {
 
 .aifab__send:disabled {
   opacity: 0.45;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .aifab__glow {
-    animation: none;
-    opacity: 0.28;
-  }
-
-  .aifab__mask,
-  .aifab__sheet {
-    animation: none;
-  }
 }
 </style>

@@ -7,6 +7,7 @@
  */
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
+import UserAvatar from '@/components/common/UserAvatar.vue'
 import MobileLayout from '@/components/layout/MobileLayout.vue'
 import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
@@ -25,9 +26,15 @@ function logout(): void {
 
 <template>
   <MobileLayout title="我的" :show-tab-bar="true" :content-padding-bottom="24">
-    <div class="me">
-      <div class="me__card">
-        <span class="me__avatar">{{ session.avatarText }}</span>
+    <div class="me mot-rise">
+      <div class="me__card mot-pop">
+        <UserAvatar
+          :url="session.avatarUrl"
+          :name="session.user?.name"
+          :text="session.avatarText"
+          :size="46"
+          variant="glass"
+        />
         <div class="me__id">
           <p class="me__name">{{ session.user?.name ?? '未登录' }}</p>
           <p class="me__sub">{{ session.roleLabel }}<template v-if="session.user?.sub"> · {{ session.user.sub }}</template></p>
@@ -55,19 +62,6 @@ function logout(): void {
   border-radius: var(--radius-card);
   background: linear-gradient(135deg, var(--mn-green) 0%, var(--mn-green-dark) 100%);
   color: #fff;
-}
-
-.me__avatar {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
-  font-size: 18px;
-  font-weight: 700;
 }
 
 .me__id {

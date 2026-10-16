@@ -65,12 +65,4 @@ const sizeStyle = computed<Record<string, string>>(() => {
     background-position: 0 50%;
   }
 }
-
-/* 降低动态偏好：静止在初始静态帧 */
-@media (prefers-reduced-motion: reduce) {
-  .skeleton {
-    animation: none;
-    background-position: 100% 50%;
-  }
-}
 </style>

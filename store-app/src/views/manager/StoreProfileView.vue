@@ -19,7 +19,9 @@ import HealthBadge from '@/components/common/HealthBadge.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSessionStore } from '@/stores/session'
+import { useStoreFavorites } from '@/composables/useStoreFavorites'
 import { getStoreProfile, getStoreAttribution, exportStoresCsv, streamAiAsk } from '@/api/insights'
 import type { StoreProfile, StoreAttribution } from '@/api/insights'
 import type { HealthLevelKey } from '@/types'
@@ -30,6 +32,15 @@ const session = useSessionStore()
 const { success, info, error: toastError } = useToast()
 
 const storeId = computed<string>(() => String(route.params.storeId ?? ''))
+
+/* ── 收藏 / 重点关注（按登录账号隔离，与「我的」页列表同源） ── */
+const favorites = useStoreFavorites()
+const isFav = computed<boolean>(() => favorites.isFavorite(storeId.value))
+function onToggleFav(): void {
+  const name = profile.value?.store?.name
+  if (!name) return
+  void favorites.toggle({ id: storeId.value, name })
+}
 
 const profile = ref<StoreProfile | null>(null)
 const loading = ref<boolean>(true)
@@ -83,10 +94,42 @@ const LEVEL_HEX: Record<string, string> = {
 const healthLevel = computed<HealthLevelKey>(
   () => (profile.value?.health.level as HealthLevelKey) || 'good',
 )
+
+/* ═══════════════ 动效：关键数字滚动 ═══════════════
+   countup 只负责滚到目标值，展示文本仍按原始值的小数位还原，
+   保证与改造前逐字一致（健康分无值时保留「—」），口径与文案不变。 */
+
+/** 原值的小数位（最多 2 位） */
+function decimalsOf(n: number): number {
+  if (!Number.isFinite(n)) return 0
+  const s = String(n)
+  const dot = s.indexOf('.')
+  return dot < 0 ? 0 : Math.min(2, s.length - dot - 1)
+}
+
+/** 纯数字滚动文本：目标值来自 getter，展示格式跟随原始值 */
+function useCountText(target: () => number) {
+  const c = useCountUp(target, { decimals: 0 })
+  return computed(() => c.value.value.toFixed(decimalsOf(Number(target()))))
+}
+
+/** 健康分（无值时保持「—」，不做无意义的 0 滚动） */
+const scoreCount = useCountUp(() => Number(profile.value?.health.score ?? 0), { decimals: 0 })
 const healthScore = computed<string>(() => {
   const s = profile.value?.health.score
-  return s === null || s === undefined ? '—' : String(s)
+  if (s === null || s === undefined) return '—'
+  return scoreCount.value.value.toFixed(decimalsOf(Number(s)))
 })
+
+/* 关联任务 / 单据 小结数字滚动 */
+const taskTotalText = useCountText(() => profile.value?.tasksSummary.total ?? 0)
+const taskOpenText = useCountText(() => profile.value?.tasksSummary.open ?? 0)
+const taskDoneText = useCountText(() => profile.value?.tasksSummary.done ?? 0)
+const ticketCountText = useCountText(() => profile.value?.ticketsSummary.count ?? 0)
+const ticketAmountText = useCountText(() => profile.value?.ticketsSummary.totalAmount ?? 0)
+const ticketAcceptedText = useCountText(() => profile.value?.ticketsSummary.acceptedCount ?? 0)
+const ticketRectText = useCountText(() => profile.value?.ticketsSummary.rectificationTicketCount ?? 0)
+
 const delta = computed<number>(() => Number(profile.value?.health.delta ?? 0))
 const hasDiagnosis = computed<boolean>(() => profile.value?.hasDiagnosis === true)
 
@@ -328,6 +371,7 @@ watch(storeId, () => {
 
 onMounted(() => {
   void load()
+  void favorites.load()
   window.addEventListener('resize', onResize)
   // 观察 <html> 的 data-theme：日/夜切换后按新令牌重建三张图
   if (typeof MutationObserver !== 'undefined') {
@@ -377,7 +421,7 @@ onBeforeUnmount(() => {
 
       <template v-else>
         <!-- ① 门店卡 -->
-        <section class="u-card sp__card">
+        <section class="u-card sp__card mot-rise">
           <div class="sp__card-main">
             <div class="sp__store">
               <p class="sp__store-name">
@@ -403,6 +447,21 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="sp__actions">
+              <button
+                type="button"
+                class="u-btn u-btn--ghost sp__fav-btn"
+                :class="{ 'is-on': isFav }"
+                :aria-pressed="isFav ? 'true' : 'false'"
+                :aria-label="isFav ? `取消收藏门店：${profile.store.name}` : `收藏门店：${profile.store.name}`"
+                @click="onToggleFav"
+              >
+                <AppIcon
+                  :name="isFav ? 'star-filled' : 'star'"
+                  :size="15"
+                  :color="isFav ? 'var(--gold)' : undefined"
+                />
+                {{ isFav ? '已关注' : '关注门店' }}
+              </button>
               <button type="button" class="u-btn u-btn--ai" @click="goAsk">
                 <AppIcon name="sparkles" :size="15" /> 去 AI 问答
               </button>
@@ -420,7 +479,7 @@ onBeforeUnmount(() => {
         </section>
 
         <!-- ② 图表区 -->
-        <div class="sp__charts">
+        <div class="sp__charts mot-stagger">
           <section class="u-card sp__card">
             <header class="sp__card-head"><h2>健康分趋势</h2><span>近 {{ profile.healthTrend.length }} 个记录点</span></header>
             <div v-if="profile.healthTrend.length" ref="trendEl" class="sp__chart sp__chart--trend" />
@@ -441,29 +500,29 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- ③ 关联任务 / 单据小结 -->
-        <div class="sp__summaries">
+        <div class="sp__summaries mot-stagger">
           <section class="u-card sp__card">
             <header class="sp__card-head"><h2><AppIcon name="clipboard" :size="14" /> 关联任务</h2></header>
             <div class="sp__stats">
-              <div class="sp__stat"><p class="sp__stat-num">{{ profile.tasksSummary.total }}</p><p class="sp__stat-cap">任务总数</p></div>
-              <div class="sp__stat"><p class="sp__stat-num is-warn">{{ profile.tasksSummary.open }}</p><p class="sp__stat-cap">进行中</p></div>
-              <div class="sp__stat"><p class="sp__stat-num is-up">{{ profile.tasksSummary.done }}</p><p class="sp__stat-cap">已完成</p></div>
+              <div class="sp__stat"><p class="sp__stat-num">{{ taskTotalText }}</p><p class="sp__stat-cap">任务总数</p></div>
+              <div class="sp__stat"><p class="sp__stat-num is-warn">{{ taskOpenText }}</p><p class="sp__stat-cap">进行中</p></div>
+              <div class="sp__stat"><p class="sp__stat-num is-up">{{ taskDoneText }}</p><p class="sp__stat-cap">已完成</p></div>
             </div>
           </section>
 
           <section class="u-card sp__card">
             <header class="sp__card-head"><h2><AppIcon name="cart" :size="14" /> 关联单据</h2><span>订货三端打通</span></header>
             <div class="sp__stats">
-              <div class="sp__stat"><p class="sp__stat-num">{{ profile.ticketsSummary.count }}</p><p class="sp__stat-cap">订货单笔数</p></div>
-              <div class="sp__stat"><p class="sp__stat-num">¥{{ profile.ticketsSummary.totalAmount }}</p><p class="sp__stat-cap">订货总额</p></div>
-              <div class="sp__stat"><p class="sp__stat-num is-up">{{ profile.ticketsSummary.acceptedCount }}</p><p class="sp__stat-cap">已接单</p></div>
-              <div class="sp__stat"><p class="sp__stat-num">{{ profile.ticketsSummary.rectificationTicketCount }}</p><p class="sp__stat-cap">整改回执单</p></div>
+              <div class="sp__stat"><p class="sp__stat-num">{{ ticketCountText }}</p><p class="sp__stat-cap">订货单笔数</p></div>
+              <div class="sp__stat"><p class="sp__stat-num">¥{{ ticketAmountText }}</p><p class="sp__stat-cap">订货总额</p></div>
+              <div class="sp__stat"><p class="sp__stat-num is-up">{{ ticketAcceptedText }}</p><p class="sp__stat-cap">已接单</p></div>
+              <div class="sp__stat"><p class="sp__stat-num">{{ ticketRectText }}</p><p class="sp__stat-cap">整改回执单</p></div>
             </div>
           </section>
         </div>
 
         <!-- ④ AI 归因（先结构化底稿，再可选叠加模型文字） -->
-        <section class="u-card sp__card">
+        <section class="u-card sp__card mot-rise">
           <header class="sp__card-head">
             <h2><AppIcon name="zap" :size="14" color="var(--ai-purple)" /> AI 归因</h2>
             <button
@@ -478,7 +537,7 @@ onBeforeUnmount(() => {
           </header>
 
           <template v-if="attribution">
-            <div class="sp__attr-grid">
+            <div class="sp__attr-grid mot-stagger">
               <div class="sp__attr-block">
                 <h3>健康分拐点</h3>
                 <ul v-if="attribution.turningPoints.length" class="sp__attr-list">
@@ -519,7 +578,7 @@ onBeforeUnmount(() => {
               <button type="button" class="u-btn u-btn--ai" :disabled="attrStreaming" @click="genAttributionText">
                 <AppIcon name="sparkles" :size="15" /> 让 AI 写一段归因结论
               </button>
-              <div v-if="attrText" class="sp__attr-text">
+              <div v-if="attrText" class="sp__attr-text mot-fade-up">
                 <p class="sp__attr-body">{{ attrText }}</p>
                 <p class="sp__attr-source">
                   {{ attrSource === 'llm' ? 'AI 生成 · qwen' : attrSource === 'fallback' ? '来自标准答案库（本次未调用大模型）' : '暂未标注来源' }}
@@ -534,7 +593,7 @@ onBeforeUnmount(() => {
         <!-- ⑤ 最近巡店时间线 -->
         <section class="u-card sp__card">
           <header class="sp__card-head"><h2><AppIcon name="history" :size="14" /> 最近巡店</h2><span>{{ profile.visits.length }} 条</span></header>
-          <ul v-if="profile.visits.length" class="sp__timeline">
+          <ul v-if="profile.visits.length" class="sp__timeline mot-stagger">
             <li v-for="v in profile.visits" :key="v.id" class="sp__tl-item">
               <span class="sp__tl-dot" />
               <div class="sp__tl-main">
@@ -657,6 +716,17 @@ onBeforeUnmount(() => {
 .sp__actions {
   display: flex;
   gap: 10px;
+}
+
+/* 关注门店按钮：已关注时描边/底色转「品质金」，与星标同色语义 */
+.sp__fav-btn.is-on {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, var(--bg-card));
+}
+
+.sp__fav-btn:focus-visible {
+  outline: 2px solid var(--mn-green);
+  outline-offset: 2px;
 }
 
 .sp__honest {

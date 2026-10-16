@@ -259,10 +259,4 @@ const indicatorStyle = computed(() => {
 .pr__body {
   will-change: transform;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .pr__ring--spin {
-    animation: none;
-  }
-}
 </style>

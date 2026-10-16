@@ -144,6 +144,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'AI 价值看板', roles: ['manager'] },
   },
   {
+    path: '/manager/regions',
+    name: 'manager-regions',
+    component: () => import('@/views/manager/RegionCompareView.vue'),
+    meta: { title: '区域对比', roles: ['manager'] },
+  },
+  {
     path: '/manager/blacklist',
     name: 'manager-blacklist',
     component: () => import('@/views/manager/BlacklistView.vue'),

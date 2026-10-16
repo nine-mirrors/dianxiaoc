@@ -283,11 +283,4 @@ onBeforeUnmount(() => {
   color: var(--mn-green);
   font-variant-numeric: tabular-nums;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .vb__pulse {
-    animation: none;
-    opacity: 0;
-  }
-}
 </style>

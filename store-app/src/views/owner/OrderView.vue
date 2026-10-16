@@ -13,6 +13,7 @@ import MobileLayout from '@/components/layout/MobileLayout.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSessionStore } from '@/stores/session'
 import { resolveOwnerStore, getTickets } from '@/api/owner'
 import type { Ticket, TicketStatus } from '@/types'
@@ -50,6 +51,12 @@ const monthCount = computed<number>(
 )
 const totalBottles = computed<number>(() => tickets.value.reduce((s, t) => s + (t.totalBottles || 0), 0))
 
+/** 顶部统计四个关键数字滚动入场 */
+const monthUp = useCountUp(() => monthCount.value)
+const bottlesTotalUp = useCountUp(() => totalBottles.value)
+const pendingUp = useCountUp(() => pendingCount.value)
+const acceptedUp = useCountUp(() => acceptedCount.value)
+
 function statusMeta(status: TicketStatus): { text: string; cls: string } {
   return status === 'accepted'
     ? { text: '已接单', cls: 'ok' }
@@ -86,7 +93,7 @@ onMounted(() => {
 
 <template>
   <MobileLayout title="我的订单" :back="true" :show-tab-bar="true" :content-padding-bottom="24" @back="router.push('/owner')">
-    <div class="ov">
+    <div class="ov mot-rise">
       <div v-if="loading" class="ov__loading">
         <MilkDropLoader size="card" label="正在加载订单" />
       </div>
@@ -102,21 +109,21 @@ onMounted(() => {
 
       <template v-else>
         <!-- 统计 -->
-        <section class="u-card ov__stats">
+        <section class="u-card ov__stats mot-stagger">
           <div class="ov__stat">
-            <p class="ov__stat-num">{{ monthCount }}</p>
+            <p class="ov__stat-num">{{ monthUp.text }}</p>
             <p class="ov__stat-cap">本月订单</p>
           </div>
           <div class="ov__stat">
-            <p class="ov__stat-num">{{ totalBottles }}</p>
+            <p class="ov__stat-num">{{ bottlesTotalUp.text }}</p>
             <p class="ov__stat-cap">累计订货（瓶）</p>
           </div>
           <div class="ov__stat">
-            <p class="ov__stat-num is-warn">{{ pendingCount }}</p>
+            <p class="ov__stat-num is-warn">{{ pendingUp.text }}</p>
             <p class="ov__stat-cap">待接单</p>
           </div>
           <div class="ov__stat">
-            <p class="ov__stat-num is-ok">{{ acceptedCount }}</p>
+            <p class="ov__stat-num is-ok">{{ acceptedUp.text }}</p>
             <p class="ov__stat-cap">已接单</p>
           </div>
         </section>
@@ -127,7 +134,7 @@ onMounted(() => {
             v-for="t in TABS"
             :key="t.key"
             type="button"
-            class="ov__tab u-tap"
+            class="ov__tab u-tap mot-tap"
             :class="{ 'ov__tab--on': tab === t.key }"
             role="tab"
             :aria-selected="tab === t.key"
@@ -149,11 +156,12 @@ onMounted(() => {
 
         <template v-else>
         <section
-          v-for="t in filtered"
+          v-for="(t, i) in filtered"
           :key="t.id"
-          class="u-card ov__card"
+          class="u-card ov__card mot-fade-up mot-hover-lift"
+          :style="{ animationDelay: `${Math.min(i, 6) * 60}ms` }"
         >
-          <button type="button" class="ov__card-head u-tap" @click="toggle(t.id)">
+          <button type="button" class="ov__card-head u-tap mot-tap" @click="toggle(t.id)">
             <div class="ov__card-head-main">
               <p class="ov__id">{{ t.id }}</p>
               <p class="ov__time">{{ t.createdAt }}</p>
@@ -172,7 +180,7 @@ onMounted(() => {
               <span>总金额 <b>¥{{ t.totalAmount }}</b></span>
             </div>
 
-            <div v-if="expanded[t.id]" class="ov__expand">
+            <div v-if="expanded[t.id]" class="ov__expand mot-stagger">
               <div v-for="it in t.items" :key="it.skuId" class="ov__line">
                 <span class="ov__line-name">{{ it.skuName }}</span>
                 <span class="ov__line-val">{{ it.bottles }} 瓶 · ¥{{ it.amount }}</span>
@@ -183,7 +191,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <button type="button" class="ov__toggle u-tap" @click="toggle(t.id)">
+          <button type="button" class="ov__toggle u-tap mot-tap" @click="toggle(t.id)">
             {{ expanded[t.id] ? '收起明细 ▴' : '展开明细 ▾' }}
           </button>
         </section>

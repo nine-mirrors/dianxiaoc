@@ -128,13 +128,4 @@ function onToggle(e: MouseEvent): void {
   opacity: 1;
   transform: rotate(0deg) scale(1);
 }
-
-/* 减弱动效：不弹跳、不形变，直接对位 */
-@media (prefers-reduced-motion: reduce) {
-  .theme-toggle,
-  .theme-toggle__knob,
-  .theme-toggle__ic {
-    transition: none;
-  }
-}
 </style>

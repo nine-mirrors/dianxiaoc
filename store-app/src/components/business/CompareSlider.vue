@@ -187,7 +187,7 @@ onUnmounted(onUp)
           :aria-valuetext="`对比位置 ${Math.round(pos)}%`"
           @keydown="onHandleKeydown"
         >
-          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <svg class="mot-pop" width="26" height="26" viewBox="0 0 26 26" fill="none">
             <circle class="cmp__handle-disc" cx="13" cy="13" r="12" />
             <path
               class="cmp__handle-arrow"

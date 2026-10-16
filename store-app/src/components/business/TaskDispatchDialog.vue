@@ -69,6 +69,14 @@ const taskType = ref<TaskType>('OOS')
 const dueAt = ref<string>('今日 18:00')
 const note = ref<string>('')
 const submitting = ref<boolean>(false)
+/** 提交失败时的一次性抖动（纯 transform；animationend 后复位，保证可重播） */
+const shake = ref<boolean>(false)
+function triggerShake(): void {
+  shake.value = false
+  window.requestAnimationFrame(() => {
+    shake.value = true
+  })
+}
 
 /* ── combobox 状态 ──────────────────────────────────────────────── */
 
@@ -266,6 +274,7 @@ async function submit(): Promise<void> {
     emit('close')
   } catch {
     toast.error('下派失败，请重试')
+    triggerShake()
   } finally {
     submitting.value = false
   }
@@ -273,13 +282,16 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
+  <Transition name="mot-dlg">
   <div v-if="visible" class="dlg-mask" @click.self="closeDialog">
     <div
       ref="panelRef"
       class="dlg"
+      :class="{ 'mot-shake': shake }"
       role="dialog"
       aria-modal="true"
       aria-labelledby="dispatch-dialog-title"
+      @animationend="shake = false"
     >
       <header class="dlg__head">
         <h2 class="dlg__title" id="dispatch-dialog-title">
@@ -418,6 +430,7 @@ async function submit(): Promise<void> {
         <button
           type="button"
           class="u-btn u-btn--primary"
+          :class="{ 'mot-press-loading': submitting }"
           :disabled="submitting || !storeId"
           @click="submit"
         >
@@ -426,6 +439,7 @@ async function submit(): Promise<void> {
       </footer>
     </div>
   </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -669,5 +683,33 @@ async function submit(): Promise<void> {
   gap: 8px;
   padding: 12px 18px;
   border-top: 1px solid var(--border-color);
+}
+
+/* 弹层入场 / 离场：只动 opacity + transform（不动高度），与既有弹层口径一致 */
+.mot-dlg-enter-active,
+.mot-dlg-leave-active {
+  transition: opacity var(--dur-base) var(--ease-decel);
+}
+
+.mot-dlg-enter-active .dlg,
+.mot-dlg-leave-active .dlg {
+  transition: transform var(--dur-base) var(--ease-decel);
+}
+
+.mot-dlg-enter-from,
+.mot-dlg-leave-to {
+  opacity: 0;
+}
+
+.mot-dlg-enter-from .dlg {
+  transform: translateY(16px) scale(0.98);
+}
+
+.mot-dlg-leave-active {
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+.mot-dlg-leave-to .dlg {
+  transform: translateY(10px) scale(0.99);
 }
 </style>

@@ -24,7 +24,7 @@ import { buildForecast, buildForecastAuthoritative, forecastDigest } from './for
 import { fetchInventoryFacts, mcpHealth } from './mcpClient.js'
 import { withCache, cacheHealth, cacheClear } from './cache.js'
 import { loadEnv } from './env.js'
-import { verifyAccount, issueSession, accountFromToken, demoAccountList, requireAuth, requireRole, accountOf } from './auth.js'
+import { verifyAccount, issueSession, accountFromToken, demoAccountList, requireAuth, requireRole, accountOf, saveAvatar, avatarUrlOf } from './auth.js'
 import { attachRealtime, broadcast, clientCount } from './realtime.js'
 import { analyzeShelfWithBoxes, patchVisionAnnotations } from './vision.js'
 import { buildDashboardOverview, DEMO_NOW, DEMO_TODAY } from './dashboard.js'
@@ -1001,7 +1001,7 @@ app.use('/api/v1', (req, res, next) => {
  * 都在 src/routes/*.js 内实现并默认导出 { base, router }；此处一次性挂载，
  * 已在上方 /api/v1 闸门之后 → 自动需要登录，管理类再在文件内 requireRole。*/
 import { registerExtRoutes } from './routes/index.js'
-import { seedExtData, resetExtData } from './ext.js'
+import { seedExtData, resetExtData, saveProfile, getProfile } from './ext.js'
 seedExtData()
 const extRouter = await registerExtRoutes()
 app.use('/api/v1', extRouter)
@@ -1044,6 +1044,60 @@ app.get('/api/v1/auth/me', wrap((req) => {
   const session = issueSession(account)
   if (!session) throw new ApiError(500, '账号未绑定有效角色')
   return session
+}))
+
+// ② PATCH /api/v1/auth/profile —— 保存当前登录账号的头像 / 姓名 / 电话 / 辖区
+//   body: { avatarUrl?, name?, phone?, region? }
+//   - 头像：显式传入才更新（空串=清除，未传=保持原值，兼容既有头像上传闭环）；
+//     前端先走 POST /api/v1/uploads 拿到 url，再调本接口。
+//   - 姓名/电话/辖区：仅接收显式传入的字段（空串=清除）；长度上限 20/20/30。
+//   仅改「当前账号」自己的资料，无法指定他人；返回更新后的完整用户对象。
+app.patch('/api/v1/auth/profile', wrap((req) => {
+  const username = req.account?.username
+  const body = req.body ?? {}
+
+  // ① 头像：显式传 avatarUrl 才更新（空串=清除）；未传保持原值
+  let avatarUrl = avatarUrlOf(username)
+  if (body.avatarUrl !== undefined) {
+    const next = String(body.avatarUrl ?? '').trim()
+    if (next.length > 500) throw new ApiError(400, '头像地址过长')
+    const saved = saveAvatar(username, next)
+    if (saved === null) throw new ApiError(404, '账号不存在')
+    avatarUrl = saved
+  }
+
+  // ② 姓名 / 电话 / 辖区：未传不动；空串清除；超长报 400
+  const patch = {}
+  if (body.name !== undefined) {
+    const name = String(body.name ?? '').trim()
+    if (name.length > 20) throw new ApiError(400, '姓名过长（最多 20 字）')
+    patch.name = name
+  }
+  if (body.phone !== undefined) {
+    const phone = String(body.phone ?? '').trim()
+    if (phone.length > 20) throw new ApiError(400, '电话过长（最多 20 字）')
+    // 宽松校验：数字 / 空格 / + - ( ) 为合法字符；空串表示清除
+    if (phone && !/^[0-9+\-() ]+$/.test(phone)) throw new ApiError(400, '电话格式不正确')
+    patch.phone = phone
+  }
+  if (body.region !== undefined) {
+    const region = String(body.region ?? '').trim()
+    if (region.length > 30) throw new ApiError(400, '辖区过长（最多 30 字）')
+    patch.region = region
+  }
+  const profile = Object.keys(patch).length ? saveProfile(username, patch) : getProfile(username)
+
+  const user = findUserByRole(req.account.role)
+  if (!user) throw new ApiError(500, '账号未绑定有效角色')
+  const displayName = profile.name || user.name
+  return {
+    ...user,
+    name: displayName,
+    avatarText: displayName.slice(0, 1) || user.avatarText,
+    avatarUrl,
+    phone: profile.phone,
+    region: profile.region,
+  }
 }))
 
 // ③ GET /api/v1/stores

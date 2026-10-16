@@ -19,7 +19,9 @@ import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
+import UserAvatar from '@/components/common/UserAvatar.vue'
 import MessageCenter from '@/components/business/MessageCenter.vue'
+import ProfileEditDialog from '@/components/business/ProfileEditDialog.vue'
 import { useToast } from '@/composables/useToast'
 import { useSessionStore } from '@/stores/session'
 import { getDashboardOverview } from '@/api'
@@ -77,6 +79,12 @@ function logout(): void {
 /** 切换电脑版：?desktop=1 强制桌面形态（路由守卫识别后不再分流回 /m） */
 function goDesktop(): void {
   void router.push({ path: '/manager/dashboard', query: { desktop: '1' } })
+}
+
+/* ── 编辑资料弹层（姓名 / 电话 / 辖区，复用 ProfileEditDialog） ── */
+const showProfile = ref<boolean>(false)
+function openProfile(): void {
+  showProfile.value = true
 }
 
 /* ═══════════════ Tab 1 · 经营  ═══════════════ */
@@ -160,8 +168,6 @@ function startAiWaitPhrases(): void {
   stopAiWaitPhrases()
   aiWaitIndex = 0
   aiWaitPhrase.value = AI_WAIT_PHRASES[0]
-  // 尊重系统「减弱动态效果」：只静态显示首条，不做轮换
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   aiWaitTimer = window.setInterval(() => {
     if (aiWaitIndex >= AI_WAIT_PHRASES.length - 1) return
     aiWaitIndex += 1
@@ -559,18 +565,30 @@ onBeforeUnmount(() => {
         <div class="mpane__scroll u-scroll-y">
           <!-- 个人名片 -->
           <section class="u-card me-card u-animate-in">
-            <div class="me-card__avatar">{{ session.avatarText }}</div>
+            <UserAvatar
+              :url="session.avatarUrl"
+              :name="session.user?.name"
+              :text="session.avatarText"
+              :size="46"
+              variant="glass"
+            />
             <div class="me-card__info">
               <p class="me-card__name">{{ session.user?.name ?? '未登录' }}</p>
               <p class="me-card__meta">
                 <span class="me-card__role">{{ session.roleLabel }}</span>
                 <span class="me-card__region">
                   <AppIcon name="map-pin" :size="12" color="var(--text-3)" />
-                  {{ session.user?.regionId || '未分配区域' }}
+                  {{ session.user?.region || session.user?.regionId || '未分配区域' }}
                 </span>
               </p>
             </div>
           </section>
+
+          <!-- 编辑资料（姓名 / 电话 / 辖区） -->
+          <button type="button" class="u-btn u-btn--ghost m-btn-block" @click="openProfile">
+            <AppIcon name="user" :size="15" />
+            编辑资料
+          </button>
 
           <!-- AI 经营周报 -->
           <section class="u-card msec">
@@ -684,6 +702,9 @@ onBeforeUnmount(() => {
         <span>{{ t.label }}</span>
       </button>
     </nav>
+
+    <!-- 编辑资料弹层（姓名 / 电话 / 辖区） -->
+    <ProfileEditDialog :visible="showProfile" @close="showProfile = false" />
   </div>
 </template>
 
@@ -1244,20 +1265,6 @@ onBeforeUnmount(() => {
   padding: 16px 14px;
 }
 
-.me-card__avatar {
-  flex: none;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: var(--grad-brand);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .me-card__info {
   min-width: 0;
 }
@@ -1396,13 +1403,5 @@ textarea.m-input {
 .mtab span {
   white-space: nowrap;
   line-height: 1.2;
-}
-
-/* 减弱动效：等待点静止、话术不做入场动效（JS 侧同样不轮换） */
-@media (prefers-reduced-motion: reduce) {
-  .ai-wait-dot,
-  .ai-wait-text {
-    animation: none;
-  }
 }
 </style>

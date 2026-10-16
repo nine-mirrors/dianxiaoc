@@ -444,34 +444,4 @@ onBeforeUnmount(() => {
   opacity: 0;
   transform: scale(0.94);
 }
-
-/* ── prefers-reduced-motion：一切停在静态态 ── */
-@media (prefers-reduced-motion: reduce) {
-  .overlay__step.is-active .overlay__dot::after {
-    animation: none;
-  }
-
-  .overlay__step.is-active .overlay__dot::after {
-    opacity: 0;
-    transform: scale(0);
-  }
-
-  .overlay__step,
-  .overlay__rail-on,
-  .overlay__fill,
-  .overlay__close,
-  .overlay-enter-active .overlay__card {
-    transition: none;
-  }
-
-  .overlay__step.is-active,
-  .overlay-enter-from .overlay__card {
-    transform: none;
-  }
-
-  .overlay-enter-active,
-  .overlay-leave-active {
-    transition: none;
-  }
-}
 </style>

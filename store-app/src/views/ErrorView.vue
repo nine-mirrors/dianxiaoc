@@ -47,7 +47,7 @@ function goHome(): void {
 <template>
   <section class="errx errx--page" role="alert">
     <!-- 奶滴断线插画（品牌绿描边 + 裂口） -->
-    <div class="errx__art" aria-hidden="true">
+    <div class="errx__art mot-pop" aria-hidden="true">
       <svg width="112" height="112" viewBox="0 0 100 120">
         <path
           d="M50 6 C50 6 14 46 14 74 a36 36 0 0 0 72 0 C86 46 50 6 50 6z"
@@ -207,11 +207,5 @@ function goHome(): void {
   margin: var(--space-5) 0 0;
   font-size: 11.5px;
   color: var(--text-3);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .errx {
-    animation: none;
-  }
 }
 </style>

@@ -59,7 +59,7 @@ const { panelRef } = useDialogFocus({
             <AppIcon name="cart" :size="17" color="var(--ai-purple)" />
             <span id="ocd-title">确认下单</span>
           </p>
-          <button type="button" class="ocd-x u-tap" data-close aria-label="关闭" @click="emit('close')">
+          <button type="button" class="ocd-x u-tap mot-tap" data-close aria-label="关闭" @click="emit('close')">
             <AppIcon name="close" :size="15" color="var(--text-3)" />
           </button>
         </header>
@@ -67,7 +67,7 @@ const { panelRef } = useDialogFocus({
         <!-- 明细区：商品多时弹层内部滚动，弹层整体不超过 90dvh -->
         <div class="ocd-body">
           <p class="ocd-tip">按下面这些货补，确认后业代会跟你核对：</p>
-          <div class="ocd-list">
+          <div class="ocd-list mot-stagger">
             <div v-for="r in items" :key="r.skuId" class="ocd-row">
               <span class="ocd-name">{{ r.skuName }}</span>
               <span class="ocd-qty">{{ r.bottles }} 瓶</span>
@@ -75,7 +75,7 @@ const { panelRef } = useDialogFocus({
             </div>
             <p v-if="!items.length" class="ocd-empty">暂时没有要补的货</p>
           </div>
-          <div class="ocd-total">
+          <div class="ocd-total mot-pop">
             <span>合计</span>
             <b>{{ totalBottles }} 瓶 · ¥{{ totalAmount }}</b>
           </div>
@@ -271,19 +271,5 @@ const { panelRef } = useDialogFocus({
 .ocd-enter-from .ocd-sheet,
 .ocd-leave-to .ocd-sheet {
   transform: translateY(100%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ocd-enter-active,
-  .ocd-leave-active,
-  .ocd-enter-active .ocd-sheet,
-  .ocd-leave-active .ocd-sheet {
-    transition-duration: 0.01ms;
-  }
-
-  .ocd-enter-from .ocd-sheet,
-  .ocd-leave-to .ocd-sheet {
-    transform: none;
-  }
 }
 </style>

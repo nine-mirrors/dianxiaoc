@@ -23,8 +23,11 @@ import TaskDispatchDialog from '@/components/business/TaskDispatchDialog.vue'
 import ManagerAiBrief from '@/components/business/ManagerAiBrief.vue'
 import { useApi } from '@/composables/useApi'
 import { getDashboardOverview } from '@/api'
+import { exportRegionStoresCsv } from '@/api/insights'
+import { DEMO_TODAY } from '@/domain/constants'
 import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 import type { DashboardOverview, Kpi, StoreRow, Task, TaskType } from '@/types'
 
 /**
@@ -54,11 +57,73 @@ const overview = computed<DashboardOverviewExt | null>(
   () => (data.value?.overview as unknown as DashboardOverviewExt | undefined) ?? null,
 )
 
+/* ═══════════════ 动效：数字滚动（KPI / 完成率 / 闭环数字）═══════════════
+   约定：countup 只负责「滚到目标值」，展示文本仍按原始数值的格式（小数位 + 单位）还原，
+   保证与改造前的显示逐字一致（例如原始 88 不会显示成 88.0），不改任何口径与文案。 */
+
+/** 原值的小数位（最多保留 2 位），用于还原原始展示格式 */
+function decimalsOf(n: number): number {
+  if (!Number.isFinite(n)) return 0
+  const s = String(n)
+  const dot = s.indexOf('.')
+  return dot < 0 ? 0 : Math.min(2, s.length - dot - 1)
+}
+
+/** 纯数字滚动文本：目标值来自 getter，展示格式跟随原始值 */
+function useCountText(target: () => number) {
+  const c = useCountUp(target, { decimals: 0 })
+  return computed(() => c.value.value.toFixed(decimalsOf(Number(target()))))
+}
+
+/** KPI 池：v-for 无法逐个调用 composable，按位置预置一组（封顶 8 个，足够覆盖 KPI 数组长度） */
+const kpiCounts = Array.from({ length: 8 }, (_, i) =>
+  useCountUp(
+    () => {
+      const n = parseKpiNumber(String(overview.value?.kpis?.[i]?.value ?? ''))
+      return n ?? 0
+    },
+    { decimals: 0 },
+  ),
+)
+
+/** KPI 展示文本：解析原值的小数位与 % 后缀，滚动中保留原格式；非数值原样返回（如 ——）*/
+function kpiCountText(k: KpiExt, i: number): string {
+  const c = kpiCounts[i]
+  if (!c) return k.value
+  const raw = String(k.value ?? '').trim()
+  const n = parseKpiNumber(raw)
+  if (n === null) return k.value
+  return `${c.value.value.toFixed(decimalsOf(n))}${raw.includes('%') ? '%' : ''}`
+}
+
 /** 切换区域后同步刷新看板（订货汇总随 overview 一并带回） */
 async function changeRegion(id: string): Promise<void> {
   regionId.value = id
   await run()
   toast.info('已切换区域')
+}
+
+/* ── 区域门店健康分明细导出（真实 CSV 下载，文件名含区域名与演示基准日） ── */
+const exportingStores = ref<boolean>(false)
+
+/** 导出当前区域的「门店健康分明细」CSV；后端按 ?regionId= 过滤该区域门店 */
+async function doExportStores(): Promise<void> {
+  if (exportingStores.value) return
+  exportingStores.value = true
+  try {
+    const regionName = overview.value?.regionName ?? regionId.value
+    await exportRegionStoresCsv(
+      regionId.value,
+      `区域门店健康分明细_${regionName}_${DEMO_TODAY}.csv`,
+    )
+    toast.success(`已导出「${regionName}」门店健康分明细（CSV）`)
+  } catch (e) {
+    toast.error((e as { message?: string })?.message || '导出失败，请稍后重试', {
+      action: { text: '再试一次', onAction: () => void doExportStores() },
+    })
+  } finally {
+    exportingStores.value = false
+  }
 }
 
 /**
@@ -242,14 +307,12 @@ const topRisk = computed(() => overview.value?.riskTop5?.[0] ?? null)
 
 /**
  * 「下派任务」：平滑滚动定位到页内已有的「风险预警 Top5」列表，
- * 该列表行内即有下派按钮（openDispatch 全局弹层），不新写任何后端请求；
- * 系统偏好减少动态效果时降级为即时跳转。
+ * 该列表行内即有下派按钮（openDispatch 全局弹层），不新写任何后端请求。
  */
 function goToRiskTop(): void {
   const el = document.getElementById('manager-risk-top5')
   if (!el) return
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 /* ═══════════════ 门店明细：搜索 + 健康档筛选 + 本地分页（明细区专用） ═══════════════ */
@@ -360,6 +423,20 @@ const taskSummary = computed(() => {
     rate: t?.completionRate ?? (total ? Math.round((done / total) * 100) : 0),
   }
 })
+
+/* ═══════════════ 动效：闭环区数字滚动（不改任何口径，只让数字入场时滚到目标值）═══════════════ */
+const rectDoneText = useCountText(() => overview.value?.rectification?.done ?? 0)
+const rectOpenText = useCountText(() => overview.value?.rectification?.open ?? 0)
+const rectGainText = useCountText(() => overview.value?.rectification?.avgGain ?? 0)
+const orderCountText = useCountText(() => orderSummary.value.count)
+const orderBottlesText = useCountText(() => orderSummary.value.bottles)
+const orderAmountText = useCountText(() => orderSummary.value.amount)
+const orderAcceptedText = useCountText(() => orderSummary.value.accepted)
+const orderPendingText = useCountText(() => orderSummary.value.pending)
+const taskDoneText = useCountText(() => taskSummary.value.done)
+const taskTotalText = useCountText(() => taskSummary.value.total)
+const taskRateText = useCountText(() => taskSummary.value.rate)
+const taskOverdueText = useCountText(() => taskSummary.value.overdue)
 </script>
 
 <template>
@@ -399,12 +476,12 @@ const taskSummary = computed(() => {
         </nav>
 
         <!-- ══════════ 区一：经营概览 ══════════ -->
-        <div v-show="activeTab === 'overview'" class="p5__panel mot-fade-up" role="tabpanel" aria-label="经营概览">
+        <div v-show="activeTab === 'overview'" class="p5__panel" :class="{ 'mot-rise': activeTab === 'overview' }" role="tabpanel" aria-label="经营概览">
           <h2 class="u-sr-only">核心指标与风险概览</h2>
 
           <!-- KPI -->
-          <div class="p5__kpis">
-            <div v-for="k in overview.kpis" :key="k.key" class="p5__kpi" tabindex="0">
+          <div class="p5__kpis mot-stagger-pop">
+            <div v-for="(k, i) in overview.kpis" :key="k.key" class="p5__kpi mot-tap mot-hover-lift" tabindex="0">
               <p class="p5__kpi-label">
                 {{ k.label }}
                 <span v-if="kpiWorsening(k)" class="p5__kpi-dot" aria-label="指标恶化" />
@@ -414,7 +491,7 @@ const taskSummary = computed(() => {
                 </span>
               </p>
               <p class="p5__kpi-value" :class="{ 'is-danger': k.danger }">
-                {{ k.value }}
+                {{ kpiCountText(k, i) }}
                 <em :class="k.trend === 'up' ? 'is-up' : k.trend === 'flat' ? 'is-flat' : 'is-down'">{{ k.delta }}</em>
               </p>
               <!-- 数值下方人话换算（取不到真实值时该行不渲染） -->
@@ -460,7 +537,7 @@ const taskSummary = computed(() => {
           </div>
 
           <!-- 风险 Top5（行内即可下派，按钮带预选 storeId；id 供「今天先做这 1 件事」卡平滑滚动定位） -->
-          <section class="p5__card" id="manager-risk-top5">
+          <section class="p5__card mot-stagger" id="manager-risk-top5">
             <header class="p5__card-head">
               <h2 class="p5__card-title">
                 <AppIcon name="alert-triangle" :size="14" /> 风险预警 Top5
@@ -493,11 +570,24 @@ const taskSummary = computed(() => {
         </div>
 
         <!-- ══════════ 区二：门店明细（搜索 + 筛选 + 分页） ══════════ -->
-        <div v-show="activeTab === 'detail'" class="p5__panel" role="tabpanel" aria-label="门店明细">
+        <div v-show="activeTab === 'detail'" class="p5__panel" :class="{ 'mot-rise': activeTab === 'detail' }" role="tabpanel" aria-label="门店明细">
           <section class="p5__card">
             <header class="p5__card-head">
               <h2 class="p5__card-title">门店明细（按健康分升序）</h2>
-              <span>共 {{ overview.storeRows.length }} 家重点店</span>
+              <div class="p5__detail-actions">
+                <span>共 {{ overview.storeRows.length }} 家重点店</span>
+                <button
+                  type="button"
+                  class="p5__export"
+                  :class="{ 'mot-press-loading': exportingStores }"
+                  :disabled="exportingStores"
+                  aria-label="导出区域门店健康分明细 CSV"
+                  @click="doExportStores"
+                >
+                  <AppIcon name="download" :size="13" />
+                  {{ exportingStores ? '导出中…' : '导出 CSV' }}
+                </button>
+              </div>
             </header>
 
             <div class="p5__filters">
@@ -542,7 +632,8 @@ const taskSummary = computed(() => {
                     <th class="p5__col-action" />
                   </tr>
                 </thead>
-                <tbody>
+                <!-- 明细表行级联：仅在该页签展示时装类，保证展示瞬间即触发级联 -->
+                <tbody :class="{ 'mot-stagger': activeTab === 'detail' }">
                   <tr
                     v-for="r in pagedStoreRows"
                     :key="r.storeId"
@@ -611,7 +702,7 @@ const taskSummary = computed(() => {
         </div>
 
         <!-- ══════════ 区三：任务闭环 ══════════ -->
-        <div v-show="activeTab === 'loop'" class="p5__panel" role="tabpanel" aria-label="任务闭环">
+        <div v-show="activeTab === 'loop'" class="p5__panel" :class="{ 'mot-rise': activeTab === 'loop' }" role="tabpanel" aria-label="任务闭环">
           <div class="p5__loop">
             <!-- 整改闭环（已整改 / 进行中 / 平均提升分） -->
             <section class="p5__card">
@@ -623,17 +714,17 @@ const taskSummary = computed(() => {
               </header>
               <div class="p5__loop-stats">
                 <div class="p5__loop-stat">
-                  <p class="p5__loop-num">{{ overview.rectification?.done ?? 0 }}</p>
+                  <p class="p5__loop-num">{{ rectDoneText }}</p>
                   <p class="p5__loop-cap">已整改条目</p>
                 </div>
                 <div class="p5__loop-stat">
                   <p class="p5__loop-num" :class="{ 'is-warn': (overview.rectification?.open ?? 0) > 0 }">
-                    {{ overview.rectification?.open ?? 0 }}
+                    {{ rectOpenText }}
                   </p>
                   <p class="p5__loop-cap">进行中任务</p>
                 </div>
                 <div class="p5__loop-stat">
-                  <p class="p5__loop-num is-up">+{{ overview.rectification?.avgGain ?? 0 }}</p>
+                  <p class="p5__loop-num is-up">+{{ rectGainText }}</p>
                   <p class="p5__loop-cap">平均提升分</p>
                 </div>
               </div>
@@ -649,26 +740,26 @@ const taskSummary = computed(() => {
               </header>
               <div class="p5__loop-stats">
                 <div class="p5__loop-stat">
-                  <p class="p5__loop-num">{{ orderSummary.count }}</p>
+                  <p class="p5__loop-num">{{ orderCountText }}</p>
                   <p class="p5__loop-cap">订货笔数</p>
                 </div>
                 <div class="p5__loop-stat">
-                  <p class="p5__loop-num">{{ orderSummary.bottles }}</p>
+                  <p class="p5__loop-num">{{ orderBottlesText }}</p>
                   <p class="p5__loop-cap">订货瓶数</p>
                 </div>
                 <div class="p5__loop-stat">
-                  <p class="p5__loop-num">¥{{ orderSummary.amount }}</p>
+                  <p class="p5__loop-num">¥{{ orderAmountText }}</p>
                   <p class="p5__loop-cap">订货金额</p>
                 </div>
               </div>
               <!-- 已接单 / 待接单（来自 overview.orderSummary，接单状态真落库） -->
               <div class="p5__accept">
                 <span class="p5__accept-item">
-                  已接单 <b>{{ orderSummary.accepted }}</b>
+                  已接单 <b>{{ orderAcceptedText }}</b>
                 </span>
                 <span class="p5__accept-sep">/</span>
                 <span class="p5__accept-item">
-                  待接单 <b :class="{ 'is-warn': orderSummary.pending > 0 }">{{ orderSummary.pending }}</b>
+                  待接单 <b :class="{ 'is-warn': orderSummary.pending > 0 }">{{ orderPendingText }}</b>
                 </span>
               </div>
             </section>
@@ -683,21 +774,25 @@ const taskSummary = computed(() => {
               </header>
               <div class="p5__loop-stats">
                 <div class="p5__loop-stat">
-                  <p class="p5__loop-num">{{ taskSummary.done }}/{{ taskSummary.total }}</p>
+                  <p class="p5__loop-num">{{ taskDoneText }}/{{ taskTotalText }}</p>
                   <p class="p5__loop-cap">已完成 / 总数</p>
                 </div>
                 <div class="p5__loop-stat">
-                  <p class="p5__loop-num">{{ taskSummary.rate }}<em>%</em></p>
+                  <p class="p5__loop-num">{{ taskRateText }}<em>%</em></p>
                   <p class="p5__loop-cap">完成率</p>
                 </div>
                 <div class="p5__loop-stat">
-                  <p class="p5__loop-num" :class="{ 'is-warn': taskSummary.overdue > 0 }">{{ taskSummary.overdue }}</p>
+                  <p class="p5__loop-num" :class="{ 'is-warn': taskSummary.overdue > 0 }">{{ taskOverdueText }}</p>
                   <p class="p5__loop-cap">逾期未完成</p>
                 </div>
               </div>
-              <!-- 完成率进度条：宽度 = done/total，与上方数字同源 -->
+              <!-- 完成率进度条：宽度 = done/total，与上方数字同源；从左生长，展示瞬间触发 -->
               <div class="p5__bar" role="img" :aria-label="`任务完成率 ${taskSummary.rate}%`">
-                <div class="p5__bar-fill" :style="{ width: `${taskSummary.rate}%` }" />
+                <div
+                  class="p5__bar-fill"
+                  :class="{ 'mot-grow-x': activeTab === 'loop' }"
+                  :style="{ width: `${taskSummary.rate}%` }"
+                />
               </div>
             </section>
           </div>
@@ -1135,6 +1230,44 @@ const taskSummary = computed(() => {
   color: var(--text-3);
 }
 
+/* 明细卡头右侧：门店数 + 导出按钮 */
+.p5__detail-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.p5__export {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid var(--mn-green);
+  border-radius: 999px;
+  background: var(--mn-green-light);
+  color: var(--mn-green-dark);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+
+.p5__export:hover:not(:disabled) {
+  background: var(--mn-green);
+  color: #fff;
+}
+
+.p5__export:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.p5__export:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 /* 区块主标题（h2，视觉沿用原 <b> 字号）：1440 基准 13.5px 保持，clamp 封顶 15px，4K 不放大 */
 .p5__card-title {
   display: inline-flex;
@@ -1568,32 +1701,6 @@ const taskSummary = computed(() => {
   .p5__risk {
     padding-top: 8px;
     padding-bottom: 8px;
-  }
-}
-
-/* 无障碍：系统开启「减少动态效果」时，本页悬浮位移/脉冲/过渡全部降级
-   （motion.css 只兜底 .mot-* 工具类，scoped 动效需在此收口） */
-@media (prefers-reduced-motion: reduce) {
-  .p5__kpi,
-  .p5__risk,
-  .p5__table tbody tr,
-  .p5__tab,
-  .p5__dispatch,
-  .p5__risk-dispatch,
-  .p5__page-btn,
-  .p5__link,
-  .p5__sort,
-  .p5__bar-fill {
-    transition-duration: 0.01ms !important;
-  }
-
-  .p5__kpi:hover,
-  .p5__risk:hover {
-    transform: none;
-  }
-
-  .p5__kpi-dot {
-    animation: none;
   }
 }
 

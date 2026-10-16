@@ -11,7 +11,9 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
+import UserAvatar from '@/components/common/UserAvatar.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import DemoModeToggle from '@/components/common/DemoModeToggle.vue'
 import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
 
@@ -93,7 +95,7 @@ const operatorRole = computed<string>(() => session.roleLabel || '—')
           v-for="item in NAV_MAIN"
           :key="item.path"
           :to="item.path"
-          class="as__item u-tap"
+          class="as__item u-tap mot-tap"
           :class="{ 'is-active': isActive(item) }"
           :title="item.label"
         >
@@ -106,16 +108,18 @@ const operatorRole = computed<string>(() => session.roleLabel || '—')
         <router-link
           v-if="isManager"
           to="/manager/dashboard"
-          class="as__item as__item--back u-tap"
+          class="as__item as__item--back u-tap mot-tap"
           title="返回经营看板"
         >
           <AppIcon name="store" :size="18" />
           <span class="as__label">返回经营看板</span>
         </router-link>
-        <button type="button" class="as__item as__item--logout u-tap" title="退出登录" @click="logout">
+        <button type="button" class="as__item as__item--logout u-tap mot-tap" title="退出登录" @click="logout">
           <AppIcon name="close" :size="18" />
           <span class="as__label">退出登录</span>
         </button>
+        <!-- 演示模式开关（管理端桌面侧栏底部，一键演示入口；只追加） -->
+        <DemoModeToggle class="as__demo" variant="side" tone="on-dark" />
       </div>
     </aside>
 
@@ -131,7 +135,12 @@ const operatorRole = computed<string>(() => session.roleLabel || '—')
             <slot name="actions" />
           </div>
           <div class="as__operator" :title="`${operatorRole} · ${operatorName}`">
-            <AppIcon name="user" :size="15" />
+            <UserAvatar
+              :url="session.avatarUrl"
+              :name="session.user?.name"
+              :text="session.avatarText"
+              :size="24"
+            />
             <span>{{ operatorRole }} · {{ operatorName }}</span>
           </div>
           <ThemeToggle />
@@ -218,7 +227,7 @@ const operatorRole = computed<string>(() => session.roleLabel || '—')
   font-size: 13.5px;
   font-weight: 600;
   text-decoration: none;
-  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-instant) var(--ease-standard);
 }
 
 .as__item:hover {
@@ -230,6 +239,23 @@ const operatorRole = computed<string>(() => session.roleLabel || '—')
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+/* 当前激活项切换：标签轻推 + 图标微放大（只动 transform，背景色仍走既有过渡） */
+.as__label {
+  transition: transform var(--dur-base) var(--ease-decel);
+}
+
+.as__item.is-active .as__label {
+  transform: translateX(2px);
+}
+
+.as__item .app-icon {
+  transition: transform var(--dur-base) var(--ease-decel);
+}
+
+.as__item.is-active .app-icon {
+  transform: scale(1.08);
 }
 
 .as__item:focus-visible {
@@ -271,6 +297,13 @@ button.as__item {
 .as__item--logout:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
+}
+
+/* 演示模式开关：占满侧栏宽度、左对齐，与「返回 / 退出」一行一项的排布一致 */
+.as__demo {
+  width: 100%;
+  justify-content: flex-start;
+  margin-top: 8px;
 }
 
 /* ── 主区 ── */
@@ -362,6 +395,16 @@ button.as__item {
   }
 
   .as__label {
+    display: none;
+  }
+
+  /* 侧栏收成图标条：演示开关同步收成图标，只留 play / pause 图标 */
+  .as__demo {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .as__demo :deep(.demo-toggle__text) {
     display: none;
   }
 

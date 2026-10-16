@@ -14,6 +14,9 @@
  */
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import TabBar from './TabBar.vue'
+import UserAvatar from '@/components/common/UserAvatar.vue'
+import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import DemoModeToggle from '@/components/common/DemoModeToggle.vue'
 import { useDeviceType } from '@/composables/useDeviceType'
 import { useSessionStore } from '@/stores/session'
 
@@ -72,8 +75,17 @@ const session = useSessionStore()
       <TabBar v-if="showTabBar" variant="side" />
 
       <div class="dl-side__foot">
-        <span class="dl-user__avatar">{{ session.avatarText }}</span>
+        <UserAvatar
+          :url="session.avatarUrl"
+          :name="session.user?.name"
+          :text="session.avatarText"
+          :size="30"
+        />
         <span class="dl-user__name">{{ session.user?.name ?? '未登录' }}</span>
+        <!-- 日 / 夜主题开关：此前 PC 桌面形态没有任何入口，补在侧栏底部 -->
+        <ThemeToggle class="dl-foot__theme" />
+        <!-- 演示模式开关：与主题开关并列（一键演示入口） -->
+        <DemoModeToggle class="dl-foot__demo" variant="side" />
       </div>
     </aside>
 
@@ -123,6 +135,13 @@ const session = useSessionStore()
           <slot name="right" />
         </div>
       </slot>
+      <!-- 演示模式开关（移动顶栏，只追加，不改既有 #nav 插槽结构）；
+           渐变绿顶栏上用 on-dark 配色保证对比度，普通浅色顶栏用 plain -->
+      <DemoModeToggle
+        class="ml-head__demo"
+        variant="header"
+        :tone="gradient ? 'on-dark' : 'plain'"
+      />
     </header>
 
     <!-- 后端降级提示条 -->
@@ -208,6 +227,12 @@ const session = useSessionStore()
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 演示模式开关：移动顶栏最右侧（.ml-head 的 gap 自带间距），只追加不改既有排布 */
+.ml-head__demo {
+  flex: none;
+  align-self: center;
 }
 
 .ml-degraded {
@@ -343,23 +368,29 @@ const session = useSessionStore()
   border-top: 1px solid var(--border-color);
 }
 
-.dl-user__avatar {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--mn-green, #009639);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .dl-user__name {
   font-size: 13px;
   font-weight: 600;
+}
+
+/* 侧栏底部新增「演示模式」开关后横向更满：允许登录人姓名收缩截断，
+   避免把开关挤出侧栏（min-width:0 使 flex 项可小于内容宽度）。 */
+.dl-user__name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 主题开关靠右贴边；名称过长时自动收缩，不挤压开关 */
+.dl-foot__theme {
+  margin-left: auto;
+  flex: none;
+}
+
+/* 演示模式开关：紧随主题开关（.dl-side__foot 的 gap 自带间距） */
+.dl-foot__demo {
+  flex: none;
 }
 
 /* ── 主区 ── */

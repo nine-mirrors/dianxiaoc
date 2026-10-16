@@ -107,6 +107,8 @@ const showDrawer = ref(false)
 const editTarget = ref<KnowledgeItem | null>(null)
 const form = reactive({ category: '', question: '', answer: '', tags: '' })
 const submitting = ref(false)
+/** 表单校验失败时临时挂 .mot-shake（animationend 后由模板清空） */
+const formShake = ref(false)
 
 function openCreate(): void {
   editTarget.value = null
@@ -128,6 +130,7 @@ function openEdit(item: KnowledgeItem): void {
 async function submitForm(): Promise<void> {
   if (submitting.value) return
   if (!form.category.trim() || !form.question.trim() || !form.answer.trim()) {
+    formShake.value = true
     toast.error('请完整填写分类、问题与答复')
     return
   }
@@ -204,17 +207,17 @@ function fmtTime(iso: string): string {
 
     <div class="kb">
       <!-- ══ 左：分类 + 筛选 ══ -->
-      <aside class="kb__side u-card">
+      <aside class="kb__side u-card mot-rise">
         <h2 class="kb__side-title">知识分类</h2>
         <div class="kb__cats">
-          <button type="button" class="kb__cat" :class="{ 'is-active': !activeCategory }" @click="pickCategory('')">
+          <button type="button" class="kb__cat mot-tap" :class="{ 'is-active': !activeCategory }" @click="pickCategory('')">
             全部条目
           </button>
           <button
             v-for="c in categories"
             :key="c"
             type="button"
-            class="kb__cat"
+            class="kb__cat mot-tap"
             :class="{ 'is-active': activeCategory === c }"
             @click="pickCategory(c)"
           >
@@ -224,14 +227,14 @@ function fmtTime(iso: string): string {
 
         <h2 class="kb__side-title kb__side-title--mt">状态</h2>
         <div class="kb__cats">
-          <button type="button" class="kb__cat" :class="{ 'is-active': statusFilter === 'active' }" @click="statusFilter = 'active'">有效</button>
-          <button type="button" class="kb__cat" :class="{ 'is-active': statusFilter === 'revoked' }" @click="statusFilter = 'revoked'">已下架</button>
-          <button type="button" class="kb__cat" :class="{ 'is-active': statusFilter === 'all' }" @click="statusFilter = 'all'">全部</button>
+          <button type="button" class="kb__cat mot-tap" :class="{ 'is-active': statusFilter === 'active' }" @click="statusFilter = 'active'">有效</button>
+          <button type="button" class="kb__cat mot-tap" :class="{ 'is-active': statusFilter === 'revoked' }" @click="statusFilter = 'revoked'">已下架</button>
+          <button type="button" class="kb__cat mot-tap" :class="{ 'is-active': statusFilter === 'all' }" @click="statusFilter = 'all'">全部</button>
         </div>
       </aside>
 
       <!-- ══ 右：条目列表 ══ -->
-      <section class="kb__main u-card">
+      <section class="kb__main u-card mot-rise" style="animation-delay: 60ms">
         <header class="kb__head">
           <label class="kb__search">
             <AppIcon name="filter" :size="15" />
@@ -245,7 +248,7 @@ function fmtTime(iso: string): string {
         </div>
 
         <template v-else>
-          <ul class="kb__list">
+          <ul class="kb__list mot-stagger">
             <li v-for="it in items" :key="it.id" class="kb__item" :class="{ 'kb__item--off': it.status === 'revoked' }">
               <div class="kb__item-head">
                 <span class="kb__cat-tag">{{ it.category || '未分类' }}</span>
@@ -259,9 +262,9 @@ function fmtTime(iso: string): string {
                   <span v-for="t in tagList(it.tags)" :key="t" class="kb__tag">{{ t }}</span>
                 </div>
                 <div class="kb__ops">
-                  <button type="button" class="kb__op" @click="openEdit(it)">编辑</button>
-                  <button v-if="it.status === 'revoked'" type="button" class="kb__op kb__op--ok" @click="restore(it)">重新上架</button>
-                  <button v-else type="button" class="kb__op kb__op--danger" @click="deleteTarget = it">软删除</button>
+                  <button type="button" class="kb__op mot-tap" @click="openEdit(it)">编辑</button>
+                  <button v-if="it.status === 'revoked'" type="button" class="kb__op kb__op--ok mot-tap" @click="restore(it)">重新上架</button>
+                  <button v-else type="button" class="kb__op kb__op--danger mot-tap" @click="deleteTarget = it">软删除</button>
                 </div>
               </div>
             </li>
@@ -271,8 +274,8 @@ function fmtTime(iso: string): string {
           <nav class="kb__pager" aria-label="知识条目分页">
             <span class="kb__page-info">第 {{ page }} / {{ totalPages }} 页</span>
             <div class="kb__page-btns">
-              <button type="button" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-              <button type="button" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+              <button type="button" class="mot-tap" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+              <button type="button" class="mot-tap" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
             </div>
           </nav>
         </template>
@@ -284,12 +287,12 @@ function fmtTime(iso: string): string {
       <aside class="kb__drawer" role="dialog" aria-modal="true" :aria-label="editTarget ? '编辑知识条目' : '新增知识条目'">
         <header class="kb__drawer-head">
           <h3>{{ editTarget ? '编辑知识条目' : '新增知识条目' }}</h3>
-          <button type="button" class="kb__close u-tap" aria-label="关闭" @click="showDrawer = false">
+          <button type="button" class="kb__close u-tap mot-tap" aria-label="关闭" @click="showDrawer = false">
             <AppIcon name="close" :size="18" />
           </button>
         </header>
 
-        <div class="kb__form">
+        <div class="kb__form" :class="{ 'mot-shake': formShake }" @animationend="formShake = false">
           <label class="kb__field">
             <span>分类 *</span>
             <input v-model="form.category" list="kb-cats" placeholder="如 陈列标准" />
@@ -313,7 +316,7 @@ function fmtTime(iso: string): string {
 
         <footer class="kb__drawer-foot">
           <button type="button" class="u-btn u-btn--ghost" @click="showDrawer = false">取消</button>
-          <button type="button" class="u-btn u-btn--primary" :disabled="submitting" @click="submitForm">
+          <button type="button" class="u-btn u-btn--primary" :class="{ 'mot-press-loading': submitting }" :disabled="submitting" @click="submitForm">
             {{ submitting ? '提交中…' : editTarget ? '保存修改' : '确认新增' }}
           </button>
         </footer>
@@ -330,7 +333,7 @@ function fmtTime(iso: string): string {
         </p>
         <footer class="kb__confirm-foot">
           <button type="button" class="u-btn u-btn--ghost" @click="deleteTarget = null">取消</button>
-          <button type="button" class="u-btn u-btn--primary" :disabled="deleting" @click="confirmDelete">
+          <button type="button" class="u-btn u-btn--primary" :class="{ 'mot-press-loading': deleting }" :disabled="deleting" @click="confirmDelete">
             {{ deleting ? '处理中…' : '确认软删除' }}
           </button>
         </footer>
@@ -391,6 +394,14 @@ function fmtTime(iso: string): string {
   background: var(--mn-green-light);
   color: var(--mn-green-dark);
   font-weight: 700;
+}
+
+/* 分类项挂 .mot-tap 后，保留既有背景/文字过渡并补上按压的 transform 过渡 */
+.kb__cat.mot-tap {
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
 }
 
 /* ── 右栏 ── */
@@ -752,12 +763,6 @@ function fmtTime(iso: string): string {
   .kb__cats {
     flex-direction: row;
     flex-wrap: wrap;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kb__cat {
-    transition: none;
   }
 }
 </style>

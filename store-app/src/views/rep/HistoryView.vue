@@ -3,7 +3,7 @@
  * 巡店记录（Tab3）—— T04.6。
  * 列表按时间倒序，点击进 P4 只读历史态。
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MobileLayout from '@/components/layout/MobileLayout.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
@@ -11,13 +11,38 @@ import HealthBadge from '@/components/common/HealthBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useApi } from '@/composables/useApi'
+import { useToast } from '@/composables/useToast'
 import { getVisits, getStores } from '@/api'
-import { levelOf } from '@/domain/constants'
+import { exportVisitsCsv } from '@/api/insights'
+import { levelOf, DEMO_TODAY } from '@/domain/constants'
 import { formatShortTime } from '@/utils/format'
 import { assetUrl } from '@/utils/asset'
 import type { Visit, Store } from '@/types'
 
 const router = useRouter()
+const toast = useToast()
+
+/** 导出中（防重复点击 + loading 态） */
+const exporting = ref<boolean>(false)
+
+/**
+ * 导出「我的巡店记录 / 健康分」CSV。
+ * 后端按**当前登录账号**取数（rep 只能导出自己名下记录），文件名带日期与范围。
+ */
+async function doExport(): Promise<void> {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    await exportVisitsCsv(`我的巡店记录_全部_${DEMO_TODAY}.csv`)
+    toast.success('巡店记录已导出（CSV）')
+  } catch (e) {
+    toast.error((e as { message?: string })?.message || '导出失败，请稍后重试', {
+      action: { text: '再试一次', onAction: () => void doExport() },
+    })
+  } finally {
+    exporting.value = false
+  }
+}
 
 const { data, loading } = useApi(() => getVisits({ limit: 20 }), { initial: { visits: [] }, fallback: { visits: [] } })
 const visits = computed<Visit[]>(() => data.value?.visits ?? [])
@@ -54,6 +79,22 @@ function startSteps(v: Visit): void {
 <template>
   <MobileLayout title="巡店记录" :show-tab-bar="true" :content-padding-bottom="60">
     <div class="hist">
+      <!-- 导出条：导出当前业代全部巡店记录 / 健康分（后端 CSV） -->
+      <div class="hist__bar mot-rise">
+        <span class="hist__bar-hint">导出当前账号全部历史巡店记录与健康分</span>
+        <button
+          type="button"
+          class="hist__export mot-tap"
+          :class="{ 'mot-press-loading': exporting }"
+          :disabled="exporting"
+          aria-label="导出我的巡店记录 CSV"
+          @click="doExport"
+        >
+          <AppIcon name="download" :size="15" />
+          {{ exporting ? '导出中…' : '导出记录' }}
+        </button>
+      </div>
+
       <template v-if="loading">
         <SkeletonBlock v-for="i in 4" :key="i" height="76px" radius="12px" />
       </template>
@@ -67,7 +108,7 @@ function startSteps(v: Visit): void {
         @action="router.push('/rep/capture/S3')"
       />
 
-      <div v-else class="hist__list">
+      <div v-else class="hist__list mot-stagger">
         <div v-for="v in visits" :key="v.id" class="hist__row">
           <button
             type="button"
@@ -113,6 +154,55 @@ function startSteps(v: Visit): void {
 <style scoped>
 .hist {
   padding: 12px;
+}
+
+/* 导出条：点击即真实下载当前账号巡店记录 CSV */
+.hist__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.hist__bar-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.hist__export {
+  /* ≥40px 触控热区 */
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--mn-green);
+  border-radius: 999px;
+  background: var(--mn-green-light);
+  color: var(--mn-green-dark);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hist__export:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.hist__export:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .hist__list {

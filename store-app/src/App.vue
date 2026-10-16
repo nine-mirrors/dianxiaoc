@@ -34,6 +34,7 @@ import AiFab from '@/components/common/AiFab.vue'
 import BootCover from '@/components/platform/BootCover.vue'
 import AppTour from '@/components/platform/AppTour.vue'
 import OnboardingGuide from '@/components/platform/OnboardingGuide.vue'
+import DemoMode from '@/components/platform/DemoMode.vue'
 import { useDocumentBadge } from '@/composables/useDocumentBadge'
 import { useDeviceType } from '@/composables/useDeviceType'
 import { useSessionStore } from '@/stores/session'
@@ -190,11 +191,8 @@ function retryRouteContent(): void {
  * 独立 fixed 层（z 1300 高于 Toast），不包裹、不阻塞 RouterView 渲染；
  * 「最短展示时长到达」且「路由首次就绪」两个条件都满足后才淡出移除。
  */
-const prefersReducedMotion =
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
-const SPLASH_MIN_MS = prefersReducedMotion ? 600 : 1700
+/** 启动闪屏最短展示时长（★ 动画策略始终启用，不按「减弱动效」缩短） */
+const SPLASH_MIN_MS = 1700
 
 const splashOn = ref(true)
 let splashMinElapsed = false
@@ -270,6 +268,8 @@ onBeforeUnmount(() => {
   <AppTour />
   <!-- 角色化新手引导（每角色一次，仅手机形态） -->
   <OnboardingGuide />
+  <!-- 一键演示模式：常驻分镜控制器 + 首次说明卡（显示条件由组件内部按 store 判定） -->
+  <DemoMode />
 
   <!-- ══ 启动品牌闪屏：整页加载一次，独立 fixed 层（z 1300 高于 Toast），
        与 RouterView / ToastHost 完全平级，不包裹任何既有结构，

@@ -16,6 +16,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import HealthBadge from '@/components/common/HealthBadge.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSessionStore } from '@/stores/session'
 import { resolveOwnerStore, getStoreProfile, getVisit, streamGenerate } from '@/api/owner'
 import type { StoreProfile } from '@/api/owner'
@@ -39,6 +40,11 @@ const healthScore = computed<string>(() => {
   return s === null || s === undefined ? '—' : String(s)
 })
 const delta = computed<number>(() => Number(profile.value?.health.delta ?? 0))
+
+/** 关键数字滚动：健康分 / 订单笔数 / 已接单（金额保持原格式不动；无分数时仍显示「—」） */
+const scoreUp = useCountUp(() => Number(profile.value?.health.score ?? 0))
+const ordersCountUp = useCountUp(() => profile.value?.ticketsSummary.count ?? 0)
+const acceptedCountUp = useCountUp(() => profile.value?.ticketsSummary.acceptedCount ?? 0)
 
 /* ── 图表 ── */
 const trendEl = ref<HTMLElement | null>(null)
@@ -276,7 +282,7 @@ onBeforeUnmount(() => {
 
 <template>
   <MobileLayout title="经营报告" :back="true" :show-tab-bar="true" :content-padding-bottom="24" @back="router.push('/owner')">
-    <div class="rp">
+    <div class="rp mot-stagger">
       <div v-if="loading" class="rp__loading">
         <MilkDropLoader size="card" label="正在生成本店报告" />
       </div>
@@ -304,7 +310,7 @@ onBeforeUnmount(() => {
         <section class="u-card rp__hero">
           <p class="rp__store"><AppIcon name="store" :size="16" color="var(--mn-green-dark)" />{{ profile.store.name }}</p>
           <div class="rp__score-row">
-            <p class="rp__score">{{ healthScore }}</p>
+            <p class="rp__score">{{ healthScore === '—' ? healthScore : scoreUp.text }}</p>
             <div class="rp__score-right">
               <HealthBadge :level="healthLevel" size="md" />
               <span class="rp__delta" :class="delta > 0 ? 'is-up' : delta < 0 ? 'is-down' : 'is-flat'">
@@ -334,7 +340,7 @@ onBeforeUnmount(() => {
             <MilkDropLoader size="card" label="" />
           </div>
           <template v-else-if="aiText">
-            <p class="rp__ai-text">{{ aiText }}</p>
+            <p class="rp__ai-text mot-fade-up">{{ aiText }}</p>
             <p class="rp__ai-src">{{ aiLabel }}</p>
           </template>
           <p v-else class="rp__ai-hint">
@@ -364,7 +370,7 @@ onBeforeUnmount(() => {
         </section>
 
         <!-- 行动清单 -->
-        <section class="u-card rp__card">
+        <section class="u-card rp__card mot-stagger">
           <header class="rp__head"><h2><AppIcon name="clipboard" :size="15" /> 本店行动清单</h2><span>先做这几件</span></header>
           <div v-for="(a, i) in actions" :key="i" class="rp__act">
             <span class="rp__act-no">{{ i + 1 }}</span>
@@ -379,9 +385,9 @@ onBeforeUnmount(() => {
         <section class="u-card rp__card">
           <header class="rp__head"><h2><AppIcon name="cart" :size="15" /> 订货单据小结</h2></header>
           <div class="rp__sum">
-            <div class="rp__sum-item"><p class="rp__sum-num">{{ profile.ticketsSummary.count }}</p><p class="rp__sum-cap">订单笔数</p></div>
+            <div class="rp__sum-item"><p class="rp__sum-num">{{ ordersCountUp.text }}</p><p class="rp__sum-cap">订单笔数</p></div>
             <div class="rp__sum-item"><p class="rp__sum-num">¥{{ profile.ticketsSummary.totalAmount }}</p><p class="rp__sum-cap">订货总额</p></div>
-            <div class="rp__sum-item"><p class="rp__sum-num is-ok">{{ profile.ticketsSummary.acceptedCount }}</p><p class="rp__sum-cap">已接单</p></div>
+            <div class="rp__sum-item"><p class="rp__sum-num is-ok">{{ acceptedCountUp.text }}</p><p class="rp__sum-cap">已接单</p></div>
           </div>
         </section>
       </template>

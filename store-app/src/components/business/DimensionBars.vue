@@ -25,13 +25,17 @@ const props = withDefaults(defineProps<Props>(), { dimensions: () => [] })
 </script>
 
 <template>
-  <div class="dim-bars">
-    <div v-for="d in props.dimensions" :key="d.key" class="dim-bar">
+  <div class="dim-bars mot-stagger">
+    <div v-for="(d, i) in props.dimensions" :key="d.key" class="dim-bar">
       <span class="dim-bar__name">{{ d.name }}</span>
       <div class="dim-bar__track">
         <div
-          class="dim-bar__fill"
-          :style="{ width: `${Math.max(0, Math.min(100, d.score))}%`, background: colorOf(d.level) }"
+          class="dim-bar__fill mot-grow-x"
+          :style="{
+            width: `${Math.max(0, Math.min(100, d.score))}%`,
+            background: colorOf(d.level),
+            animationDelay: `${i * 60}ms`,
+          }"
         />
       </div>
       <span class="dim-bar__score" :style="{ color: LEVEL_FG[d.level] }">{{ d.score }}</span>

@@ -57,8 +57,6 @@ function startWaitPhrases(): void {
   stopWaitPhrases()
   waitIndex = 0
   waitPhrase.value = WAIT_PHRASES[0]
-  // 尊重系统「减弱动态效果」：只静态显示首条，不做轮换
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   waitTimer = window.setInterval(() => {
     if (waitIndex >= WAIT_PHRASES.length - 1) return
     waitIndex += 1
@@ -231,19 +229,19 @@ onBeforeUnmount(() => {
 
     <div class="ask__body">
       <!-- 左栏：高频问题 chips + 使用说明 -->
-      <aside class="ask__aside">
+      <aside class="ask__aside mot-stagger">
         <section class="u-card ask__side-card">
           <header class="ask__side-head">
             <AppIcon name="sparkles" :size="15" color="var(--ai-purple)" />
             <h2>高频问题</h2>
           </header>
           <p class="ask__side-hint">点击即问，问题会结合本区域真实看板数据回答。</p>
-          <div class="ask__chips">
+          <div class="ask__chips mot-stagger">
             <button
               v-for="s in suggestions"
               :key="s"
               type="button"
-              class="ask__chip"
+              class="ask__chip mot-tap"
               :disabled="sending"
               @click="ask(s)"
             >
@@ -266,7 +264,7 @@ onBeforeUnmount(() => {
       </aside>
 
       <!-- 右栏：对话流 -->
-      <section class="u-card ask__chat">
+      <section class="u-card ask__chat mot-fade-up">
         <header class="ask__chat-head">
           <h2 class="ask__chat-title">
             <AppIcon name="message" :size="16" />
@@ -290,7 +288,7 @@ onBeforeUnmount(() => {
             desc="例如「这周健康分为什么下降」「哪三家店今天最该去」；也可以从左侧高频问题一键提问。"
           />
 
-          <div v-for="m in messages" :key="m.id" class="ask__turn" :class="`ask__turn--${m.role}`">
+          <div v-for="m in messages" :key="m.id" class="ask__turn mot-fade-up" :class="`ask__turn--${m.role}`">
             <!-- 提问后 ~ 首字流出：用户气泡下方、AI 气泡出现前的一行分阶段等待话术 -->
             <div
               v-if="m.role === 'ai' && m.streaming && !m.text && waitPhrase"
@@ -335,7 +333,7 @@ onBeforeUnmount(() => {
             <button
               v-else
               type="button"
-              class="u-btn u-btn--primary ask__send"
+              class="u-btn u-btn--primary ask__send mot-tap"
               :disabled="!input.trim()"
               @click="ask(input)"
             >
@@ -651,14 +649,6 @@ onBeforeUnmount(() => {
 
   .ask__aside {
     flex-direction: row;
-  }
-}
-
-/* 减弱动效：等待点静止、话术不做入场动效（JS 侧同样不轮换） */
-@media (prefers-reduced-motion: reduce) {
-  .ask__wait-dot,
-  .ask__wait-text {
-    animation: none;
   }
 }
 </style>

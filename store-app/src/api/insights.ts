@@ -350,6 +350,26 @@ export async function exportStoresCsv(): Promise<void> {
   return downloadCsv('/api/v1/export/stores.csv', 'stores.csv')
 }
 
+/**
+ * 导出指定区域的门店健康分明细 CSV（经理端「区域门店健康分明细」）。
+ *
+ * @param regionId 区域 id（如 R_EAST）；传空则导出全量（等价 exportStoresCsv）
+ * @param filename 下载文件名（由调用方带上日期与区域名，如「区域门店健康分明细_城东片区_2026-10-02.csv」）
+ */
+export async function exportRegionStoresCsv(regionId: string, filename: string): Promise<void> {
+  const q = regionId ? `?regionId=${encodeURIComponent(regionId)}` : ''
+  return downloadCsv(`/api/v1/export/stores.csv${q}`, filename)
+}
+
+/**
+ * 导出当前登录业代的巡店记录 / 健康分明细 CSV（业代端自查）。
+ *
+ * @param filename 下载文件名（由调用方带上日期，如「我的巡店记录_全部_2026-10-02.csv」）
+ */
+export async function exportVisitsCsv(filename: string): Promise<void> {
+  return downloadCsv('/api/v1/export/visits.csv', filename)
+}
+
 /** 导出业代排行榜 CSV */
 export async function exportLeaderboardCsv(): Promise<void> {
   return downloadCsv('/api/v1/export/leaderboard.csv', 'leaderboard.csv')

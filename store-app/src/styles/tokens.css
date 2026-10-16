@@ -272,7 +272,8 @@
 }
 
 /* 主题切换：颜色类属性平滑过渡（由 useTheme 短暂加 .theme-anim 类，
-   避免平时 hover 也产生颜色过渡延迟；reduced-motion 下整体关闭） */
+   避免平时 hover 也产生颜色过渡延迟）。★ 动画策略：始终启用 ——
+   即使系统开了「减弱动效」，颜色淡变照常播放（淡变不属于位移类动效）。 */
 .theme-anim,
 .theme-anim * {
   transition:
@@ -285,7 +286,12 @@
 @media (prefers-reduced-motion: reduce) {
   .theme-anim,
   .theme-anim * {
-    transition: none !important;
+    transition:
+      background-color 400ms ease,
+      border-color 400ms ease,
+      color 400ms ease,
+      fill 400ms ease,
+      stroke 400ms ease !important;
   }
 }
 

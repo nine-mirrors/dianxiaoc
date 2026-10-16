@@ -51,11 +51,17 @@ export interface User {
   name: string
   role: Role
   avatarText: string
+  /** 自定义头像图片 URL（后端 /uploads/... 绝对地址）；为空时回落到 avatarText 首字 */
+  avatarUrl?: string
   /** 一句职责说明，P1 角色卡用 */
   duty: string
   /** 副信息，如「辖区 128 家 · 今日待巡 5 家」 */
   sub: string
   regionId?: string
+  /** 个人资料 · 联系电话（「编辑资料」可改，未填写为空串） */
+  phone?: string
+  /** 个人资料 · 辖区文字（「编辑资料」可改；与 regionId 不同，是店主可读的自由文本） */
+  region?: string
 }
 
 /** P1 角色卡展示模型（GET /meta/roles） */

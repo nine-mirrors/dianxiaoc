@@ -408,7 +408,7 @@ onMounted(async () => {
     <!-- 门店卡 -->
     <div class="ck-pad">
       <SkeletonBlock v-if="loading" height="80px" radius="12px" />
-      <div v-else-if="store" class="u-card ck-store">
+      <div v-else-if="store" class="u-card ck-store mot-rise">
         <div class="ck-store__head">
           <p class="ck-store__name">
             <AppIcon name="store" :size="15" color="var(--mn-green)" />
@@ -438,12 +438,12 @@ onMounted(async () => {
 
     <!-- 定位卡 -->
     <div v-if="store" class="ck-pad">
-      <div class="u-card ck-loc">
+      <div class="u-card ck-loc mot-rise">
         <div class="ck-loc__row">
           <span class="ck-loc__title">
             <AppIcon name="map-pin" :size="14" color="var(--mn-green)" /> 当前定位
           </span>
-          <button type="button" class="ck-loc__refresh u-tap" :disabled="locating" @click="locate">
+          <button type="button" class="ck-loc__refresh u-tap mot-tap" :disabled="locating" @click="locate">
             <AppIcon name="refresh" :size="13" />
             {{ locating ? '定位中…' : '重新定位' }}
           </button>
@@ -455,7 +455,7 @@ onMounted(async () => {
 
     <!-- 水印拍照 -->
     <div v-if="store" class="ck-pad">
-      <div class="u-card ck-photo-wrap">
+      <div class="u-card ck-photo-wrap mot-rise">
         <div class="ck-photo" :class="{ 'ck-photo--empty': !shot }">
           <template v-if="shot">
             <img class="ck-photo__img" :src="shot.url" alt="到店水印照片" />
@@ -479,17 +479,17 @@ onMounted(async () => {
         <div class="ck-photo__entry">
           <button
             type="button"
-            class="ck-entry__btn ck-entry__btn--primary u-tap"
+            class="ck-entry__btn ck-entry__btn--primary u-tap mot-tap"
             :disabled="processing || cameraProbing || cameraVisible"
             @click="onPhotoPress"
           >
             <AppIcon name="camera" :size="15" color="#fff" />
             {{ cameraProbing ? '检测相机…' : '拍照' }}
           </button>
-          <button type="button" class="ck-entry__btn u-tap" :disabled="processing" @click="pickFromAlbum">
+          <button type="button" class="ck-entry__btn u-tap mot-tap" :disabled="processing" @click="pickFromAlbum">
             <AppIcon name="image" :size="15" /> 相册上传
           </button>
-          <button v-if="shot" type="button" class="ck-entry__btn ck-entry__btn--ghost u-tap" @click="clearShot">
+          <button v-if="shot" type="button" class="ck-entry__btn ck-entry__btn--ghost u-tap mot-tap" @click="clearShot">
             <AppIcon name="trash" :size="15" /> 重拍
           </button>
         </div>
@@ -499,10 +499,10 @@ onMounted(async () => {
     </div>
 
     <!-- 签到历史 -->
-    <div v-if="store" class="ck-pad">
+    <div v-if="store" class="ck-pad mot-rise">
       <p class="ck-sec-title">最近签到记录</p>
       <SkeletonBlock v-if="histLoading" height="64px" radius="12px" />
-      <div v-else-if="checkins.length" class="u-card ck-hist">
+      <div v-else-if="checkins.length" class="u-card ck-hist mot-stagger">
         <div v-for="c in checkins" :key="c.id" class="ck-hist__row">
           <span class="ck-hist__dot"><AppIcon name="check" :size="12" color="#fff" /></span>
           <div class="ck-hist__body">
@@ -521,7 +521,8 @@ onMounted(async () => {
       <div class="ck-bar u-safe-bottom">
         <button
           type="button"
-          class="ck-submit"
+          class="ck-submit mot-tap"
+          :class="{ 'mot-press-loading': submitting }"
           :disabled="!store || submitting"
           @click="submitCheckin"
         >

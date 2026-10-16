@@ -4,6 +4,7 @@
  */
 import { computed } from 'vue'
 import { colorOf, levelOf, levelLabel } from '@/domain/constants'
+import { useCountUp } from '@/composables/useCountUp'
 import type { HealthLevelKey } from '@/types'
 
 interface Props {
@@ -42,6 +43,9 @@ const arcColor = computed<string>(() => props.color || colorOf(levelOf(props.sco
 const scoreColor = computed<string>(() => LEVEL_FG[levelOf(props.score)])
 /** 读屏替代文案：整体作为一张「分数图」播报 */
 const ariaLabel = computed<string>(() => `AI健康分 ${props.score} 分${levelLabel(levelOf(props.score))}`)
+
+/** 中心分数滚动（整数，落地精确回写） */
+const scoreCount = useCountUp(() => props.score).text
 </script>
 
 <template>
@@ -51,7 +55,7 @@ const ariaLabel = computed<string>(() => `AI健康分 ${props.score} 分${levelL
     :aria-label="ariaLabel"
     :style="{ width: `${size}px`, height: `${size}px` }"
   >
-    <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`">
+    <svg class="mot-grow-sweep" :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`">
       <!-- 轨道：描边跟随边框令牌（日间浅灰、夜间墨绿灰），避免深色卡上出现亮白轨道 -->
       <circle
         :cx="size / 2"
@@ -76,7 +80,7 @@ const ariaLabel = computed<string>(() => `AI健康分 ${props.score} 分${levelL
     </svg>
     <div class="score-ring__inner">
       <div class="score-ring__score" :style="{ color: scoreColor, fontSize: `${Math.round(size * 0.42)}px` }">
-        {{ score }}
+        {{ scoreCount }}
       </div>
       <div class="score-ring__label">
         <slot name="label">AI 健康分</slot>

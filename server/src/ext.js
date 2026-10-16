@@ -66,6 +66,21 @@ CREATE TABLE IF NOT EXISTS ext_conversations (
   id TEXT PRIMARY KEY, kind TEXT, title TEXT, region TEXT, store_id TEXT,
   members TEXT, created_at TEXT, last_at TEXT
 );
+CREATE TABLE IF NOT EXISTS ext_conv_pins (
+  conv_id TEXT, user_id TEXT, pinned_at TEXT, PRIMARY KEY (conv_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS ext_conv_mutes (
+  conv_id TEXT, user_id TEXT, muted_at TEXT, PRIMARY KEY (conv_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS ext_conv_hides (
+  conv_id TEXT, user_id TEXT, hidden_at TEXT, PRIMARY KEY (conv_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS ext_user_avatars (
+  username TEXT PRIMARY KEY, avatar_url TEXT, updated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS ext_user_profiles (
+  username TEXT PRIMARY KEY, name TEXT, phone TEXT, region TEXT, updated_at TEXT
+);
 CREATE TABLE IF NOT EXISTS ext_messages (
   id TEXT PRIMARY KEY, conv_id TEXT, sender_id TEXT, sender_name TEXT,
   sender_role TEXT, kind TEXT DEFAULT 'text', content TEXT,
@@ -87,6 +102,10 @@ CREATE TABLE IF NOT EXISTS ext_audit (
   target TEXT, detail TEXT, created_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ext_audit_time ON ext_audit(created_at);
+CREATE TABLE IF NOT EXISTS ext_store_favorites (
+  store_id TEXT, user_id TEXT, note TEXT, created_at TEXT,
+  PRIMARY KEY (store_id, user_id)
+);
 `)
 
 /* ───────────────────────────── 通用助手 ───────────────────────────── */
@@ -120,6 +139,59 @@ function rowToCamel(r) {
 
 export const extDb = ext
 export { insert, rowToCamel }
+
+/* ───────────────────────────── 头像（按登录账号 username 维度） ───────────────────────────── */
+
+/** 取某登录账号的头像 URL；没有返回空串（供登录/会话返回体直接带出） */
+export function getAvatar(username) {
+  const r = ext.prepare('SELECT avatar_url FROM ext_user_avatars WHERE username=?').get(String(username || ''))
+  return r?.avatar_url || ''
+}
+
+/** 写入/更换某登录账号头像；传空串表示清除。upsert 幂等 */
+export function setAvatar(username, avatarUrl) {
+  ext
+    .prepare(`INSERT INTO ext_user_avatars (username, avatar_url, updated_at) VALUES (?,?,?)
+              ON CONFLICT(username) DO UPDATE SET avatar_url=excluded.avatar_url, updated_at=excluded.updated_at`)
+    .run(String(username || ''), String(avatarUrl || ''), nowIso())
+}
+
+/* ───────────────────────────── 个人资料（姓名 / 电话 / 辖区，按登录账号 username 维度） ───────────────────────────── */
+
+/**
+ * 取某登录账号的个人资料；未设置一律返回空串（供登录/会话返回体直接带出，
+ * 空串表示「未填写」，前端据此回落到账号原始姓名 / 空值展示）。
+ */
+export function getProfile(username) {
+  const r = ext
+    .prepare('SELECT name, phone, region FROM ext_user_profiles WHERE username=?')
+    .get(String(username || ''))
+  return {
+    name: r?.name ?? '',
+    phone: r?.phone ?? '',
+    region: r?.region ?? '',
+  }
+}
+
+/**
+ * 写入/更新某登录账号的姓名 / 电话 / 辖区。
+ *
+ * 语义：未传的字段（patch[key] === undefined）保持原值不动；传空串表示清除该字段。
+ * upsert 幂等，返回落库后的完整三字段。
+ */
+export function saveProfile(username, patch = {}) {
+  const cur = getProfile(username)
+  const next = {
+    name: patch.name !== undefined ? String(patch.name) : cur.name,
+    phone: patch.phone !== undefined ? String(patch.phone) : cur.phone,
+    region: patch.region !== undefined ? String(patch.region) : cur.region,
+  }
+  ext
+    .prepare(`INSERT INTO ext_user_profiles (username, name, phone, region, updated_at) VALUES (?,?,?,?,?)
+              ON CONFLICT(username) DO UPDATE SET name=excluded.name, phone=excluded.phone, region=excluded.region, updated_at=excluded.updated_at`)
+    .run(String(username || ''), next.name, next.phone, next.region, nowIso())
+  return next
+}
 
 /* ───────────────────────────── 审计 ───────────────────────────── */
 export function writeAudit(actor, action, target, detail = '') {
@@ -243,8 +315,12 @@ export function resetExtData() {
     DELETE FROM ext_accounts; DELETE FROM ext_blacklist; DELETE FROM ext_sku_rules;
     DELETE FROM ext_knowledge; DELETE FROM ext_announcements; DELETE FROM ext_announce_reads;
     DELETE FROM ext_conv_reads;
+    DELETE FROM ext_conv_pins; DELETE FROM ext_conv_mutes; DELETE FROM ext_conv_hides;
+    DELETE FROM ext_user_avatars;
+    DELETE FROM ext_user_profiles;
     DELETE FROM ext_conversations; DELETE FROM ext_messages; DELETE FROM ext_inventory;
     DELETE FROM ext_checkins; DELETE FROM ext_audit;
+    DELETE FROM ext_store_favorites;
   `)
   seeded = false
   seedExtData()

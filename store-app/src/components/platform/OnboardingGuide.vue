@@ -13,6 +13,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useSessionStore } from '@/stores/session'
+import { useDemoModeStore } from '@/stores/demo-mode'
 import { useDeviceType } from '@/composables/useDeviceType'
 import type { Role } from '@/types'
 
@@ -43,6 +44,7 @@ const GUIDES: Record<Role, Screen[]> = {
 
 const route = useRoute()
 const session = useSessionStore()
+const demo = useDemoModeStore()
 /** 设备形态：手机式引导只在移动形态出现（PC 走桌面外壳，不弹） */
 const { isMobile } = useDeviceType()
 
@@ -53,6 +55,8 @@ let started = false
 const excluded = computed<boolean>(
   () =>
     !isMobile.value ||
+    // ★ 一键演示模式开启时抑制新手引导，避免两套引导互相打架（演示优先）
+    demo.active ||
     route.path === '/' ||
     route.path.startsWith('/login') ||
     route.path.startsWith('/manager') ||
@@ -110,6 +114,14 @@ watch(
   () => route.path,
   (p) => evaluate(p),
   { immediate: true },
+)
+
+// 演示模式开启时立即收起已弹出的引导（不占用「已看过」标记，退出演示后本次会话不再重弹）
+watch(
+  () => demo.active,
+  (on) => {
+    if (on && visible.value) visible.value = false
+  },
 )
 
 const trackStyle = computed(() => ({ transform: `translateX(-${index.value * 100}%)` }))
@@ -311,15 +323,5 @@ const trackStyle = computed(() => ({ transform: `translateX(-${index.value * 100
 .ob__next {
   background: var(--grad-brand);
   color: #fff;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ob__card {
-    animation: none;
-  }
-
-  .ob__track {
-    transition: none;
-  }
 }
 </style>

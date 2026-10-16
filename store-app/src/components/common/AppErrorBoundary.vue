@@ -225,11 +225,4 @@ function goBack(): void {
   font-weight: 600;
   color: var(--mn-green);
 }
-
-/* 尊重系统「减弱动态效果」：兜底内容直接出现，不做位移淡入 */
-@media (prefers-reduced-motion: reduce) {
-  .errx {
-    animation: none;
-  }
-}
 </style>

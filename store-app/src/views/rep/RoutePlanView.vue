@@ -18,6 +18,7 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useToast } from '@/composables/useToast'
 import { useHaptics } from '@/composables/useHaptics'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSessionStore } from '@/stores/session'
 import { getTodayRoute } from '@/api'
 import { levelOf, DEMO_WEATHER } from '@/domain/constants'
@@ -75,6 +76,10 @@ function kmOf(s: RouteStore['store']): string {
 const total = computed<number>(() => list.value.length)
 const doneCount = computed<number>(() => list.value.filter((r) => r.status === 'done').length)
 const percent = computed<number>(() => (total.value ? Math.round((doneCount.value / total.value) * 100) : 0))
+
+/* ── 关键数字滚动：已完成 / 完成度（整数，落地精确回写） ── */
+const countDone = useCountUp(() => doneCount.value).text
+const countPercent = useCountUp(() => percent.value).text
 
 /* ─────────────── 地图标记 ─────────────── */
 
@@ -156,32 +161,32 @@ function statusLabel(s: RouteStore['status']): string {
   <MobileLayout title="智能排线" :back="true" :content-padding-bottom="24" @back="router.push('/rep/today')">
     <!-- 进度概览 -->
     <div class="rp-pad">
-      <div class="u-card rp-head">
+      <div class="u-card rp-head mot-rise">
         <div class="rp-head__row">
           <div>
             <p class="rp-head__date">{{ date || '今日线路' }}</p>
             <p class="rp-head__weather">{{ weather }} · 按距离与健康分智能排序</p>
           </div>
           <div class="rp-head__stat">
-            <b>{{ doneCount }}</b><span>/{{ total }}</span>
+            <b>{{ countDone }}</b><span>/{{ total }}</span>
           </div>
         </div>
         <div class="rp-progress" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
-          <span class="rp-progress__fill" :style="{ width: `${percent}%` }" />
+          <span class="rp-progress__fill mot-grow-x" :style="{ width: `${percent}%` }" />
         </div>
-        <p class="rp-head__tip">已完成 {{ doneCount }} 家 · 完成度 {{ percent }}%</p>
+        <p class="rp-head__tip">已完成 {{ countDone }} 家 · 完成度 {{ countPercent }}%</p>
       </div>
     </div>
 
     <!-- 地图 -->
     <div v-if="!loading && markers.length" class="rp-pad">
-      <div class="u-card rp-map">
+      <div class="u-card rp-map mot-rise">
         <MapView :markers="markers" :height="228" />
       </div>
     </div>
 
     <!-- 门店列表 -->
-    <div class="rp-pad">
+    <div class="rp-pad mot-stagger">
       <p class="rp-sec-title">今日拜访线路（{{ total }}）</p>
 
       <SkeletonBlock v-if="loading" height="96px" radius="12px" />
@@ -208,7 +213,7 @@ function statusLabel(s: RouteStore['status']): string {
             <div class="rp-store__sort">
               <button
                 type="button"
-                class="rp-sort u-tap"
+                class="rp-sort u-tap mot-tap"
                 :disabled="i === 0"
                 aria-label="上移"
                 @click="move(i, -1)"
@@ -217,7 +222,7 @@ function statusLabel(s: RouteStore['status']): string {
               </button>
               <button
                 type="button"
-                class="rp-sort u-tap"
+                class="rp-sort u-tap mot-tap"
                 :disabled="i === list.length - 1"
                 aria-label="下移"
                 @click="move(i, 1)"
@@ -231,16 +236,16 @@ function statusLabel(s: RouteStore['status']): string {
             <button
               v-if="hasLatLng(r.store)"
               type="button"
-              class="u-btn u-btn--ghost rp-act rp-act--nav u-tap"
+              class="u-btn u-btn--ghost rp-act rp-act--nav u-tap mot-tap"
               aria-label="高德地图导航到该门店"
               @click="openStoreNav(r.store)"
             >
               <AppIcon name="map-pin" :size="13" /> 导航
             </button>
-            <button v-if="r.status === 'done'" type="button" class="rp-act rp-act--ghost u-tap" @click="viewHistory(r)">
+            <button v-if="r.status === 'done'" type="button" class="rp-act rp-act--ghost u-tap mot-tap" @click="viewHistory(r)">
               查看<AppIcon name="chevron-right" :size="13" />
             </button>
-            <button v-else type="button" class="rp-act rp-act--primary u-tap" @click="patrol(r.store.id)">
+            <button v-else type="button" class="rp-act rp-act--primary u-tap mot-tap" @click="patrol(r.store.id)">
               <AppIcon name="camera" :size="13" color="#fff" /> 开始巡店
             </button>
           </div>

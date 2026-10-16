@@ -5,7 +5,7 @@
  * 身份由账号决定：登录成功后跳到哪里、能看到哪些页面，全部由后端裁定，
  * 前端不提供任何角色选择入口；不提供手机号验证码、跳过登录等旁路。
  */
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
@@ -20,6 +20,15 @@ const username = ref<string>('')
 const password = ref<string>('')
 const submitting = ref<boolean>(false)
 const errorMsg = ref<string>('')
+
+/** 校验 / 登录失败时给两个输入框一次横向轻抖（按 .mot-shake 约定：临时挂类，animationend 后移除） */
+const shakeOn = ref<boolean>(false)
+function triggerShake(): void {
+  shakeOn.value = false
+  void nextTick(() => {
+    shakeOn.value = true
+  })
+}
 
 /**
  * 【安全】演示账号一键填充只在开发构建出现：import.meta.env.DEV 为 false 时
@@ -58,6 +67,7 @@ async function submit(): Promise<void> {
   const p = password.value
   if (!u || !p) {
     toast.info('请输入账号与密码')
+    triggerShake()
     return
   }
   submitting.value = true
@@ -70,6 +80,7 @@ async function submit(): Promise<void> {
     const msg = e instanceof Error ? e.message : '登录失败'
     errorMsg.value = msg.includes('连接') ? '服务暂不可用，请稍后重试或联系管理员' : msg
     toast.error(errorMsg.value)
+    triggerShake()
   } finally {
     submitting.value = false
   }
@@ -80,8 +91,8 @@ async function submit(): Promise<void> {
   <div class="login-page">
     <div class="login-inner">
       <!-- 品牌区 -->
-      <header class="lg-brand">
-        <div class="lg-logo">
+      <header class="lg-brand mot-rise">
+        <div class="lg-logo mot-pop" style="animation-delay: 60ms">
           <svg viewBox="0 0 24 24" class="lg-logo__svg" aria-hidden="true">
             <path d="M12 3C8.5 7 6 10.4 6 14a6 6 0 0 0 12 0c0-3.6-2.5-7-6-11z" fill="#fff" />
           </svg>
@@ -92,8 +103,8 @@ async function submit(): Promise<void> {
         <p class="lg-slogan">拍一张货架照，AI 告诉你该怎么卖</p>
       </header>
 
-      <!-- 登录卡 -->
-      <section class="lg-card">
+      <!-- 登录卡（延迟 100ms 入场，与品牌区形成前后层次） -->
+      <section class="lg-card mot-rise" style="animation-delay: 100ms">
         <h2 class="lg-card__title">账号登录</h2>
         <p class="lg-card__desc">身份由账号决定，登录后自动进入对应工作台</p>
 
@@ -101,12 +112,12 @@ async function submit(): Promise<void> {
              口令来自后端运行时下发，源码与包内均无明文账号 -->
         <div v-if="devMode && demoAccounts.length" class="lg-demo">
           <p class="lg-demo__cap">演示账号 · 点击自动填入（仅开发环境）</p>
-          <div class="lg-demo__chips">
+          <div class="lg-demo__chips mot-stagger-pop">
             <button
               v-for="a in demoAccounts"
               :key="a.username"
               type="button"
-              class="lg-demo__chip u-tap"
+              class="lg-demo__chip u-tap mot-tap mot-hover-lift"
               @click="fillDemo(a)"
             >
               {{ a.person }} · {{ a.roleLabel }}
@@ -120,10 +131,12 @@ async function submit(): Promise<void> {
             id="lg-user"
             v-model="username"
             class="lg-input"
+            :class="{ 'mot-shake': shakeOn }"
             type="text"
             autocomplete="username"
             placeholder="请输入账号"
             @keyup.enter="submit"
+            @animationend="shakeOn = false"
           />
         </div>
 
@@ -133,21 +146,23 @@ async function submit(): Promise<void> {
             id="lg-pwd"
             v-model="password"
             class="lg-input"
+            :class="{ 'mot-shake': shakeOn }"
             type="password"
             autocomplete="current-password"
             placeholder="请输入密码"
             @keyup.enter="submit"
+            @animationend="shakeOn = false"
           />
         </div>
 
         <p v-if="errorMsg" class="lg-error" role="alert">{{ errorMsg }}</p>
 
-        <button type="button" class="lg-submit" :disabled="submitting" @click="submit">
+        <button type="button" class="lg-submit mot-tap" :class="{ 'mot-press-loading': submitting }" :disabled="submitting" @click="submit">
           {{ submitting ? '登录中…' : '登录' }}
         </button>
       </section>
 
-      <p class="lg-foot">店小C · 蒙牛 AI 巡店助手</p>
+      <p class="lg-foot mot-fade-up" style="animation-delay: 200ms">店小C · 蒙牛 AI 巡店助手</p>
     </div>
   </div>
 </template>

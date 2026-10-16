@@ -17,6 +17,7 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useToast } from '@/composables/useToast'
 import { useHaptics } from '@/composables/useHaptics'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSessionStore } from '@/stores/session'
 import { getStore, getTodayRoute, getTasks, createTicket } from '@/api'
 import type { Store, Ticket } from '@/types'
@@ -139,6 +140,10 @@ const items = computed<AuditItem[]>(() => CHECKLISTS[tab.value])
 const judged = computed<number>(() => items.value.filter((i) => markOf(tab.value, i.key)).length)
 const issueCount = computed<number>(() => items.value.filter((i) => markOf(tab.value, i.key) === 'issue').length)
 
+/* ── 进度数字滚动：已核对 / 问题项（整数，落地精确回写） ── */
+const countJudged = useCountUp(() => judged.value).text
+const countIssue = useCountUp(() => issueCount.value).text
+
 /** 指定 Tab 的问题项数（Tab 角标用） */
 function issueCountOf(t: TabKey): number {
   return CHECKLISTS[t].filter((i) => marks.value[markKey(t, i.key)] === 'issue').length
@@ -169,6 +174,14 @@ function onTempInput(): void {
 
 const submitting = ref<boolean>(false)
 const success = ref<boolean>(false)
+/** 无问题项 / 提交失败时的一次性抖动（纯 transform；animationend 复位） */
+const auditShake = ref<boolean>(false)
+function triggerAuditShake(): void {
+  auditShake.value = false
+  window.requestAnimationFrame(() => {
+    auditShake.value = true
+  })
+}
 const ticket = ref<Ticket | null>(null)
 const remark = ref<string>('')
 
@@ -196,6 +209,7 @@ async function submitAudit(): Promise<void> {
   const problems = collectProblems()
   if (!problems.length) {
     toast.info('暂无问题项：请先标记问题，或全部判定为合格')
+    triggerAuditShake()
     return
   }
   submitting.value = true
@@ -216,6 +230,7 @@ async function submitAudit(): Promise<void> {
   } catch {
     haptics.error()
     toast.error('提交失败，请稍后重试')
+    triggerAuditShake()
   } finally {
     submitting.value = false
   }
@@ -235,7 +250,7 @@ function backToToday(): void {
     <!-- 门店卡 -->
     <div class="sa-pad">
       <SkeletonBlock v-if="loading" height="72px" radius="12px" />
-      <div v-else-if="store" class="u-card sa-store">
+      <div v-else-if="store" class="u-card sa-store mot-rise">
         <p class="sa-store__name">
           <AppIcon name="store" :size="15" color="var(--mn-green)" />
           {{ store.name }}
@@ -248,12 +263,12 @@ function backToToday(): void {
     <template v-if="store">
       <!-- Tab -->
       <div class="sa-pad">
-        <div class="sa-tabs">
+        <div class="sa-tabs mot-rise">
           <button
             v-for="t in TABS"
             :key="t.key"
             type="button"
-            class="sa-tab u-tap"
+            class="sa-tab u-tap mot-tap"
             :class="{ 'sa-tab--on': tab === t.key }"
             @click="tab = t.key"
           >
@@ -263,14 +278,14 @@ function backToToday(): void {
           </button>
         </div>
         <div class="sa-progress">
-          <span>已核对 {{ judged }}/{{ items.length }} 项</span>
-          <span class="sa-progress__issue" :class="{ 'is-on': issueCount > 0 }">问题 {{ issueCount }} 项</span>
+          <span>已核对 {{ countJudged }}/{{ items.length }} 项</span>
+          <span class="sa-progress__issue" :class="{ 'is-on': issueCount > 0 }">问题 {{ countIssue }} 项</span>
         </div>
       </div>
 
       <!-- 检查清单 -->
       <div class="sa-pad">
-        <div class="u-card sa-list">
+        <div class="u-card sa-list mot-stagger">
           <div v-for="i in items" :key="i.key" class="sa-item">
             <div class="sa-item__head">
               <div class="sa-item__text">
@@ -303,7 +318,7 @@ function backToToday(): void {
             <div class="sa-acts">
               <button
                 type="button"
-                class="sa-act sa-act--ok u-tap"
+                class="sa-act sa-act--ok u-tap mot-tap"
                 :class="{ 'sa-act--on': markOf(tab, i.key) === 'ok' }"
                 @click="setMark(tab, i.key, 'ok')"
               >
@@ -311,7 +326,7 @@ function backToToday(): void {
               </button>
               <button
                 type="button"
-                class="sa-act sa-act--bad u-tap"
+                class="sa-act sa-act--bad u-tap mot-tap"
                 :class="{ 'sa-act--on': markOf(tab, i.key) === 'issue' }"
                 @click="setMark(tab, i.key, 'issue')"
               >
@@ -331,14 +346,14 @@ function backToToday(): void {
           </div>
         </div>
 
-        <button type="button" class="sa-allok u-tap" @click="allOk">
+        <button type="button" class="sa-allok u-tap mot-tap" @click="allOk">
           <AppIcon name="check-circle" :size="14" /> 当前分类一键全部合格
         </button>
       </div>
 
       <!-- 备注 -->
       <div class="sa-pad">
-        <div class="u-card sa-remark">
+        <div class="u-card sa-remark mot-rise">
           <p class="sa-remark__cap">整体说明（选填）</p>
           <textarea
             v-model="remark"
@@ -353,7 +368,14 @@ function backToToday(): void {
 
     <template #footer>
       <div v-if="store" class="sa-bar u-safe-bottom">
-        <button type="button" class="sa-submit" :disabled="submitting" @click="submitAudit">
+        <button
+          type="button"
+          class="sa-submit mot-tap"
+          :class="{ 'mot-press-loading': submitting, 'mot-shake': auditShake }"
+          :disabled="submitting"
+          @animationend="auditShake = false"
+          @click="submitAudit"
+        >
           <AppIcon name="clipboard" :size="16" color="#fff" />
           {{ submitting ? '提交中…' : `提交整改单${totalIssue ? `（${totalIssue}）` : ''}` }}
         </button>
@@ -363,7 +385,7 @@ function backToToday(): void {
     <!-- 提交成功覆盖层 -->
     <div v-if="success" class="sa-mask" @click.self="closeSuccess">
       <div class="sa-success" role="dialog" aria-modal="true" aria-labelledby="sa-success-title">
-        <div class="sa-success__icon"><AppIcon name="check" :size="28" color="#fff" /></div>
+        <div class="sa-success__icon mot-pop"><AppIcon name="check" :size="28" color="#fff" /></div>
         <p id="sa-success-title" class="sa-success__title">整改单已生成</p>
         <p class="sa-success__id">单号 {{ ticket?.id }}</p>
         <div class="sa-success__card">

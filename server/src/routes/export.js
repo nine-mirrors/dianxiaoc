@@ -22,6 +22,7 @@ import {
   allVisits,
   listRectifications,
   listTickets,
+  findUserByRole,
 } from '../db.js'
 
 const router = newRouter()
@@ -75,26 +76,63 @@ function coverageOf(score) {
 
 router.get('/stores.csv', guard, (req, res) => {
   try {
-    const rows = (dash.storeRows || []).map((r) => {
-      const store = stores.find((s) => s.id === r.storeId)
-      const rid = store?.regionId || 'R_EAST'
-      const score = Number(r.score) || 0
-      return [
-        r.storeId,
-        r.storeName ?? store?.name ?? '',
-        REGION_NAME[rid] ?? rid,
-        score,
-        LEVEL_LABEL[r.level] ?? r.level ?? '',
-        `${oosRateOf(score)}%`,
-        `${coverageOf(score)}%`,
-        store?.alert ? '告警' : '正常',
-      ]
-    })
+    /* 可选 ?regionId=：传入则只导出该区域门店（经理端「区域门店健康分明细」）；
+       不传保持既有全量行为（向后兼容，ValueBoardView / StoreProfileView 不受影响）。 */
+    const regionId = String(req.query.regionId ?? '').trim()
+    const rows = (dash.storeRows || [])
+      .map((r) => {
+        const store = stores.find((s) => s.id === r.storeId)
+        const rid = store?.regionId || 'R_EAST'
+        if (regionId && rid !== regionId) return null
+        const score = Number(r.score) || 0
+        return [
+          r.storeId,
+          r.storeName ?? store?.name ?? '',
+          REGION_NAME[rid] ?? rid,
+          score,
+          LEVEL_LABEL[r.level] ?? r.level ?? '',
+          `${oosRateOf(score)}%`,
+          `${coverageOf(score)}%`,
+          store?.alert ? '告警' : '正常',
+        ]
+      })
+      .filter(Boolean)
     const csv = toCsv(['门店ID', '门店名', '区域', '健康分', '档位', '本周缺货率', '铺货率', '状态'], rows)
     sendCsv(res, 'stores.csv', csv)
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[export] stores.csv 导出失败：', e)
+    res.status(500).json({ code: 500, message: '导出失败，请稍后重试' })
+  }
+})
+
+/* ───────────────────────── 业代个人巡店记录（rep 自查导出） ───────────────────────── */
+
+/**
+ * GET /export/visits.csv —— 当前登录业代的巡店记录 / 健康分明细。
+ *
+ * 守卫：rep / admin。取数以**登录账号**为准（不信任 query），
+ *   rep 只能导出自己名下记录；admin 可传 ?repId= 指定业代（缺省取演示业代）。
+ */
+router.get('/visits.csv', requireRole('rep', 'admin'), (req, res) => {
+  try {
+    const role = req.account?.role
+    const repId =
+      role === 'admin'
+        ? String(req.query.repId ?? '').trim() || findUserByRole('rep')?.id || ''
+        : findUserByRole(role)?.id || ''
+    const rows = allVisits()
+      .filter((v) => !repId || v.repId === repId)
+      .sort((a, b) => String(b.visitedAt ?? '').localeCompare(String(a.visitedAt ?? '')))
+      .map((v) => {
+        const st = v.status === 'done' ? '已完成' : v.status === 'alert' ? '告警' : v.status === 'pending' ? '待巡' : v.status ?? ''
+        return [v.id, v.storeName ?? '', v.storeId ?? '', v.visitNo ?? '', v.visitedAt ?? '', Number(v.score) || 0, st]
+      })
+    const csv = toCsv(['巡店ID', '门店', '门店ID', '巡店序号', '巡店时间', '健康分', '状态'], rows)
+    sendCsv(res, 'visits.csv', csv)
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[export] visits.csv 导出失败：', e)
     res.status(500).json({ code: 500, message: '导出失败，请稍后重试' })
   }
 })

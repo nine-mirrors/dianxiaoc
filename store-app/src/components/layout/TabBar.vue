@@ -112,14 +112,14 @@ function go(tab: TabItem): void {
     <button
       v-for="t in tabs"
       :key="t.key"
-      class="tabbar__item"
+      class="tabbar__item mot-tap"
       :class="{ 'tabbar__item--on': active === t.key }"
       :aria-current="active === t.key ? 'page' : undefined"
       @click="go(t)"
     >
-      <span class="tabbar__icon">
+      <span class="tabbar__icon" :class="{ 'mot-pop': active === t.key }">
         <AppIcon :name="t.icon" :size="21" />
-        <span v-if="t.key === 'messages' && unread > 0" class="tabbar__badge">
+        <span v-if="t.key === 'messages' && unread > 0" class="tabbar__badge mot-pulse">
           {{ unread > 99 ? '99+' : unread }}
         </span>
       </span>
@@ -160,6 +160,13 @@ function go(tab: TabItem): void {
 .tabbar__item--on {
   color: var(--mn-green);
   font-weight: 700;
+}
+
+/* 当前项切换：图标 / 文字颜色过渡。
+   .mot-tap 已在按钮上提供按下 scale 反馈，这里只对子元素单独声明 color 过渡，
+   避免两条 transition 简写互相覆盖。图标微弹由模板上的 .mot-pop 负责。 */
+.tabbar__item > span {
+  transition: color var(--dur-fast) var(--ease-standard);
 }
 
 /* 图标外层：承载未读角标的定位上下文 */

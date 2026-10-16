@@ -282,22 +282,4 @@ const isButton = computed<boolean>(() => props.size === 'button')
     opacity: 1;
   }
 }
-
-/* ── 减弱动效：动画全停，静止为满滴（液面抬到盖过尖顶）+ 静态文案 ── */
-@media (prefers-reduced-motion: reduce) {
-  .mdl__wave {
-    animation: none;
-    transform: translateY(-40px);
-  }
-
-  .mdl__mini-wave {
-    animation: none;
-    transform: translateY(-7px);
-  }
-
-  .mdl__bubble {
-    animation: none;
-    opacity: 0;
-  }
-}
 </style>

@@ -20,6 +20,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
 import { useToast } from '@/composables/useToast'
 import { useHaptics } from '@/composables/useHaptics'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSessionStore } from '@/stores/session'
 import { aiBadgeOf, type AiSource } from '@/domain/constants'
 import { formatShortTime } from '@/utils/format'
@@ -159,6 +160,9 @@ const loading = ref<boolean>(true)
 /** 当前展开的条目 id */
 const expandedId = ref<string>('')
 
+/** 条目总数滚动（整数，落地精确回写） */
+const countTotal = useCountUp(() => total.value).text
+
 /** 拉取分类（失败保留空列表，不打断主流程） */
 async function loadCategories(): Promise<void> {
   try {
@@ -229,7 +233,7 @@ onBeforeUnmount(() => askController?.abort())
   <MobileLayout title="知识库" :back="true" :content-padding-bottom="24" @back="goBack">
     <div class="kb">
       <!-- ══ AI 知识助手 ══ -->
-      <div class="u-card kb-ask">
+      <div class="u-card kb-ask mot-rise">
         <div class="kb-ask__head">
           <span class="kb-ask__title">
             <AppIcon name="sparkles" :size="15" color="var(--ai-purple)" />
@@ -249,7 +253,7 @@ onBeforeUnmount(() => askController?.abort())
           />
           <button
             type="button"
-            class="kb-ask__send u-tap"
+            class="kb-ask__send u-tap mot-tap"
             :disabled="asking || !question.trim()"
             aria-label="提问"
             @click="askAi"
@@ -264,7 +268,7 @@ onBeforeUnmount(() => askController?.abort())
             v-for="q in QUICK_QUESTIONS"
             :key="q"
             type="button"
-            class="kb-quick u-tap"
+            class="kb-quick u-tap mot-tap"
             :disabled="asking"
             @click="askQuick(q)"
           >
@@ -273,14 +277,14 @@ onBeforeUnmount(() => askController?.abort())
         </div>
 
         <!-- 应答区 -->
-        <div v-if="asking || answer || askFailed" class="kb-ans">
+        <div v-if="asking || answer || askFailed" class="kb-ans mot-rise">
           <div class="kb-ans__head">
             <AiBadge v-if="!asking && answer && askSource" :text="askBadge.text" :tone="askBadge.tone" />
             <span v-else-if="asking" class="kb-ans__status">正在检索知识库…</span>
             <button
               v-if="answer && !asking"
               type="button"
-              class="kb-ans__copy u-tap"
+              class="kb-ans__copy u-tap mot-tap"
               @click="copyText(answer, '答复已复制')"
             >
               <AppIcon name="clipboard" :size="13" />
@@ -313,7 +317,7 @@ onBeforeUnmount(() => askController?.abort())
       </div>
 
       <!-- ══ 搜索 + 分类 ══ -->
-      <div class="kb-search">
+      <div class="kb-search mot-rise">
         <span class="kb-search__box">
           <AppIcon name="filter" :size="15" color="var(--text-3)" />
           <input
@@ -327,20 +331,20 @@ onBeforeUnmount(() => askController?.abort())
           <button
             v-if="keyword"
             type="button"
-            class="kb-search__clear u-tap"
+            class="kb-search__clear u-tap mot-tap"
             aria-label="清空关键词"
             @click="clearKeyword"
           >
             <AppIcon name="close" :size="14" />
           </button>
         </span>
-        <button type="button" class="kb-search__btn u-tap" @click="loadList">搜索</button>
+        <button type="button" class="kb-search__btn u-tap mot-tap" @click="loadList">搜索</button>
       </div>
 
-      <div class="kb-chips">
+      <div class="kb-chips mot-rise">
         <button
           type="button"
-          class="kb-chip u-tap"
+          class="kb-chip u-tap mot-tap"
           :class="{ 'kb-chip--on': !category }"
           @click="pickCategory('')"
         >
@@ -350,7 +354,7 @@ onBeforeUnmount(() => askController?.abort())
           v-for="c in categories"
           :key="c"
           type="button"
-          class="kb-chip u-tap"
+          class="kb-chip u-tap mot-tap"
           :class="{ 'kb-chip--on': category === c }"
           @click="pickCategory(c)"
         >
@@ -359,7 +363,7 @@ onBeforeUnmount(() => askController?.abort())
       </div>
 
       <!-- ══ 知识条目列表 ══ -->
-      <p v-if="!loading && items.length" class="kb-count">共 {{ total }} 条标准</p>
+      <p v-if="!loading && items.length" class="kb-count">共 {{ countTotal }} 条标准</p>
 
       <template v-if="loading">
         <SkeletonBlock v-for="i in 4" :key="i" height="72px" radius="12px" />
@@ -374,14 +378,14 @@ onBeforeUnmount(() => askController?.abort())
         @action="resetFilters"
       />
 
-      <div v-else class="kb-list">
+      <div v-else class="kb-list mot-stagger">
         <div
           v-for="it in items"
           :key="it.id"
           class="u-card kb-item"
           :class="{ 'kb-item--open': expandedId === it.id }"
         >
-          <button type="button" class="kb-item__head u-tap" @click="toggleItem(it.id)">
+          <button type="button" class="kb-item__head u-tap mot-tap" @click="toggleItem(it.id)">
             <span class="kb-item__cat">{{ it.category }}</span>
             <span class="kb-item__q u-ellipsis-2">{{ it.question }}</span>
             <AppIcon
@@ -393,7 +397,7 @@ onBeforeUnmount(() => askController?.abort())
             />
           </button>
 
-          <div v-if="expandedId === it.id" class="kb-item__body">
+          <div v-if="expandedId === it.id" class="kb-item__body mot-rise">
             <p class="kb-item__a">{{ it.answer }}</p>
             <div class="kb-item__foot">
               <span class="kb-item__tags">
@@ -401,7 +405,7 @@ onBeforeUnmount(() => askController?.abort())
               </span>
               <button
                 type="button"
-                class="kb-item__copy u-tap"
+                class="kb-item__copy u-tap mot-tap"
                 @click="copyText(it.answer, '标准答复已复制')"
               >
                 <AppIcon name="clipboard" :size="13" />

@@ -47,6 +47,8 @@ export const useSessionStore = defineStore('session', () => {
   const role = computed<Role>(() => user.value?.role ?? 'rep')
   /** 头像首字 */
   const avatarText = computed<string>(() => user.value?.avatarText ?? '—')
+  /** 当前用户自定义头像 URL（空串表示无，展示位回落首字） */
+  const avatarUrl = computed<string>(() => user.value?.avatarUrl ?? '')
   /** 角色中文名 */
   const roleLabel = computed<string>(() => {
     const map: Record<Role, string> = { rep: '业代', manager: '区域经理', owner: '店员/店主', admin: '平台管理员' }
@@ -75,6 +77,35 @@ export const useSessionStore = defineStore('session', () => {
     } catch {
       /* 隐私模式下 localStorage 不可用时静默忽略 */
     }
+  }
+
+  /**
+   * 更新当前用户头像并持久化。
+   *
+   * ★ 直接替换 user.value 引用 → Pinia 响应式生效，所有读取 session 的展示位
+   *   （侧栏 / 我的 / 顶栏 / 管理端）无需刷新页面即同步变化。
+   *
+   * @param url 后端返回的头像 URL（/uploads/...）
+   */
+  function setAvatar(url: string): void {
+    if (!user.value) return
+    user.value = { ...user.value, avatarUrl: url }
+    persist()
+  }
+
+  /**
+   * 更新当前用户个人资料（姓名 / 电话 / 辖区）并持久化。
+   *
+   * ★ 与 setAvatar 同思路：替换 user.value 引用 → Pinia 响应式生效，所有读取 session
+   *   的展示位（侧栏 / 我的 / 顶栏 / 管理端）无需刷新页面即同步变化。
+   *   传入后端返回的真实字段（含清空姓名时后端回落的原名），不在前端自行推断。
+   *
+   * @param patch 后端 PATCH /auth/profile 返回的字段子集（name / avatarText / phone / region）
+   */
+  function setProfile(patch: { name?: string; avatarText?: string; phone?: string; region?: string }): void {
+    if (!user.value) return
+    user.value = { ...user.value, ...patch }
+    persist()
   }
 
   /**
@@ -199,6 +230,7 @@ export const useSessionStore = defineStore('session', () => {
     role,
     roleLabel,
     avatarText,
+    avatarUrl,
     logged,
     token,
     home: homePath,
@@ -209,5 +241,7 @@ export const useSessionStore = defineStore('session', () => {
     restore,
     ensureRestored,
     fetchRoles,
+    setAvatar,
+    setProfile,
   }
 })

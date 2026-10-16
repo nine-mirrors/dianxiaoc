@@ -15,6 +15,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSessionStore } from '@/stores/session'
 import { resolveOwnerStore, getStoreProfile, getVisit, fetchForecast, createTicket } from '@/api/owner'
 import type { Forecast, ForecastLine } from '@/api/owner'
@@ -138,6 +139,10 @@ const simLines = computed<SimLine[]>(() => {
 
 const simTotalBottles = computed<number>(() => simLines.value.reduce((s, l) => s + l.suggest, 0))
 const realTotalBottles = computed<number>(() => forecast.value?.total?.algorithm ?? 0)
+
+/** 对比汇总的关键瓶数滚动（拖参数时模拟值平滑滚到新值；金额保持原格式不动） */
+const realBottlesUp = useCountUp(() => realTotalBottles.value, { suffix: ' 瓶' })
+const simBottlesUp = useCountUp(() => simTotalBottles.value, { suffix: ' 瓶' })
 
 /** 合计金额：只要有任意一行无单价就不出金额（避免用部分数据凑总数） */
 function totalAmountOf(useSim: boolean): number | null {
@@ -274,7 +279,7 @@ onMounted(() => {
     :content-padding-bottom="24"
     @back="router.push('/owner')"
   >
-    <div class="rs">
+    <div class="rs mot-stagger">
       <!-- 加载 -->
       <div v-if="loading" class="rs__loading">
         <MilkDropLoader size="card" label="正在算你的补货量" />
@@ -352,11 +357,11 @@ onMounted(() => {
         <section class="u-card rs__sum">
           <div class="rs__sum-row">
             <span>系统原始建议</span>
-            <b>{{ realTotalBottles }} 瓶<span v-if="realTotalAmount != null"> · ¥{{ realTotalAmount }}</span></b>
+            <b>{{ realBottlesUp.text }}<span v-if="realTotalAmount != null"> · ¥{{ realTotalAmount }}</span></b>
           </div>
           <div class="rs__sum-row rs__sum-row--sim">
             <span>调整后（模拟）</span>
-            <b>{{ simTotalBottles }} 瓶<span v-if="simTotalAmount != null"> · ¥{{ simTotalAmount }}</span></b>
+            <b>{{ simBottlesUp.text }}<span v-if="simTotalAmount != null"> · ¥{{ simTotalAmount }}</span></b>
           </div>
           <!-- 人话翻译：只按已有的瓶数与日均销量做除法，不做收益承诺；取不到则整行不渲染 -->
           <p v-if="sellDaysText" class="rs__sum-human">
@@ -366,7 +371,7 @@ onMounted(() => {
         </section>
 
         <!-- SKU 明细 -->
-        <section class="u-card rs__detail">
+        <section class="u-card rs__detail mot-stagger">
           <header class="rs__head">
             <h2><AppIcon name="package" :size="15" /> 每个货的建议</h2>
             <span>共 {{ simLines.length }} 个</span>
@@ -386,11 +391,11 @@ onMounted(() => {
                 调整后 <b>{{ l.suggest }}</b> 瓶<em v-if="l.suggest !== l.realSuggest">（模拟）</em>
               </span>
             </div>
-            <button v-if="l.steps.length" type="button" class="rs__sku-more u-tap" @click="toggleSteps(keyOf(l))">
+            <button v-if="l.steps.length" type="button" class="rs__sku-more u-tap mot-tap" @click="toggleSteps(keyOf(l))">
               看算法怎么算的
               <span class="rs__caret">{{ openSteps[keyOf(l)] ? '▴' : '▾' }}</span>
             </button>
-            <ol v-if="openSteps[keyOf(l)]" class="rs__steps">
+            <ol v-if="openSteps[keyOf(l)]" class="rs__steps mot-fade-up">
               <li v-for="(s, i) in l.steps" :key="i">{{ s }}</li>
             </ol>
           </div>
@@ -401,6 +406,7 @@ onMounted(() => {
           <button
             type="button"
             class="u-btn u-btn--primary rs__order u-tap"
+            :class="{ 'mot-press-loading': submitting }"
             :disabled="submitting || simTotalBottles <= 0"
             @click="submitOrder"
           >

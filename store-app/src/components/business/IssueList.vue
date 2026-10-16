@@ -94,7 +94,7 @@ function onSelectKey(issue: Issue, e: KeyboardEvent): void {
 </script>
 
 <template>
-  <div class="issue-list">
+  <div class="issue-list mot-stagger">
     <div v-if="!issues.length" class="issue-list__empty">本次巡店未发现明显问题，保持当前陈列水平。</div>
 
     <div
@@ -110,14 +110,17 @@ function onSelectKey(issue: Issue, e: KeyboardEvent): void {
       @click="onCardClick($event, issue)"
     >
       <div
-        class="issue__head u-tap"
+        class="issue__head u-tap mot-tap"
         role="button"
         tabindex="0"
         :aria-pressed="isLocked(issue)"
         :aria-label="`在标注图中定位：${issue.title}`"
         @keydown="onSelectKey(issue, $event)"
       >
-        <span class="issue__sev" :class="`issue__sev--${issue.severity}`">
+        <span
+          class="issue__sev"
+          :class="[`issue__sev--${issue.severity}`, { 'mot-pulse': issue.severity === 'severe' }]"
+        >
           {{ severityMeta(issue.severity).label }}
         </span>
         <p class="issue__title">{{ issue.title }}</p>
@@ -316,5 +319,11 @@ function onSelectKey(issue: Issue, e: KeyboardEvent): void {
 
 .issue__btn:active {
   background: var(--mn-green-light);
+}
+
+/* 容器级联入场结束后释放 transform：保留既有 hover / 锁定联动的 translateX 位移
+   （仅改 fill-mode，不锁 to 帧，入场动画仍完整播放） */
+.issue-list > .issue {
+  animation-fill-mode: backwards;
 }
 </style>

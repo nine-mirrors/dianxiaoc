@@ -349,10 +349,4 @@ const holeStyle = computed(() => {
   background: var(--grad-brand);
   color: #fff;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .tour__hole {
-    transition: none;
-  }
-}
 </style>

@@ -105,6 +105,8 @@ const showForm = ref(false)
 const editTarget = ref<BlacklistItem | null>(null)
 const form = reactive({ type: 'store' as BlacklistType, targetId: '', targetName: '', reason: '', level: 'mid' as BlacklistLevel })
 const submitting = ref(false)
+/** 表单校验失败时临时挂 .mot-shake（animationend 后由模板清空） */
+const formShake = ref(false)
 
 function openCreate(): void {
   editTarget.value = null
@@ -121,6 +123,7 @@ function openEdit(item: BlacklistItem): void {
 async function submitForm(): Promise<void> {
   if (submitting.value) return
   if (!form.targetId.trim() || !form.targetName.trim() || !form.reason.trim()) {
+    formShake.value = true
     toast.error('请完整填写标识、名称与原因')
     return
   }
@@ -172,6 +175,8 @@ async function loadSkuRules(): Promise<void> {
 const showSkuForm = ref(false)
 const skuForm = reactive({ skuCode: '', skuName: '', ruleType: 'ban_sale_below_cost' as SkuRuleType, note: '' })
 const skuSubmitting = ref(false)
+/** SKU 表单校验失败时临时挂 .mot-shake */
+const skuShake = ref(false)
 
 function openSkuCreate(): void {
   Object.assign(skuForm, { skuCode: '', skuName: '', ruleType: 'ban_sale_below_cost', note: '' })
@@ -181,6 +186,7 @@ function openSkuCreate(): void {
 async function submitSku(): Promise<void> {
   if (skuSubmitting.value) return
   if (!skuForm.skuCode.trim() || !skuForm.skuName.trim()) {
+    skuShake.value = true
     toast.error('请填写 SKU 编码与名称')
     return
   }
@@ -241,7 +247,7 @@ function fmtTime(iso: string): string {
         <button
           type="button"
           role="tab"
-          class="bl__tab"
+          class="bl__tab mot-tap"
           :class="{ 'is-active': tab === 'list' }"
           :aria-selected="tab === 'list'"
           @click="tab = 'list'"
@@ -251,7 +257,7 @@ function fmtTime(iso: string): string {
         <button
           type="button"
           role="tab"
-          class="bl__tab"
+          class="bl__tab mot-tap"
           :class="{ 'is-active': tab === 'sku' }"
           :aria-selected="tab === 'sku'"
           @click="tab = 'sku'"
@@ -300,7 +306,7 @@ function fmtTime(iso: string): string {
                   <th class="bl__col-op">操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="mot-stagger">
                 <tr v-for="it in visibleItems" :key="it.id">
                   <td><span class="bl__tag">{{ TYPE_LABEL[it.type] }}</span></td>
                   <td>
@@ -316,8 +322,8 @@ function fmtTime(iso: string): string {
                     </span>
                   </td>
                   <td class="bl__col-op">
-                    <button type="button" class="bl__op" @click="openEdit(it)">编辑</button>
-                    <button type="button" class="bl__op" :class="it.status === 'active' ? 'bl__op--warn' : 'bl__op--ok'" @click="toggle(it)">
+                    <button type="button" class="bl__op mot-tap" @click="openEdit(it)">编辑</button>
+                    <button type="button" class="bl__op mot-tap" :class="it.status === 'active' ? 'bl__op--warn' : 'bl__op--ok'" @click="toggle(it)">
                       {{ it.status === 'active' ? '停用' : '启用' }}
                     </button>
                   </td>
@@ -330,8 +336,8 @@ function fmtTime(iso: string): string {
           <nav class="bl__pager" aria-label="黑名单分页">
             <span class="bl__page-info">共 {{ total }} 条 · 第 {{ page }} / {{ totalPages }} 页</span>
             <div class="bl__page-btns">
-              <button type="button" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-              <button type="button" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+              <button type="button" class="mot-tap" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+              <button type="button" class="mot-tap" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
             </div>
           </nav>
         </template>
@@ -361,7 +367,7 @@ function fmtTime(iso: string): string {
                   <th class="bl__col-op">操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="mot-stagger">
                 <tr v-for="r in skuRules" :key="r.id">
                   <td class="bl__mono">{{ r.skuCode }}</td>
                   <td><b class="bl__name">{{ r.skuName }}</b></td>
@@ -373,7 +379,7 @@ function fmtTime(iso: string): string {
                     </span>
                   </td>
                   <td class="bl__col-op">
-                    <button type="button" class="bl__op" :class="r.status === 'active' ? 'bl__op--warn' : 'bl__op--ok'" @click="toggleSku(r)">
+                    <button type="button" class="bl__op mot-tap" :class="r.status === 'active' ? 'bl__op--warn' : 'bl__op--ok'" @click="toggleSku(r)">
                       {{ r.status === 'active' ? '停用' : '启用' }}
                     </button>
                   </td>
@@ -388,14 +394,14 @@ function fmtTime(iso: string): string {
 
     <!-- ══ 黑名单 新增/编辑 ══ -->
     <div v-if="showForm" class="bl__mask" @click.self="showForm = false">
-      <div class="bl__modal u-card" role="dialog" aria-modal="true" :aria-label="editTarget ? '编辑黑名单' : '新增黑名单'">
+      <div class="bl__modal u-card mot-rise" role="dialog" aria-modal="true" :aria-label="editTarget ? '编辑黑名单' : '新增黑名单'">
         <header class="bl__modal-head">
           <h3>{{ editTarget ? '编辑黑名单条目' : '新增黑名单条目' }}</h3>
-          <button type="button" class="bl__close u-tap" aria-label="关闭" @click="showForm = false">
+          <button type="button" class="bl__close u-tap mot-tap" aria-label="关闭" @click="showForm = false">
             <AppIcon name="close" :size="18" />
           </button>
         </header>
-        <div class="bl__form">
+        <div class="bl__form" :class="{ 'mot-shake': formShake }" @animationend="formShake = false">
           <label class="bl__field">
             <span>管控类型</span>
             <select v-model="form.type">
@@ -426,7 +432,7 @@ function fmtTime(iso: string): string {
         </div>
         <footer class="bl__modal-foot">
           <button type="button" class="u-btn u-btn--ghost" @click="showForm = false">取消</button>
-          <button type="button" class="u-btn u-btn--primary" :disabled="submitting" @click="submitForm">
+          <button type="button" class="u-btn u-btn--primary" :class="{ 'mot-press-loading': submitting }" :disabled="submitting" @click="submitForm">
             {{ submitting ? '提交中…' : editTarget ? '保存修改' : '确认新增' }}
           </button>
         </footer>
@@ -435,14 +441,14 @@ function fmtTime(iso: string): string {
 
     <!-- ══ SKU 规则 新增 ══ -->
     <div v-if="showSkuForm" class="bl__mask" @click.self="showSkuForm = false">
-      <div class="bl__modal u-card" role="dialog" aria-modal="true" aria-label="新增 SKU 规则">
+      <div class="bl__modal u-card mot-rise" role="dialog" aria-modal="true" aria-label="新增 SKU 规则">
         <header class="bl__modal-head">
           <h3>新增 SKU 规则</h3>
-          <button type="button" class="bl__close u-tap" aria-label="关闭" @click="showSkuForm = false">
+          <button type="button" class="bl__close u-tap mot-tap" aria-label="关闭" @click="showSkuForm = false">
             <AppIcon name="close" :size="18" />
           </button>
         </header>
-        <div class="bl__form">
+        <div class="bl__form" :class="{ 'mot-shake': skuShake }" @animationend="skuShake = false">
           <label class="bl__field">
             <span>SKU 编码 *</span>
             <input v-model="skuForm.skuCode" placeholder="如 TLS-250" />
@@ -464,7 +470,7 @@ function fmtTime(iso: string): string {
         </div>
         <footer class="bl__modal-foot">
           <button type="button" class="u-btn u-btn--ghost" @click="showSkuForm = false">取消</button>
-          <button type="button" class="u-btn u-btn--primary" :disabled="skuSubmitting" @click="submitSku">
+          <button type="button" class="u-btn u-btn--primary" :class="{ 'mot-press-loading': skuSubmitting }" :disabled="skuSubmitting" @click="submitSku">
             {{ skuSubmitting ? '提交中…' : '确认新增' }}
           </button>
         </footer>
@@ -510,6 +516,14 @@ function fmtTime(iso: string): string {
   background: var(--bg-card);
   color: var(--text-1);
   box-shadow: var(--sh-1);
+}
+
+/* Tab 挂 .mot-tap 后，保留既有背景/文字过渡并补上按压的 transform 过渡 */
+.bl__tab.mot-tap {
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
 }
 
 /* ── 卡片 ── */
@@ -862,12 +876,6 @@ function fmtTime(iso: string): string {
 @media (max-width: 720px) {
   .bl__form {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bl__tab {
-    transition: none;
   }
 }
 </style>

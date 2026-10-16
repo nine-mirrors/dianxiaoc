@@ -19,6 +19,7 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useToast } from '@/composables/useToast'
 import { useHaptics } from '@/composables/useHaptics'
+import { useCountUp } from '@/composables/useCountUp'
 import { startCamera, stopCamera } from '@/composables/useCamera'
 import { useSessionStore } from '@/stores/session'
 import { getStore, getTodayRoute, getTasks, getVisits, getVisit } from '@/api'
@@ -117,6 +118,11 @@ const nearExpiry = computed<Row[]>(() => rows.value.filter((r) => {
   return n != null && n <= 30
 }))
 
+/* ── 概览数字滚动：盘点 SKU / 合计库存 / 临期过期（整数，落地精确回写） ── */
+const countRows = useCountUp(() => rows.value.length).text
+const countQty = useCountUp(() => totalQty.value).text
+const countWarn = useCountUp(() => nearExpiry.value.length).text
+
 function expiryTag(expireAt: string): { text: string; tone: 'danger' | 'warning' } | null {
   const n = daysLeft(expireAt)
   if (n == null) return null
@@ -191,6 +197,14 @@ function removeRow(id: string): void {
 const manualOpen = ref<boolean>(false)
 const manualCode = ref<string>('')
 const manualName = ref<string>('')
+/** 手动添加校验失败的一次性抖动（纯 transform；animationend 复位，保证可重播） */
+const manualShake = ref<boolean>(false)
+function triggerManualShake(): void {
+  manualShake.value = false
+  window.requestAnimationFrame(() => {
+    manualShake.value = true
+  })
+}
 
 function openManual(): void {
   manualCode.value = ''
@@ -203,6 +217,7 @@ function confirmManual(): void {
   const name = manualName.value.trim()
   if (!code && !name) {
     toast.info('请至少填写 SKU 编码或名称')
+    triggerManualShake()
     return
   }
   rows.value = [...rows.value, newRow({ skuCode: code, skuName: name || '未命名 SKU' })]
@@ -360,7 +375,7 @@ onBeforeUnmount(() => stopScan())
   <MobileLayout title="库存盘点" :back="true" :content-padding-bottom="96" @back="router.push('/rep/today')">
     <div class="iv-pad">
       <SkeletonBlock v-if="loading" height="70px" radius="12px" />
-      <div v-else-if="store" class="u-card iv-store">
+      <div v-else-if="store" class="u-card iv-store mot-rise">
         <p class="iv-store__name">
           <AppIcon name="store" :size="15" color="var(--mn-green)" />
           {{ store.name }}
@@ -373,25 +388,25 @@ onBeforeUnmount(() => stopScan())
     <template v-if="store">
       <!-- 概览 + 操作 -->
       <div class="iv-pad">
-        <div class="u-card iv-summary">
+        <div class="u-card iv-summary mot-rise">
           <div class="iv-summary__cell">
-            <b>{{ rows.length }}</b>
+            <b>{{ countRows }}</b>
             <span>盘点 SKU</span>
           </div>
           <div class="iv-summary__cell">
-            <b>{{ totalQty }}</b>
+            <b>{{ countQty }}</b>
             <span>合计库存（瓶）</span>
           </div>
           <div class="iv-summary__cell" :class="{ 'is-warn': nearExpiry.length > 0 }">
-            <b>{{ nearExpiry.length }}</b>
+            <b>{{ countWarn }}</b>
             <span>临期 / 过期</span>
           </div>
         </div>
-        <div class="iv-tools">
-          <button type="button" class="iv-tool iv-tool--primary u-tap" @click="openScan">
+        <div class="iv-tools mot-rise">
+          <button type="button" class="iv-tool iv-tool--primary u-tap mot-tap" @click="openScan">
             <AppIcon name="compare" :size="14" color="#fff" /> 扫码添加
           </button>
-          <button type="button" class="iv-tool u-tap" @click="openManual">
+          <button type="button" class="iv-tool u-tap mot-tap" @click="openManual">
             <AppIcon name="plus" :size="14" /> 手动添加
           </button>
         </div>
@@ -400,14 +415,14 @@ onBeforeUnmount(() => stopScan())
       <!-- SKU 行 -->
       <div class="iv-pad">
         <SkeletonBlock v-if="loading" height="120px" radius="12px" />
-        <div v-else-if="rows.length" class="iv-rows">
+        <div v-else-if="rows.length" class="iv-rows mot-stagger">
           <div v-for="r in rows" :key="r.id" class="u-card iv-row">
             <div class="iv-row__head">
               <div class="iv-row__name">
                 <p class="iv-row__title">{{ r.skuName || '未命名 SKU' }}</p>
                 <p v-if="r.skuCode" class="iv-row__code">{{ r.skuCode }}</p>
               </div>
-              <button type="button" class="iv-row__del u-tap" aria-label="删除该行" @click="removeRow(r.id)">
+              <button type="button" class="iv-row__del u-tap mot-tap" aria-label="删除该行" @click="removeRow(r.id)">
                 <AppIcon name="trash" :size="15" color="var(--text-3)" />
               </button>
             </div>
@@ -416,17 +431,17 @@ onBeforeUnmount(() => stopScan())
               <div class="iv-stepper">
                 <span class="iv-stepper__cap">库存量</span>
                 <div class="iv-stepper__body">
-                  <button type="button" class="iv-step u-tap" aria-label="减少库存" @click="stepQty(r, 'qty', -1)">−</button>
+                  <button type="button" class="iv-step u-tap mot-tap" aria-label="减少库存" @click="stepQty(r, 'qty', -1)">−</button>
                   <input v-model.number="r.qty" class="iv-stepper__input" type="number" inputmode="numeric" min="0" />
-                  <button type="button" class="iv-step u-tap" aria-label="增加库存" @click="stepQty(r, 'qty', 1)">+</button>
+                  <button type="button" class="iv-step u-tap mot-tap" aria-label="增加库存" @click="stepQty(r, 'qty', 1)">+</button>
                 </div>
               </div>
               <div class="iv-stepper">
                 <span class="iv-stepper__cap">货架量</span>
                 <div class="iv-stepper__body">
-                  <button type="button" class="iv-step u-tap" aria-label="减少货架量" @click="stepQty(r, 'shelfQty', -1)">−</button>
+                  <button type="button" class="iv-step u-tap mot-tap" aria-label="减少货架量" @click="stepQty(r, 'shelfQty', -1)">−</button>
                   <input v-model.number="r.shelfQty" class="iv-stepper__input" type="number" inputmode="numeric" min="0" />
-                  <button type="button" class="iv-step u-tap" aria-label="增加货架量" @click="stepQty(r, 'shelfQty', 1)">+</button>
+                  <button type="button" class="iv-step u-tap mot-tap" aria-label="增加货架量" @click="stepQty(r, 'shelfQty', 1)">+</button>
                 </div>
               </div>
             </div>
@@ -463,9 +478,9 @@ onBeforeUnmount(() => stopScan())
       </div>
 
       <!-- 上次盘点 -->
-      <div v-if="lastInventory" class="iv-pad">
+      <div v-if="lastInventory" class="iv-pad mot-rise">
         <p class="iv-sec-title">上次盘点 · {{ formatShortTime(lastInventory.createdAt) }} · {{ lastInventory.count }} 项</p>
-        <div class="u-card iv-last">
+        <div class="u-card iv-last mot-stagger">
           <div v-for="(it, i) in lastInventory.items" :key="i" class="iv-last__row">
             <span class="iv-last__name u-ellipsis">{{ it.skuName }}</span>
             <span class="iv-last__num">{{ it.qty }} / {{ it.shelfQty }}</span>
@@ -476,7 +491,13 @@ onBeforeUnmount(() => stopScan())
 
     <template #footer>
       <div v-if="store" class="iv-bar u-safe-bottom">
-        <button type="button" class="iv-submit" :disabled="submitting || !rows.length" @click="submit">
+        <button
+          type="button"
+          class="iv-submit mot-tap"
+          :class="{ 'mot-press-loading': submitting }"
+          :disabled="submitting || !rows.length"
+          @click="submit"
+        >
           <AppIcon name="check" :size="17" color="#fff" />
           {{ submitting ? '提交中…' : '提交盘点' }}
         </button>
@@ -485,13 +506,20 @@ onBeforeUnmount(() => stopScan())
 
     <!-- 手动录入弹层 -->
     <div v-if="manualOpen" class="iv-mask" @click.self="manualOpen = false">
-      <div class="iv-dialog" role="dialog" aria-modal="true" aria-labelledby="iv-manual-title">
+      <div
+        class="iv-dialog"
+        :class="{ 'mot-shake': manualShake }"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="iv-manual-title"
+        @animationend="manualShake = false"
+      >
         <p id="iv-manual-title" class="iv-dialog__title">手动添加 SKU</p>
         <input v-model="manualCode" class="iv-input" type="text" placeholder="SKU 编码（如 TLS-250）" />
         <input v-model="manualName" class="iv-input" type="text" placeholder="SKU 名称（如 特仑苏纯牛奶 250ml）" />
         <div class="iv-dialog__btns">
-          <button type="button" class="iv-dbtn u-tap" @click="manualOpen = false">取消</button>
-          <button type="button" class="iv-dbtn iv-dbtn--primary u-tap" @click="confirmManual">添加</button>
+          <button type="button" class="iv-dbtn u-tap mot-tap" @click="manualOpen = false">取消</button>
+          <button type="button" class="iv-dbtn iv-dbtn--primary u-tap mot-tap" @click="confirmManual">添加</button>
         </div>
       </div>
     </div>
@@ -507,12 +535,12 @@ onBeforeUnmount(() => stopScan())
     <!-- 提交成功 -->
     <div v-if="success" class="iv-mask" @click.self="closeSuccess">
       <div class="iv-dialog iv-dialog--center" role="dialog" aria-modal="true" aria-labelledby="iv-ok-title">
-        <div class="iv-ok__icon"><AppIcon name="check" :size="26" color="#fff" /></div>
+        <div class="iv-ok__icon mot-pop"><AppIcon name="check" :size="26" color="#fff" /></div>
         <p id="iv-ok-title" class="iv-ok__title">盘点已提交</p>
         <p class="iv-ok__sub">{{ store?.name }} · 共 {{ submittedCount }} 项明细</p>
         <div class="iv-dialog__btns">
-          <button type="button" class="iv-dbtn u-tap" @click="closeSuccess">继续盘点</button>
-          <button type="button" class="iv-dbtn iv-dbtn--primary u-tap" @click="backToToday">返回今日巡店</button>
+          <button type="button" class="iv-dbtn u-tap mot-tap" @click="closeSuccess">继续盘点</button>
+          <button type="button" class="iv-dbtn iv-dbtn--primary u-tap mot-tap" @click="backToToday">返回今日巡店</button>
         </div>
       </div>
     </div>

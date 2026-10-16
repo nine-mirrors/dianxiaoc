@@ -15,6 +15,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import MilkDropLoader from '@/components/common/MilkDropLoader.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSpeech } from '@/composables/useSpeech'
 import { useSessionStore } from '@/stores/session'
 import { streamWeeklyReport } from '@/api/insights'
@@ -92,6 +93,41 @@ const sourceLabel = computed<string>(() =>
       ? '来自标准答案库（本次未调用大模型）'
       : '暂未标注来源',
 )
+
+/* ═══════════════ 动效：侧栏 KPI 数字滚动 ═══════════════
+   countup 只负责滚到目标值，展示文本仍按原始值的小数位与 % 后缀还原，
+   保证与改造前逐字一致，口径与文案不变。 */
+
+/** 原值的小数位（最多 2 位） */
+function decimalsOf(n: number): number {
+  if (!Number.isFinite(n)) return 0
+  const s = String(n)
+  const dot = s.indexOf('.')
+  return dot < 0 ? 0 : Math.min(2, s.length - dot - 1)
+}
+
+/** 解析 KPI 文本数值（允许「6.6%」这类带 % 值；非数值返回 null） */
+function parseKpiNum(raw: unknown): number | null {
+  const text = String(raw ?? '').trim()
+  if (!text) return null
+  const n = Number.parseFloat(text.replace('%', ''))
+  return Number.isFinite(n) ? n : null
+}
+
+/** KPI 池：v-for 无法逐个调用 composable，按位置预置一组（封顶 6 个，覆盖概览 KPI） */
+const kpiCounts = Array.from({ length: 6 }, (_, i) =>
+  useCountUp(() => parseKpiNum(overview.value?.kpis?.[i]?.value) ?? 0, { decimals: 0 }),
+)
+
+/** KPI 展示文本：滚动中保留原格式（小数位 + % 后缀），非数值原样返回 */
+function kpiCountText(k: KpiExt, i: number): string {
+  const c = kpiCounts[i]
+  if (!c) return k.value
+  const raw = String(k.value ?? '').trim()
+  const n = parseKpiNum(raw)
+  if (n === null) return k.value
+  return `${c.value.value.toFixed(decimalsOf(n))}${raw.includes('%') ? '%' : ''}`
+}
 
 /** 取 KPI 摘要（真实数，与经理看板同源） */
 async function loadOverview(): Promise<void> {
@@ -215,7 +251,7 @@ onBeforeUnmount(() => {
 
     <div class="wr__body">
       <!-- 顶部工具条：区域选择 + 生成 -->
-      <section class="u-card wr__bar">
+      <section class="u-card wr__bar mot-fade-up">
         <div class="wr__bar-left">
           <AppIcon name="clipboard" :size="16" color="var(--mn-green)" />
           <h2 class="wr__bar-title">AI 经营周报</h2>
@@ -232,7 +268,7 @@ onBeforeUnmount(() => {
         </button>
       </section>
 
-      <div class="wr__grid">
+      <div class="wr__grid mot-stagger">
         <!-- 主体：周报正文 -->
         <section class="u-card wr__main">
           <header class="wr__main-head">
@@ -254,7 +290,7 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- 正文：视觉分节 -->
-          <div v-else class="wr__content">
+          <div v-else class="wr__content mot-stagger">
             <p v-if="leadIn" class="wr__lead">{{ leadIn }}</p>
 
             <template v-if="sections.length">
@@ -307,10 +343,10 @@ onBeforeUnmount(() => {
           <div v-if="kpiLoading" class="wr__side-loading">
             <SkeletonBlock v-for="i in 4" :key="i" height="52px" radius="10px" />
           </div>
-          <ul v-else-if="overview?.kpis?.length" class="wr__kpi-list">
-            <li v-for="k in overview.kpis" :key="k.key" class="wr__kpi">
+          <ul v-else-if="overview?.kpis?.length" class="wr__kpi-list mot-stagger">
+            <li v-for="(k, i) in overview.kpis" :key="k.key" class="wr__kpi">
               <span class="wr__kpi-label">{{ k.label }}</span>
-              <span class="wr__kpi-value">{{ k.value }}</span>
+              <span class="wr__kpi-value">{{ kpiCountText(k, i) }}</span>
               <span
                 class="wr__kpi-delta"
                 :class="k.trend === 'down' ? 'is-down' : k.trend === 'flat' ? 'is-flat' : 'is-up'"

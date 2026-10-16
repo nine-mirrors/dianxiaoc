@@ -4,11 +4,12 @@
  *
  * ★ S2 展示「48 → 80 (+32)」整改闭环核心证据。
  */
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import HealthBadge from '@/components/common/HealthBadge.vue'
 import { levelOf } from '@/domain/constants'
 import { haversineKm, fmtKm } from '@/domain/geo'
+import { useStoreFavorites } from '@/composables/useStoreFavorites'
 import type { RouteStore } from '@/types'
 
 interface Props {
@@ -60,6 +61,30 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
   const delta = (s.lastScore ?? 0) - (s.prevScore ?? 0)
   return { from: s.prevScore!, to: s.lastScore, delta }
 })
+
+/* ── 收藏 / 重点关注（按登录账号隔离，与「我的」页列表同源） ── */
+const favorites = useStoreFavorites()
+// 卡片出现即确保收藏状态已加载（共享单例，多张卡只发一次请求）
+onMounted(() => {
+  void favorites.load()
+})
+/** 本店是否已收藏 */
+const isFav = computed<boolean>(() => favorites.isFavorite(props.item.store?.id ?? ''))
+/** 切换后的轻量回弹动画（scale 弹一下，不常驻） */
+const favPop = ref<boolean>(false)
+function onToggleFav(): void {
+  const store = props.item.store
+  if (!store) return
+  void favorites.toggle({ id: store.id, name: store.name })
+  // 先卸类再挂，保证连续点击每次都能重新触发动画
+  favPop.value = false
+  window.requestAnimationFrame(() => {
+    favPop.value = true
+    window.setTimeout(() => {
+      favPop.value = false
+    }, 240)
+  })
+}
 </script>
 
 <template>
@@ -76,6 +101,20 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
         <div class="store-card__title-row">
           <p class="store-card__name u-ellipsis">{{ item.store?.name }}</p>
           <span v-if="item.isReview" class="store-card__review">★整改复查</span>
+          <button
+            type="button"
+            class="store-card__fav mot-tap"
+            :class="{ 'is-on': isFav, 'is-pop': favPop }"
+            :aria-pressed="isFav ? 'true' : 'false'"
+            :aria-label="isFav ? `取消收藏门店：${item.store?.name}` : `收藏门店：${item.store?.name}`"
+            @click.stop="onToggleFav"
+          >
+            <AppIcon
+              :name="isFav ? 'star-filled' : 'star'"
+              :size="18"
+              :color="isFav ? 'var(--gold)' : 'var(--text-3)'"
+            />
+          </button>
         </div>
         <p class="store-card__meta">
           {{ item.store?.typeLabel }} · 距起点 {{ km }}km
@@ -193,6 +232,46 @@ const improve = computed<{ from: number; to: number; delta: number }>(() => {
   color: var(--ai-purple);
   font-size: 10px;
   font-weight: 600;
+}
+
+/* 收藏星标：贴右对齐，热区 ≥40px（移动端可点） */
+.store-card__fav {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: -8px -6px -8px auto;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.store-card__fav:focus-visible {
+  outline: 2px solid var(--mn-green);
+  outline-offset: 1px;
+}
+
+/* 收藏成功：星形 scale 回弹一次（轻量，不常驻） */
+@keyframes store-fav-pop {
+  0% {
+    transform: scale(0.72);
+  }
+
+  60% {
+    transform: scale(1.18);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.store-card__fav.is-pop :deep(svg) {
+  animation: store-fav-pop var(--dur-base) var(--ease-decel);
 }
 
 .store-card__meta,

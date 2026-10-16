@@ -21,6 +21,7 @@ import { useHaptics } from '@/composables/useHaptics'
 import { useDemoStore } from '@/stores/demo'
 import { useSessionStore } from '@/stores/session'
 import { useLoadingSteps } from '@/composables/useLoadingSteps'
+import { useCountUp } from '@/composables/useCountUp'
 import { aiBadgeOf, type AiSource } from '@/domain/constants'
 import { onRealtime, offRealtime } from '@/realtime/client'
 import type { Diagnosis, Ticket, Step } from '@/types'
@@ -216,6 +217,9 @@ const findings = computed<string[]>(() => {
 const restock = computed(() => diagnosis.value?.plan.restock ?? [])
 const totalBottles = computed<number>(() => diagnosis.value?.plan.totalBottles ?? restock.value.reduce((s, r) => s + r.bottles, 0))
 const totalAmount = computed<number>(() => diagnosis.value?.plan.totalAmount ?? restock.value.reduce((s, r) => s + r.amount, 0))
+
+/** 关键数字滚动：合计瓶数（整数，结果页与成功页共用）；金额保持原有格式不动 */
+const bottlesUp = useCountUp(() => totalBottles.value)
 
 /* ═══════════════ 一键订货 ═══════════════ */
 
@@ -422,14 +426,14 @@ onUnmounted(() => {
         </button>
         <button type="button" class="p6__btn p6__btn--ghost mot-tap" @click="openOrders">
           <AppIcon name="clipboard" :size="16" />
-          我的订单<span v-if="myOrders.length">（{{ myOrders.length }}）</span>
+          我的订单<span v-if="myOrders.length" class="mot-pulse">（{{ myOrders.length }}）</span>
         </button>
 
         <!-- 快捷入口：补货模拟 / 经营报告 / 懂行知识库 -->
         <div class="p6__quick">
           <button
             type="button"
-            class="p6__quick-item u-tap"
+            class="p6__quick-item u-tap mot-tap mot-hover-lift"
             @click="router.push('/owner/restock')"
           >
             <span class="p6__quick-icon"><AppIcon name="package" :size="18" /></span>
@@ -441,7 +445,7 @@ onUnmounted(() => {
           </button>
           <button
             type="button"
-            class="p6__quick-item u-tap"
+            class="p6__quick-item u-tap mot-tap mot-hover-lift"
             @click="router.push('/owner/knowledge')"
           >
             <span class="p6__quick-icon"><AppIcon name="clipboard" :size="18" /></span>
@@ -454,7 +458,7 @@ onUnmounted(() => {
     </div>
 
     <!-- ══ 我的订单（店主最关心：订了什么、接了没） ══ -->
-    <div v-else-if="stage === 'orders'" class="p6-orders">
+    <div v-else-if="stage === 'orders'" class="p6-orders mot-stagger">
       <p class="p6-orders__title">我的订单</p>
       <p v-if="ordersLoading" class="p6-orders__empty" aria-live="polite">正在加载…</p>
 
@@ -496,7 +500,7 @@ onUnmounted(() => {
     </div>
 
     <!-- ══ ② 轻量拍照 ══ -->
-    <div v-else-if="stage === 'capture'" class="p6-capture">
+    <div v-else-if="stage === 'capture'" class="p6-capture mot-rise">
       <p class="p6-cap__tip">对着冷柜拍一张，剩下的交给 AI</p>
       <div class="p6-cap__photo">
         <SmartImage :src="shownPhoto" alt="冷柜照片" />
@@ -515,7 +519,7 @@ onUnmounted(() => {
     </div>
 
     <!-- ══ ③ 轻量结果 ══ -->
-    <div v-else-if="stage === 'result' && diagnosis" class="p6-result">
+    <div v-else-if="stage === 'result' && diagnosis" class="p6-result mot-stagger">
       <div class="p6-res__img">
         <!-- O-2：对店主关闭术语图例；框上的内部标签在本页 :deep 隐藏，
              只保留下方两句口语说明（不改 AnnotatedImage 组件本身） -->
@@ -573,7 +577,7 @@ onUnmounted(() => {
         <div v-if="!restock.length" class="p6-res__empty">目前货挺齐，暂时不用补</div>
         <div class="p6-res__total">
           <span>合计</span>
-          <b>{{ totalBottles }} 瓶 · ¥{{ totalAmount }}</b>
+          <b>{{ bottlesUp.text }} 瓶 · ¥{{ totalAmount }}</b>
         </div>
       </section>
 
@@ -584,9 +588,9 @@ onUnmounted(() => {
     </div>
 
     <!-- ══ ④ 订货成功 ══ -->
-    <div v-else-if="stage === 'success' && ticket" class="p6-success">
+    <div v-else-if="stage === 'success' && ticket" class="p6-success mot-rise">
       <div class="p6-ok">
-        <span class="p6-ok__icon"><AppIcon name="check" :size="30" color="#fff" /></span>
+        <span class="p6-ok__icon mot-pop"><AppIcon name="check" :size="30" color="#fff" /></span>
         <p class="p6-ok__title">订货成功</p>
         <p class="p6-ok__sub">货马上安排，稍等就好</p>
       </div>
@@ -602,7 +606,7 @@ onUnmounted(() => {
         </div>
         <div class="p6-ok__total">
           <span>合计</span>
-          <b>{{ ticket.totalBottles }} 瓶 · ¥{{ ticket.totalAmount }}</b>
+          <b>{{ bottlesUp.text }} 瓶 · ¥{{ ticket.totalAmount }}</b>
         </div>
       </div>
 
@@ -628,7 +632,7 @@ onUnmounted(() => {
       </div>
       <div v-else-if="stage === 'result' && diagnosis" class="p6-cta-bar">
         <!-- O-1：先弹轻确认单，不再一点就直接下单 -->
-        <button type="button" class="p6__btn p6__bar-btn mot-tap" :disabled="ordering" @click="openConfirm">
+        <button type="button" class="p6__btn p6__bar-btn mot-tap" :class="{ 'mot-press-loading': ordering }" :disabled="ordering" @click="openConfirm">
           {{ ordering ? '下单中…' : `一键订货 · ${totalBottles} 瓶` }}
         </button>
       </div>
@@ -1025,14 +1029,6 @@ onUnmounted(() => {
 
   50% {
     opacity: 0;
-  }
-}
-
-/* 尊重系统「减少动态效果」：光标不闪、旋转环停转（等待态仍有「AI 正在看…」文案承载） */
-@media (prefers-reduced-motion: reduce) {
-  .p6-res__caret,
-  .p6__spinner {
-    animation: none;
   }
 }
 

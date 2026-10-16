@@ -554,18 +554,4 @@ function skip(): void {
 .chat__send:disabled {
   opacity: 0.45;
 }
-
-/* WCAG：减弱动态效果时，打字光标静止常显（仍提示输出中），思考中三点静止；
-   仅降级动画，不动逻辑与正常态。 */
-@media (prefers-reduced-motion: reduce) {
-  .chat__caret {
-    animation: none;
-    opacity: 1;
-  }
-
-  .chat__bubble--thinking i {
-    animation: none;
-    opacity: 1;
-  }
-}
 </style>

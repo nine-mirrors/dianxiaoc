@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { loadEnv } from './env.js'
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { findUserByRole } from './db.js'
+import { getAvatar, setAvatar, getProfile } from './ext.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ACCOUNTS_FILE = join(__dirname, '../data/accounts.json')
@@ -144,13 +145,58 @@ export function sign(username, ttlMs = TOKEN_TTL_MS) {
 export function issueSession(account) {
   const user = findUserByRole(account.role)
   if (!user) return null
+  /* 登录账号维度的个人资料覆盖：
+     - avatarUrl：账号头像（空串无头像）
+     - name：若在「编辑资料」里填过姓名则以之为准，否则回落到账号绑定用户的原姓名
+     - phone / region：个人资料自带字段（未填为空串，便于前端如实展示「未填写」）
+     这样登录响应与 GET /auth/me 都能一并带出，刷新后资料不丢。 */
+  const profile = getProfile(account.username)
+  const displayName = profile.name || user.name
   return {
     token: sign(account.username),
-    user,
+    user: {
+      ...user,
+      name: displayName,
+      avatarText: displayName.slice(0, 1) || user.avatarText,
+      avatarUrl: getAvatar(account.username),
+      phone: profile.phone,
+      region: profile.region,
+    },
     role: account.role,
     home: ROLE_HOME[account.role] ?? '/rep/today',
     scope: ROLE_SCOPE[account.role] ?? [],
   }
+}
+
+/* ───────────────────────────── 头像（按登录账号维度） ───────────────────────────── */
+
+/** 取某登录账号当前头像 URL（无则空串） */
+export function avatarUrlOf(username) {
+  return getAvatar(username)
+}
+
+/**
+ * 按角色取对应登录账号的头像（供会话列表展示「对方」头像）。
+ * 演示环境每个角色仅一个登录账号；若有多个，取第一个命中的账号。
+ */
+export function avatarUrlForRole(role) {
+  const acc = ACCOUNTS.find((a) => String(a.role) === String(role))
+  return acc ? getAvatar(acc.username) : ''
+}
+
+/**
+ * 保存当前登录账号头像。
+ *
+ * @param username  登录账号名（大小写不敏感）
+ * @param avatarUrl 头像 URL；空串表示清除
+ * @returns 更新后的头像 URL；账号不存在返回 null（由调用方抛 404）
+ */
+export function saveAvatar(username, avatarUrl) {
+  const u = String(username ?? '').trim().toLowerCase()
+  const hit = ACCOUNTS.find((a) => String(a.username).toLowerCase() === u)
+  if (!hit) return null
+  setAvatar(hit.username, avatarUrl)
+  return getAvatar(hit.username)
 }
 
 /**
@@ -264,4 +310,4 @@ export function demoAccountList() {
 }
 
 export { TOKEN_TTL_MS }
-export default { verifyAccount, issueSession, accountFromToken, requireAuth, requireRole }
+export default { verifyAccount, issueSession, accountFromToken, requireAuth, requireRole, avatarUrlForRole, saveAvatar }

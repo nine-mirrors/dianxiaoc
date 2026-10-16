@@ -6,6 +6,9 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
+import UserAvatar from '@/components/common/UserAvatar.vue'
+import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import DemoModeToggle from '@/components/common/DemoModeToggle.vue'
 import { useSessionStore } from '@/stores/session'
 
 interface Props {
@@ -35,6 +38,7 @@ const NAV: { to: string; label: string; icon: string }[] = [
   { to: '/manager/report', label: 'AI 周报', icon: 'clipboard' },
   { to: '/manager/leaderboard', label: '排行榜', icon: 'layers' },
   { to: '/manager/value', label: '价值看板', icon: 'zap' },
+  { to: '/manager/regions', label: '区域对比', icon: 'bar-chart' },
   { to: '/manager/blacklist', label: '黑名单', icon: 'shield' },
   { to: '/manager/screen', label: '投屏', icon: 'compare' },
   { to: '/manager/messages', label: '消息中心', icon: 'message' },
@@ -93,14 +97,25 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="desk-header__right">
+        <!-- 日 / 夜主题开关：经理端宽屏外壳此前没有入口，补在右上角 -->
+        <ThemeToggle class="desk-header__theme" />
+        <!-- 演示模式开关：经理端宽屏外壳入口（一键演示），只追加 -->
+        <DemoModeToggle class="desk-header__demo" variant="header" tone="on-dark" />
         <label v-if="props.regionIds.length" class="desk-header__region">
           区域：
-          <select :value="props.regionId" @change="emit('change-region', ($event.target as HTMLSelectElement).value)">
+          <select class="mot-tap" :value="props.regionId" @change="emit('change-region', ($event.target as HTMLSelectElement).value)">
             <option v-for="r in props.regionIds" :key="r.id" :value="r.id">{{ r.name }}</option>
           </select>
         </label>
-        <button class="desk-header__role" @click="emit('switch-role')">
-          <AppIcon name="user" :size="15" />
+        <button class="desk-header__role mot-tap" @click="emit('switch-role')">
+          <!-- 当前登录用户头像：品牌渐变底 → glass 变体；尺寸≈原 user 图标，换人不改版式 -->
+          <UserAvatar
+            :url="session.avatarUrl"
+            :name="session.user?.name"
+            :text="session.avatarText"
+            :size="20"
+            variant="glass"
+          />
           <span>{{ props.roleLabel }} · {{ props.userName }}</span>
           <AppIcon name="refresh" :size="13" />
         </button>
@@ -113,7 +128,7 @@ onBeforeUnmount(() => {
         v-for="n in NAV"
         :key="n.to"
         :to="n.to"
-        class="desk-header__nav-item"
+        class="desk-header__nav-item mot-tap"
         :class="{ 'is-active': isActive(n.to) }"
       >
         <AppIcon :name="n.icon" :size="15" />
@@ -180,6 +195,31 @@ onBeforeUnmount(() => {
   outline-offset: 2px;
 }
 
+/* ── 交互反馈（仅追加动效）─────────────────────────────────
+   导航项 / 区域下拉 / 角色按钮挂 .mot-tap 后，保留既有背景/文字过渡，
+   并把按下 scale 的 transform 过渡一并纳入（避免被组件样式覆盖而按压生硬）。 */
+.desk-header__nav-item.mot-tap {
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
+}
+
+/* 区域下拉：切换时的轻量过渡（背景 / 描边 / 文字） */
+.desk-header__region select {
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+/* 角色按钮文字：切换角色时给被切换文本一个轻量过渡 */
+.desk-header__role span {
+  transition:
+    color var(--dur-fast) var(--ease-standard),
+    opacity var(--dur-fast) var(--ease-standard);
+}
+
 .desk-header__offline {
   position: absolute;
   top: 100%;
@@ -224,6 +264,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.desk-header__demo {
+  flex: none;
 }
 
 .desk-header__region select {

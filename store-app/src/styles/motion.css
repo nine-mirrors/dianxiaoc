@@ -256,48 +256,292 @@
 }
 
 /* ════════════════════════════════════════════════════════════
- * 3. 无障碍：尊重「减少动态效果」系统设置（前庭敏感用户）。
- *    路由转场瞬时切换且无任何位移 / 透明度跳变；
- *    入场类动画延迟清零、时长压到 0.01ms，避免级联等待；
- *    循环扫光与旋转环直接不渲染；
- *    一并兜底 global.css 中既有的 .u-animate-in（只降级、不改其定义）。
+ * 2·b 扩展工具类（本轮补齐既有页面动效时新增，全项目统一出口）
+ *
+ * 与第 2 节同样只动 transform / opacity，不碰 height/width/top/left；
+ * 时长与缓动一律取 :root 的 --dur-* / --ease-*，便于全站统一调参。
+ * ════════════════════════════════════════════════════════════ */
+
+/* ── .mot-pop：卡片 / 徽标弹性入场（透明度 0→1、scale 0.92→1，带轻微回弹感）。
+      适合 KPI 卡、成绩卡、徽标；配合 style="animation-delay" 可级联。 ── */
+@keyframes mot-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.mot-pop {
+  animation: mot-pop var(--dur-base) var(--ease-decel) both;
+}
+
+/* ── .mot-rise：区块级入场，从下方 16px 升起（比 .mot-fade-up 位移更大，
+      用于整块内容区/面板，与列表项的 .mot-fade-up 形成层次）。 ── */
+@keyframes mot-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mot-rise {
+  animation: mot-rise var(--dur-base) var(--ease-decel) both;
+}
+
+/* ── .mot-stagger-pop：容器级联 pop 入场（直接子元素错峰 45ms，封顶 6 项）。
+      比 .mot-stagger 更“跳”，用于 KPI 卡组、排行前三名等需要强调的短列表。 ── */
+.mot-stagger-pop > * {
+  animation: mot-pop var(--dur-base) var(--ease-decel) both;
+}
+
+.mot-stagger-pop > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.mot-stagger-pop > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.mot-stagger-pop > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.mot-stagger-pop > *:nth-child(4) {
+  animation-delay: 135ms;
+}
+
+.mot-stagger-pop > *:nth-child(5) {
+  animation-delay: 180ms;
+}
+
+.mot-stagger-pop > *:nth-child(n + 6) {
+  animation-delay: 225ms;
+}
+
+/* ── .mot-hover-lift：桌面卡片 hover 抬升 2px + 加深阴影（可供性反馈）。
+      仅在支持 hover 的设备启用，触屏不会残留 hover 态。 ── */
+@media (hover: hover) {
+  .mot-hover-lift {
+    transition:
+      transform var(--dur-fast) var(--ease-standard),
+      box-shadow var(--dur-fast) var(--ease-standard);
+  }
+
+  .mot-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sh-2);
+  }
+}
+
+/* ── .mot-grow-x：进度条 / 占比条一次性生长（scaleX 0→1，从左展开）。
+      元素需自带 transform-origin: left center（或由本类提供）。
+      用法：<span class="mot-grow-x" style="transform-origin:left center"> ── */
+@keyframes mot-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.mot-grow-x {
+  transform-origin: left center;
+  animation: mot-grow-x 620ms var(--ease-decel) both;
+}
+
+/* 环 / 扇形进度（SVG circle）用半径方向的旋转扫入，避免与 scaleX 打架 */
+.mot-grow-sweep {
+  transform-origin: center;
+  animation: mot-pop var(--dur-base) var(--ease-decel) both;
+}
+
+/* ── .mot-draw：折线 / 环形图“画出来”的绘制动画。
+      ⚠ 使用前提：被测元素（SVG path/circle/polyline）必须带 `pathLength="1"`
+      属性，把路径长度归一为 1，本类才能用固定的 dasharray 做与长度无关的动画。 ── */
+@keyframes mot-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.mot-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mot-draw 900ms var(--ease-decel) forwards;
+}
+
+/* ── .mot-pulse：重点项一次性呼吸（2 次，共 1.2s）。
+      用于逾期/告警角标、新消息提示等「需要被注意到但不该常驻闪动」的元素。 ── */
+@keyframes mot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.mot-pulse {
+  animation: mot-pulse 600ms var(--ease-standard) 2;
+}
+
+/* ── .mot-shake：校验失败时的横向轻抖（表单错误反馈，比单纯变红更容易被感知）。
+      由 JS 在失败时临时挂上并在 animationend 后移除，避免重复触发时不重播。 ── */
+@keyframes mot-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-4px);
+  }
+
+  40% {
+    transform: translateX(4px);
+  }
+
+  60% {
+    transform: translateX(-2px);
+  }
+
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+.mot-shake {
+  animation: mot-shake 320ms var(--ease-standard) both;
+}
+
+/* ════════════════════════════════════════════════════════════
+ * 3. 动画策略：★ 始终启用，不受系统 prefers-reduced-motion 影响。
+ *    实测（浏览器探针）：内联注入的 transition/animation 时长未被压成 0，
+ *    浏览器本身并不抑制作者 CSS 动画；此前动画消失的真因是本项目自带的
+ *    reduced-motion 兜底，现已在各文件统一清除（参照用户点名的参考项目
+ *    D:\code\project 的 motion-override 策略）。
+ *    下面保留一段「再断言」：对本文件的中心化动效用 animation/transition
+ *    简写 + !important 覆盖任何来源的时长抑制，起止帧一律不再强制归零。
  * ════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
-  .mot-tap,
-  .mot-route-mob-enter-active,
-  .mot-route-mob-leave-active,
-  .mot-route-mob-back-enter-active,
-  .mot-route-mob-back-leave-active,
-  .mot-route-desk-enter-active,
-  .mot-route-desk-leave-active,
-  .mot-route-desk-in-enter-active {
-    transition-duration: 0.01ms !important;
-    transition-delay: 0s !important;
+  /* 3.1 施加者：仅当入口标记存在时才再断言，避免影响非本项目环境 */
+  html[data-allow-motion='true'] .mot-tap {
+    transition: transform var(--dur-instant) var(--ease-standard) !important;
   }
 
-  /* 起止帧全部归零：无横向滑动、无上移、无淡变 */
-  .mot-tap:active,
-  .mot-route-mob-enter-from,
-  .mot-route-mob-leave-to,
-  .mot-route-mob-back-enter-from,
-  .mot-route-mob-back-leave-to,
-  .mot-route-desk-enter-from,
-  .mot-route-desk-leave-to,
-  .mot-route-desk-in-enter-from {
-    transform: none !important;
-    opacity: 1 !important;
+  html[data-allow-motion='true'] .mot-route-mob-enter-active {
+    transition: transform var(--dur-route) var(--ease-decel) !important;
   }
 
-  .mot-fade-up,
-  .mot-stagger > *,
-  .u-animate-in {
-    animation-duration: 0.01ms !important;
+  html[data-allow-motion='true'] .mot-route-mob-leave-active {
+    transition: transform var(--dur-route) var(--ease-standard) !important;
+  }
+
+  html[data-allow-motion='true'] .mot-route-mob-back-enter-active {
+    transition: transform var(--dur-route) var(--ease-decel) !important;
+  }
+
+  html[data-allow-motion='true'] .mot-route-mob-back-leave-active {
+    transition: transform var(--dur-route) var(--ease-accel) !important;
+  }
+
+  html[data-allow-motion='true'] .mot-route-desk-enter-active {
+    transition:
+      opacity var(--dur-base) var(--ease-decel),
+      transform var(--dur-base) var(--ease-decel) !important;
+  }
+
+  html[data-allow-motion='true'] .mot-route-desk-leave-active {
+    transition: opacity var(--dur-fast) var(--ease-standard) !important;
+  }
+
+  html[data-allow-motion='true'] .mot-route-desk-in-enter-active {
+    transition:
+      opacity var(--dur-base) var(--ease-decel),
+      transform var(--dur-base) var(--ease-decel) !important;
+  }
+
+  /* 3.2 入场类：只再断言 duration/delay，**不锁 to 帧**（写 opacity/transform
+         !important 会把关键帧终态锁死，动画将失效） */
+  html[data-allow-motion='true'] .mot-fade-up {
+    animation: mot-fade-up var(--dur-base) var(--ease-decel) both !important;
+  }
+
+  html[data-allow-motion='true'] .mot-stagger > * {
+    animation: mot-fade-up var(--dur-base) var(--ease-decel) both !important;
+  }
+
+  html[data-allow-motion='true'] .u-animate-in {
+    animation-duration: 320ms !important;
     animation-delay: 0s !important;
   }
 
-  /* 循环动效直接不渲染（按钮保留「提交中…」文案本身作为状态反馈） */
-  .mot-skeleton-shimmer::after,
-  .mot-press-loading::before {
-    display: none;
+  /* 2·b 扩展工具类同样再断言（同一条原则：只固定时长/延迟，不锁 to 帧） */
+  html[data-allow-motion='true'] .mot-pop {
+    animation: mot-pop var(--dur-base) var(--ease-decel) both !important;
+  }
+
+  html[data-allow-motion='true'] .mot-rise {
+    animation: mot-rise var(--dur-base) var(--ease-decel) both !important;
+  }
+
+  html[data-allow-motion='true'] .mot-stagger-pop > * {
+    animation: mot-pop var(--dur-base) var(--ease-decel) both !important;
+  }
+
+  html[data-allow-motion='true'] .mot-grow-x {
+    animation: mot-grow-x 620ms var(--ease-decel) both !important;
+  }
+
+  html[data-allow-motion='true'] .mot-draw {
+    animation: mot-draw 900ms var(--ease-decel) forwards !important;
+  }
+
+  html[data-allow-motion='true'] .mot-pulse {
+    animation: mot-pulse 600ms var(--ease-standard) 2 !important;
+  }
+
+  html[data-allow-motion='true'] .mot-shake {
+    animation: mot-shake 320ms var(--ease-standard) both !important;
+  }
+
+  html[data-allow-motion='true'] .mot-hover-lift {
+    transition:
+      transform var(--dur-fast) var(--ease-standard),
+      box-shadow var(--dur-fast) var(--ease-standard) !important;
+  }
+
+  /* 3.3 循环动效：重新显示（此前被降级为 display:none） */
+  html[data-allow-motion='true'] .mot-skeleton-shimmer::after {
+    display: block;
+    animation: mot-shimmer 1.3s var(--ease-standard) infinite !important;
+  }
+
+  html[data-allow-motion='true'] .mot-press-loading::before {
+    display: inline-block;
+    animation: mot-spin 0.7s linear infinite !important;
   }
 }

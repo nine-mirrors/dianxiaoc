@@ -17,6 +17,7 @@ import AppIcon from '@/components/common/AppIcon.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 import { useSessionStore } from '@/stores/session'
 import { getAiValue, exportStoresCsv } from '@/api/insights'
 import type { AiValue } from '@/api/insights'
@@ -115,6 +116,47 @@ function toggleMethod(key: string): void {
   if (next.has(key)) next.delete(key)
   else next.add(key)
   openMethods.value = next
+}
+
+/* ═══════════════ 动效：指标数字滚动 ═══════════════
+   countup 只负责滚到目标值，展示文本仍走 toLocaleString 并按原始值的小数位还原，
+   保证与改造前逐字一致（千分位、小数位、null→「—」都不变），口径与文案不变。 */
+
+/** 原值的小数位（最多 2 位） */
+function decimalsOf(n: number): number {
+  if (!Number.isFinite(n)) return 0
+  const s = String(n)
+  const dot = s.indexOf('.')
+  return dot < 0 ? 0 : Math.min(2, s.length - dot - 1)
+}
+
+/** 带千分位的滚动文本（复用原 num() 的 toLocaleString 口径） */
+function useCountLocale(target: () => number) {
+  const c = useCountUp(target, { decimals: 0 })
+  return computed(() => {
+    const d = decimalsOf(Number(target()))
+    return c.value.value.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d })
+  })
+}
+
+const recoveredText = useCountLocale(() => Number(value.value?.recoveredSales.value ?? 0))
+const bottlesText = useCountLocale(() => Number(value.value?.avoidedOosBottles.value ?? 0))
+const amountText = useCountLocale(() => Number(value.value?.avoidedOosAmount.value ?? 0))
+const liftText = useCountLocale(() => Number(value.value?.avgHealthLift.value ?? 0))
+/** 采纳率展示口径与原实现一致：Math.round(adopt × 1000) / 10 */
+const adoptText = useCountLocale(() => Math.round(Number(value.value?.aiAdoption.value ?? 0) * 1000) / 10)
+
+/** 指标卡展示文本：采纳率无分母时保留「—」（不伪造 0），其余按滚动文本 */
+function cardValueText(key: string): string {
+  if (key === 'recoveredSales') return recoveredText.value
+  if (key === 'avoidedOosBottles') return bottlesText.value
+  if (key === 'avoidedOosAmount') return amountText.value
+  if (key === 'avgHealthLift') return liftText.value
+  if (key === 'aiAdoption') {
+    const a = value.value?.aiAdoption.value
+    return a === null || a === undefined ? '—' : adoptText.value
+  }
+  return ''
 }
 
 function disposeCharts(): void {
@@ -290,14 +332,14 @@ onBeforeUnmount(() => {
 
       <template v-else>
         <!-- 5 个指标大卡 -->
-        <div class="vb__cards">
-          <article v-for="c in cards" :key="c.key" class="u-card vb__card">
+        <div class="vb__cards mot-stagger-pop">
+          <article v-for="c in cards" :key="c.key" class="u-card vb__card mot-hover-lift">
             <header class="vb__card-head">
               <AppIcon :name="c.icon" :size="15" color="var(--mn-green-dark)" />
               <h3>{{ c.title }}</h3>
             </header>
             <p class="vb__card-value">
-              {{ c.value }}<em v-if="c.unit">{{ c.unit }}</em>
+              {{ cardValueText(c.key) }}<em v-if="c.unit">{{ c.unit }}</em>
             </p>
             <p v-if="c.extra" class="vb__card-extra">{{ c.extra }}</p>
             <p v-if="c.warning" class="vb__card-warn">
@@ -307,12 +349,12 @@ onBeforeUnmount(() => {
             <button type="button" class="vb__method-btn" @click="toggleMethod(c.key)">
               <AppIcon name="info" :size="12" /> {{ openMethods.has(c.key) ? '收起口径' : '口径' }}
             </button>
-            <p v-if="openMethods.has(c.key)" class="vb__method-text">{{ c.method }}</p>
+            <p v-if="openMethods.has(c.key)" class="vb__method-text mot-fade-up">{{ c.method }}</p>
           </article>
         </div>
 
         <!-- 图表 -->
-        <div class="vb__charts">
+        <div class="vb__charts mot-stagger">
           <section class="u-card vb__chart-card">
             <header class="vb__chart-head">
               <h2><AppIcon name="trending-up" :size="14" /> 金额类价值对比</h2>

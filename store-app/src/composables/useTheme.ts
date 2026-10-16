@@ -5,7 +5,9 @@
  * - initTheme() 可在应用入口早期调用（SSR 安全）：localStorage 手动选择优先，
  *   否则跟随系统 prefers-color-scheme；手动选择后系统变化不再跟随；
  * - toggleTheme() 支持从点击坐标扩散的 View Transition 圆形涟漪，
- *   不支持的浏览器降级为 .theme-anim 颜色过渡，prefers-reduced-motion 时零动画瞬切。
+ *   不支持的浏览器降级为 .theme-anim 颜色过渡；
+ *   ★ 动画策略：始终启用，不受系统 prefers-reduced-motion 影响（照参考项目
+ *   D:\code\project 的 motion-override 策略：系统「减弱动效」不再拦掉动画）。
  */
 import { computed, readonly, ref } from 'vue'
 import type { ComputedRef, DeepReadonly, Ref } from 'vue'
@@ -107,14 +109,6 @@ function systemPrefersDark(): boolean {
   )
 }
 
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
-
 /**
  * 初始化主题。应用入口（main / App 模块作用域）尽早调用一次即可，重复调用安全。
  */
@@ -152,21 +146,15 @@ export function setTheme(name: ThemeName): void {
 /**
  * 切换日 / 夜主题：持久化 → 切换 data-theme → 更新 meta theme-color。
  *
- * 动效分级：
- * 1. prefers-reduced-motion：直接切换，无动画；
- * 2. 支持 document.startViewTransition 且传入 origin：从点击位置圆形涟漪扩散；
- * 3. 其余：<html> 临时挂 .theme-anim，走令牌颜色过渡，500ms 后移除。
+ * 动效分级（★ 始终启用，不看 prefers-reduced-motion）：
+ * 1. 支持 document.startViewTransition 且传入 origin：从点击位置圆形涟漪扩散；
+ * 2. 其余：<html> 临时挂 .theme-anim，走令牌颜色过渡，500ms 后移除。
  */
 export function toggleTheme(origin?: ToggleOrigin): void {
   if (!canUseDom()) return
   const next: ThemeName = current.value === 'dark' ? 'light' : 'dark'
   userChosen = true
   writeStorage(next)
-
-  if (prefersReducedMotion()) {
-    applyTheme(next)
-    return
-  }
 
   const startViewTransition = (document as DocumentWithVT).startViewTransition
   if (typeof startViewTransition === 'function' && origin) {

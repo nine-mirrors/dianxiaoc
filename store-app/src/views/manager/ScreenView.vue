@@ -9,12 +9,13 @@
  *        + `GET /visits?limit=`（实时巡店动态）。每 15 秒自动刷新，卸载时清定时器。
  * 退出：右上角按钮（回 /manager/dashboard）+ 全屏 API；键盘 Esc 退出。
  * 轮播：每 12 秒在「总览 / 门店榜 / 业代榜 / 实时动态」整屏间滚动，末屏回顶；
- *        悬停内容区暂停、移出恢复，手动暂停优先；prefers-reduced-motion 下初始暂停。
+ *        悬停内容区暂停、移出恢复，手动暂停优先。
  */
 import { computed, onBeforeUnmount, onMounted, ref, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/common/AppIcon.vue'
 import { useToast } from '@/composables/useToast'
+import { useCountUp } from '@/composables/useCountUp'
 import { getDashboardOverview, getVisits } from '@/api'
 import { getLeaderboard } from '@/api/insights'
 import type { DashboardOverview, Kpi, Visit } from '@/types'
@@ -31,11 +32,6 @@ const ROTATE_MS = 5_000
 /** 展位自动轮播：每 12 秒滚动到下一整屏 */
 const CAROUSEL_MS = 12_000
 
-const prefersReducedMotion =
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
 const overview = ref<OverviewExt | null>(null)
 const leaderboard = ref<LeaderboardRow[]>([])
 const visits = ref<Visit[]>([])
@@ -43,8 +39,8 @@ const kpiIndex = ref<number>(0)
 
 /** 顶栏实时时钟 HH:mm:ss */
 const clock = ref('--:--:--')
-/** 手动暂停（优先于 hover 暂停）；减少动效偏好下初始即暂停 */
-const manualPaused = ref<boolean>(prefersReducedMotion)
+/** 手动暂停（优先于 hover 暂停） */
+const manualPaused = ref<boolean>(false)
 /** 鼠标悬停内容区临时暂停 */
 const hoverPaused = ref<boolean>(false)
 const screenIndex = ref<number>(0)
@@ -58,6 +54,34 @@ let carouselTimer: number | null = null
 
 const kpis = computed<Kpi[]>(() => overview.value?.kpis ?? [])
 const activeKpi = computed<Kpi | null>(() => kpis.value[kpiIndex.value] ?? null)
+
+/* ═══════════════ 动效：大屏 KPI 数字滚动 ═══════════════
+   轮播切到下一个指标时，数字从当前值平滑滚到新值；展示格式仍按原值的小数位与 % 后缀还原，
+   与改造前逐字一致，口径与文案不变。 */
+
+/** 原值的小数位（最多 2 位） */
+function decimalsOf(n: number): number {
+  if (!Number.isFinite(n)) return 0
+  const s = String(n)
+  const dot = s.indexOf('.')
+  return dot < 0 ? 0 : Math.min(2, s.length - dot - 1)
+}
+
+/** 解析 KPI 文本数值（允许「6.6%」这类带 % 值；非数值返回 null） */
+function parseKpiNum(raw: unknown): number | null {
+  const text = String(raw ?? '').trim()
+  if (!text) return null
+  const n = Number.parseFloat(text.replace('%', ''))
+  return Number.isFinite(n) ? n : null
+}
+
+const kpiCount = useCountUp(() => parseKpiNum(activeKpi.value?.value) ?? 0, { decimals: 0 })
+const kpiValueText = computed<string>(() => {
+  const raw = String(activeKpi.value?.value ?? '').trim()
+  const n = parseKpiNum(raw)
+  if (n === null) return raw
+  return `${kpiCount.value.value.toFixed(decimalsOf(n))}${raw.includes('%') ? '%' : ''}`
+})
 
 /** 门店健康分排行榜（按分数降序，取前 8） */
 const topStores = computed(() =>
@@ -131,10 +155,10 @@ function setScreenRef(el: Element | ComponentPublicInstance | null, i: number): 
   screenEls.value[i] = el instanceof HTMLElement ? el : null
 }
 
-/** 滚动到当前整屏；循环回首屏或减少动效时用 auto，避免长距离反向平滑滚动 */
+/** 滚动到当前整屏；循环回首屏时用 auto，避免长距离反向平滑滚动 */
 function scrollToScreen(i: number): void {
   screenEls.value[i]?.scrollIntoView({
-    behavior: i === 0 || prefersReducedMotion ? 'auto' : 'smooth',
+    behavior: i === 0 ? 'auto' : 'smooth',
     block: 'start',
   })
 }
@@ -193,8 +217,8 @@ onMounted(() => {
   clockTimer = window.setInterval(() => {
     clock.value = fmtClock(new Date())
   }, 1000)
-  // 减少动效偏好下 manualPaused 初始为 true，不启动轮播
-  if (!manualPaused.value) startCarousel()
+  // 进入大屏即启动整屏轮播
+  startCarousel()
   window.addEventListener('keydown', onKeydown)
 })
 
@@ -246,12 +270,12 @@ onBeforeUnmount(() => {
     <!-- 首屏：主体三列（现有区块保持不变） -->
     <div class="sc__grid" :ref="(el) => setScreenRef(el, 0)">
       <!-- 左：KPI 轮播 + 门店健康分排行榜 -->
-      <section class="sc__col">
+      <section class="sc__col mot-stagger">
         <div class="sc__panel sc__panel--kpi">
           <p class="sc__panel-cap">核心指标 · 轮播</p>
           <template v-if="activeKpi">
             <p class="sc__kpi-label">{{ activeKpi.label }}</p>
-            <p class="sc__kpi-value" :class="{ 'is-danger': activeKpi.danger }">{{ activeKpi.value }}</p>
+            <p class="sc__kpi-value" :class="{ 'is-danger': activeKpi.danger }">{{ kpiValueText }}</p>
             <p class="sc__kpi-delta" :class="activeKpi.trend === 'down' ? 'is-down' : 'is-up'">
               {{ activeKpi.delta }}
             </p>
@@ -265,7 +289,7 @@ onBeforeUnmount(() => {
 
         <div class="sc__panel">
           <p class="sc__panel-cap">门店健康分 · 排行</p>
-          <ul class="sc__rank">
+          <ul class="sc__rank mot-stagger">
             <li v-for="(s, i) in topStores" :key="s.storeId" class="sc__rank-item">
               <span class="sc__rank-no">{{ i + 1 }}</span>
               <span class="sc__rank-name">{{ s.storeName }}</span>
@@ -277,10 +301,10 @@ onBeforeUnmount(() => {
       </section>
 
       <!-- 中：红灯门店 + 业代红榜 -->
-      <section class="sc__col sc__col--mid">
+      <section class="sc__col sc__col--mid mot-stagger">
         <div class="sc__panel sc__panel--risk">
           <p class="sc__panel-cap">风险门店 · 红灯优先</p>
-          <ul class="sc__risk">
+          <ul class="sc__risk mot-stagger">
             <li v-for="r in redStores" :key="r.storeId" class="sc__risk-item">
               <span class="sc__risk-score">{{ r.score }}</span>
               <div class="sc__risk-main">
@@ -294,7 +318,7 @@ onBeforeUnmount(() => {
 
         <div class="sc__panel">
           <p class="sc__panel-cap">业代红榜 · 综合分</p>
-          <ul class="sc__rank">
+          <ul class="sc__rank mot-stagger">
             <li v-for="r in topReps" :key="r.repId" class="sc__rank-item">
               <span class="sc__rank-no">{{ r.rank }}</span>
               <span class="sc__rank-name">{{ r.name }}</span>
@@ -306,7 +330,7 @@ onBeforeUnmount(() => {
       </section>
 
       <!-- 右：实时巡店动态滚动 -->
-      <section class="sc__col">
+      <section class="sc__col mot-stagger">
         <div class="sc__panel sc__panel--live">
           <p class="sc__panel-cap">实时巡店动态 · 自动滚动</p>
           <div class="sc__ticker">
@@ -338,7 +362,7 @@ onBeforeUnmount(() => {
     <section class="sc__screen" :ref="(el) => setScreenRef(el, 1)">
       <div class="sc__focus">
         <p class="sc__panel-cap sc__focus-cap">门店健康分 · 排行榜 TOP 8</p>
-        <ol class="sc__biglist">
+        <ol class="sc__biglist mot-stagger">
           <li v-for="(s, i) in topStores" :key="s.storeId" class="sc__bigitem">
             <span class="sc__big-no">{{ i + 1 }}</span>
             <span class="sc__big-name">{{ s.storeName }}</span>
@@ -353,7 +377,7 @@ onBeforeUnmount(() => {
     <section class="sc__screen" :ref="(el) => setScreenRef(el, 2)">
       <div class="sc__focus">
         <p class="sc__panel-cap sc__focus-cap">业代红榜 · 综合分 TOP 5</p>
-        <ol class="sc__biglist">
+        <ol class="sc__biglist mot-stagger">
           <li v-for="r in topReps" :key="r.repId" class="sc__bigitem">
             <span class="sc__big-no">{{ r.rank }}</span>
             <span class="sc__big-name">{{ r.name }}</span>
@@ -368,7 +392,7 @@ onBeforeUnmount(() => {
     <section class="sc__screen" :ref="(el) => setScreenRef(el, 3)">
       <div class="sc__focus">
         <p class="sc__panel-cap sc__focus-cap">实时巡店动态流</p>
-        <ol class="sc__biglist sc__biglist--live">
+        <ol class="sc__biglist sc__biglist--live mot-stagger">
           <li v-for="v in visits" :key="v.id" class="sc__bigitem sc__bigitem--live">
             <span class="sc__big-time">{{ fmtTime(v.visitedAt) }}</span>
             <span class="sc__big-name">{{ v.storeName }}</span>
@@ -844,14 +868,7 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sc__ticker-list {
-    animation: none;
-  }
-
-  /* 减少动效：轮播初始暂停，翻屏滚动也用 auto（JS 侧同步保证） */
-  .sc__stage {
-    scroll-behavior: auto;
-  }
+.sc__stage {
+  scroll-behavior: auto;
 }
 </style>

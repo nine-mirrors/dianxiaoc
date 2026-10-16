@@ -690,17 +690,6 @@ function goBack(): void {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .p3-flash {
-    animation-duration: 0.01ms;
-  }
-
-  /* 主按钮流光为纯装饰性无限动画：系统要求减弱动态效果时直接关闭 */
-  .p3-submit__btn::after {
-    animation: none;
-  }
-}
-
 .p3-photo__ready {
   position: absolute;
   top: 8px;

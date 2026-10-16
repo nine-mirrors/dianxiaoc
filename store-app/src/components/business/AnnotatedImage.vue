@@ -322,12 +322,4 @@ const legend = computed(() => {
 .anno__legend-swatch--dashed {
   border-top-style: dashed;
 }
-
-/* WCAG：减弱动态效果时关闭标注框/角标的无限脉冲（正常态不动；高亮仍靠白底描边与底色区分） */
-@media (prefers-reduced-motion: reduce) {
-  .anno__box--on,
-  .anno__tag--on {
-    animation: none;
-  }
-}
 </style>

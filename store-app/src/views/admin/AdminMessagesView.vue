@@ -12,7 +12,7 @@ import MessageCenter from '@/components/business/MessageCenter.vue'
 
 <template>
   <AdminShell title="消息中心" subtitle="总部运营控制台 · 与业代 / 店主 / 区域经理实时沟通">
-    <div class="amsg">
+    <div class="amsg mot-rise">
       <MessageCenter mode="desktop" />
     </div>
   </AdminShell>

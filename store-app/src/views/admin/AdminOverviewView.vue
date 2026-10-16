@@ -14,6 +14,7 @@ import AdminShell from './AdminShell.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useApi } from '@/composables/useApi'
+import { useCountUp } from '@/composables/useCountUp'
 import { getAdminOverview, type AdminOverview } from '@/api/admin'
 
 echarts.use([LineChart, TooltipComponent, GridComponent, CanvasRenderer])
@@ -23,23 +24,34 @@ const { data, loading, run } = useApi<AdminOverview | null>(() => getAdminOvervi
   errorMessage: '运营总览加载失败，请稍后重试',
 })
 
+/** 关键计数滚动入场（每个数字一个 useCountUp，目标值随接口数据变化平滑滚动） */
+const counters = {
+  store: useCountUp(() => data.value?.storeCount ?? 0),
+  account: useCountUp(() => data.value?.accountCount ?? 0),
+  knowledge: useCountUp(() => data.value?.knowledgeCount ?? 0),
+  blacklist: useCountUp(() => data.value?.blacklistCount ?? 0),
+  diagnosis: useCountUp(() => data.value?.diagnosisCount ?? 0),
+  ai: useCountUp(() => data.value?.aiCallCount ?? 0),
+  audit: useCountUp(() => data.value?.auditCount ?? 0),
+}
+
 /** KPI 卡（≥6 张；账号卡带内置/派发拆分口径） */
 const kpis = computed(() => {
   const o = data.value
   return [
-    { key: 'store', label: '在营门店', value: o?.storeCount ?? 0, icon: 'store', hint: '全量门店主数据' },
+    { key: 'store', label: '在营门店', counter: counters.store, icon: 'store', hint: '全量门店主数据' },
     {
       key: 'account',
       label: '系统账号',
-      value: o?.accountCount ?? 0,
+      counter: counters.account,
       icon: 'user',
       hint: `内置 ${o?.seedAccountCount ?? 0} · 派发 ${o?.extAccountCount ?? 0}`,
     },
-    { key: 'knowledge', label: '知识条目', value: o?.knowledgeCount ?? 0, icon: 'layers', hint: '有效 FAQ 条目' },
-    { key: 'blacklist', label: '黑名单生效', value: o?.blacklistCount ?? 0, icon: 'shield', hint: '门店 / SKU 管控中' },
-    { key: 'diagnosis', label: '诊断累计', value: o?.diagnosisCount ?? 0, icon: 'camera', hint: 'AI 货架诊断记录' },
-    { key: 'ai', label: 'AI 调用次数', value: o?.aiCallCount ?? 0, icon: 'sparkles', hint: '问答 / 生成 / 周报' },
-    { key: 'audit', label: '审计留痕', value: o?.auditCount ?? 0, icon: 'clipboard', hint: '写操作全量留痕' },
+    { key: 'knowledge', label: '知识条目', counter: counters.knowledge, icon: 'layers', hint: '有效 FAQ 条目' },
+    { key: 'blacklist', label: '黑名单生效', counter: counters.blacklist, icon: 'shield', hint: '门店 / SKU 管控中' },
+    { key: 'diagnosis', label: '诊断累计', counter: counters.diagnosis, icon: 'camera', hint: 'AI 货架诊断记录' },
+    { key: 'ai', label: 'AI 调用次数', counter: counters.ai, icon: 'sparkles', hint: '问答 / 生成 / 周报' },
+    { key: 'audit', label: '审计留痕', counter: counters.audit, icon: 'clipboard', hint: '写操作全量留痕' },
   ]
 })
 
@@ -87,11 +99,6 @@ function withAlpha(color: string, alpha: number): string {
   return `rgba(${parseInt(hex.slice(0, 2), 16)}, ${parseInt(hex.slice(2, 4), 16)}, ${parseInt(hex.slice(4, 6), 16)}, ${alpha})`
 }
 
-function prefersReducedMotion(): boolean {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 /** day（YYYY-MM-DD）→ 短标签 MM-DD */
 function shortDay(day: string): string {
   const parts = String(day).split('-')
@@ -109,7 +116,7 @@ function render(): void {
   const line = css('--brand')
   chart.setOption(
     {
-      animation: !prefersReducedMotion(),
+      animation: true,
       color: [line],
       tooltip: {
         trigger: 'axis',
@@ -198,19 +205,19 @@ watch(() => data.value?.auditTrend, render, { deep: true })
   <AdminShell title="运营总览">
     <div class="ov">
       <!-- ── KPI 卡组 ── -->
-      <div v-if="loading && !data" class="ov__kpis">
+      <div v-if="loading && !data" class="ov__kpis mot-stagger-pop">
         <SkeletonBlock v-for="i in 7" :key="i" height="92px" radius="14px" />
       </div>
-      <div v-else class="ov__kpis">
-        <div v-for="k in kpis" :key="k.key" class="ov__kpi u-card u-animate-in">
+      <div v-else class="ov__kpis mot-stagger-pop">
+        <div v-for="k in kpis" :key="k.key" class="ov__kpi u-card mot-tap">
           <span class="ov__kpi-ic"><AppIcon :name="k.icon" :size="17" /></span>
           <p class="ov__kpi-label">{{ k.label }}</p>
-          <p class="ov__kpi-value">{{ k.value.toLocaleString() }}</p>
+          <p class="ov__kpi-value">{{ k.counter.text }}</p>
           <p class="ov__kpi-hint">{{ k.hint }}</p>
         </div>
       </div>
 
-      <div class="ov__grid">
+      <div class="ov__grid mot-rise">
         <!-- ── 趋势 ── -->
         <section class="ov__card u-card">
           <header class="ov__card-head">
@@ -226,7 +233,7 @@ watch(() => data.value?.auditTrend, render, { deep: true })
             <h2 class="ov__card-title"><AppIcon name="zap" :size="15" /> 平台能力速览</h2>
             <span>已挂载 {{ platformModules.length }} 个模块</span>
           </header>
-          <ul class="ov__cap">
+          <ul class="ov__cap mot-stagger">
             <li v-for="m in platformModules" :key="m.name" class="ov__cap-item">
               <span class="ov__cap-ic"><AppIcon :name="m.icon" :size="15" /></span>
               <div class="ov__cap-main">
@@ -242,8 +249,8 @@ watch(() => data.value?.auditTrend, render, { deep: true })
       <!-- ── 快捷入口 ── -->
       <section class="ov__quick">
         <h2 class="ov__section-title">快捷入口</h2>
-        <div class="ov__quick-grid">
-          <router-link v-for="s in shortcuts" :key="s.path" :to="s.path" class="ov__quick-item u-card">
+        <div class="ov__quick-grid mot-stagger">
+          <router-link v-for="s in shortcuts" :key="s.path" :to="s.path" class="ov__quick-item u-card mot-hover-lift mot-tap">
             <span class="ov__quick-ic"><AppIcon :name="s.icon" :size="19" /></span>
             <div class="ov__quick-main">
               <b>{{ s.label }}</b>
@@ -499,18 +506,6 @@ watch(() => data.value?.auditTrend, render, { deep: true })
 
   .ov__quick-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ov__kpi,
-  .ov__quick-item {
-    transition: none;
-  }
-
-  .ov__kpi:hover,
-  .ov__quick-item:hover {
-    transform: none;
   }
 }
 </style>

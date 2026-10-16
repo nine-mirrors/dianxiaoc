@@ -48,15 +48,6 @@ function totalCount(): number {
   return props.data.reduce((s, d) => s + d.count, 0)
 }
 
-/** 系统开启「减少动态效果」时关闭 ECharts 入场/补间动画（语义不依赖动画传达） */
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
-
 /**
  * 字号档随容器宽度轻微增长并封顶：
  * 窄卡（≤300px）0.92 档、常规 1 档、超宽（≥520px）1.12 档。
@@ -94,7 +85,10 @@ function render(): void {
   const levelColor = (d: LevelBucket): string => css(`--level-${d.level}`) || d.color
   chart.setOption(
     {
-      animation: !prefersReducedMotion(),
+      animation: true,
+      // 入场绘制：环形从内向外扫入，扇区错峰展开（数据变化时 setOption 重播）
+      animationDuration: 900,
+      animationEasing: 'cubicOut',
       color: props.data.map(levelColor),
       tooltip: {
         trigger: 'item',
@@ -131,6 +125,11 @@ function render(): void {
           radius: ['52%', '72%'],
           center: ['37%', '50%'],
           avoidLabelOverlap: true,
+          // 环形扫入：expansion 从圆心外扩，四档错峰各延时 60ms
+          animationType: 'expansion',
+          animationDuration: 900,
+          animationEasing: 'cubicOut',
+          animationDelay: (idx: number) => idx * 60,
           // 扇区分割线与卡片表面同色（日间白、夜间深墨绿）
           itemStyle: { borderColor: css('--bg-card'), borderWidth: 2 },
           label: { show: false },
@@ -215,7 +214,7 @@ watch(() => props.data, render, { deep: true })
 </script>
 
 <template>
-  <div ref="el" class="donut" role="img" :aria-label="ariaLabel" />
+  <div ref="el" class="donut mot-fade-up" role="img" :aria-label="ariaLabel" />
 </template>
 
 <style scoped>

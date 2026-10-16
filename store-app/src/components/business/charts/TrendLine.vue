@@ -65,15 +65,6 @@ function withAlpha(color: string, alpha: number): string {
 /** 当前选中的序列 */
 const active = computed<TrendSeries | undefined>(() => props.series.find((s) => s.key === activeKey.value))
 
-/** 系统开启「减少动态效果」时关闭 ECharts 入场/补间动画（语义不依赖动画传达） */
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
-
 /**
  * 坐标轴字号档随容器宽度轻微变化并封顶：
  * 窄卡（≤360px）0.92 档（约 10px）、常规 1 档（11px）、超宽（≥900px）1.08 档（约 12px）。
@@ -122,7 +113,10 @@ function render(): void {
   const axisLineColor = css('--border-color')
   chart.setOption(
     {
-      animation: !prefersReducedMotion(),
+      animation: true,
+      // 入场绘制：曲线从左到右「画出来」，数据点错峰弹入（单位 ms，缓动收尾稳）
+      animationDuration: 900,
+      animationEasing: 'cubicOut',
       color: [lineColor],
       tooltip: {
         trigger: 'axis',
@@ -158,6 +152,10 @@ function render(): void {
           smooth: true,
           symbol: 'circle',
           symbolSize: 5,
+          // 折线绘制 + 数据点级联弹入（切换指标 / 数据变化时 setOption 重播）
+          animationDuration: 900,
+          animationEasing: 'cubicOut',
+          animationDelay: (idx: number) => idx * 45,
           lineStyle: { width: 2.5 },
           // 节点描边与卡片表面同色（日间白、夜间深墨绿）
           itemStyle: { color: lineColor, borderColor: css('--bg-card'), borderWidth: 1 },
@@ -255,7 +253,7 @@ watch([() => props.series, activeKey], render, { deep: true })
         {{ s.name }}
       </button>
     </div>
-    <div ref="el" class="trend__chart" role="img" :aria-label="ariaLabel" />
+    <div ref="el" class="trend__chart mot-fade-up" role="img" :aria-label="ariaLabel" />
   </div>
 </template>
 
@@ -297,13 +295,6 @@ watch([() => props.series, activeKey], render, { deep: true })
   height: clamp(180px, 24.5vh, 232px);
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
-}
-
-/* 系统开启「减少动态效果」：指标切换只保留瞬时颜色变化，不做过渡 */
-@media (prefers-reduced-motion: reduce) {
-  .trend__tab {
-    transition: none;
-  }
 }
 
 /* 打印：vh 在分页媒体里口径不稳定，改用固定高度 */

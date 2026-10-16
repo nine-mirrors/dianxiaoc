@@ -168,6 +168,23 @@ export const DEMO_WEEKDAY = '周五'
 export const DEMO_WEATHER = '晴 22℃'
 
 /**
+ * 演示基准「当前时刻」——必须与后端 dashboard.js 的 DEMO_NOW 严格一致（2026-10-02 23:59）。
+ *
+ * 前端的逾期判定一律以此为准，**禁止改用真实时钟**：演示基准日是固定的，
+ * 一旦用 `new Date()`，「今日 18:00 前完成」的任务过了演示日就会被全部判成逾期，
+ * 与经理看板上的「逾期 1」当场对不上（同一屏两个数是最容易被评委抓到的破绽）。
+ */
+export const DEMO_NOW = `${DEMO_TODAY} 23:59`
+
+/**
+ * 时限是否已过（`YYYY-MM-DD HH:mm` 直接字典序比较，与后端 `dueAt < DEMO_NOW` 同口径；
+ * 归一化后的日期串按此序比较即等价于时间比较）。
+ */
+export function isTaskOverdue(dueAt?: string | null): boolean {
+  return !!dueAt && String(dueAt) < DEMO_NOW
+}
+
+/**
  * 依据分数取分档 key。
  *
  * @param score 0–100 分

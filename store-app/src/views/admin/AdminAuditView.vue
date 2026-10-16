@@ -180,7 +180,7 @@ function fmtTime(iso: string): string {
 <template>
   <AdminShell title="审计日志">
     <template #actions>
-      <button type="button" class="u-btn u-btn--ghost" :disabled="loading" @click="load">
+      <button type="button" class="u-btn u-btn--ghost" :class="{ 'mot-press-loading': loading }" :disabled="loading" @click="load">
         <AppIcon name="refresh" :size="15" /> 刷新
       </button>
     </template>
@@ -232,7 +232,7 @@ function fmtTime(iso: string): string {
                 <th class="au__col-detail">详情</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="mot-stagger">
               <tr v-for="it in items" :key="it.id">
                 <td class="au__col-time">
                   <time :datetime="it.createdAt">{{ fmtTime(it.createdAt) }}</time>
@@ -254,7 +254,7 @@ function fmtTime(iso: string): string {
                     <button
                       v-if="canExpand(prettyDetail(it.detail))"
                       type="button"
-                      class="au__toggle"
+                      class="au__toggle mot-tap"
                       @click="toggleDetail(it.id)"
                     >
                       {{ expanded[it.id] ? '收起' : '展开' }}
@@ -277,8 +277,8 @@ function fmtTime(iso: string): string {
         <nav class="au__pager" aria-label="审计日志分页">
           <span class="au__page-info">第 {{ page }} / {{ totalPages }} 页 · 每页 {{ pageSize }} 条</span>
           <div class="au__page-btns">
-            <button type="button" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-            <button type="button" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
+            <button type="button" class="mot-tap" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+            <button type="button" class="mot-tap" :disabled="page >= totalPages" @click="goPage(page + 1)">下一页</button>
           </div>
         </nav>
       </template>
